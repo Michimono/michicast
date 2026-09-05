@@ -1,0 +1,24 @@
+name: Config
+description: Configuration, tooling, or environment setup change.
+title: "[Config]: "
+labels: ["config"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use for repo/app config, tooling, or environment changes (not product bugs or features).
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should be configured, added, or corrected?
+      placeholder: Short description of the config change.
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Current vs desired
+      description: What exists today, and what should it become?
+    validations:
+      required: false

@@ -1,0 +1,21 @@
+name: Feature
+description: Request or propose new functionality.
+title: "[Feature]: "
+labels: ["feature"]
+type: Feature
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should be added or changed?
+      placeholder: Short description of the feature.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What problem does this solve, or what value does it add?
+    validations:
+      required: false
