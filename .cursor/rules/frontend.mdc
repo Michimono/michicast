@@ -1,0 +1,15 @@
+---
+description: Blade-first frontend with Tailwind; no SPA layer
+globs: resources/views/**,resources/js/**,resources/css/**
+alwaysApply: false
+---
+
+# Frontend rules
+
+## Blade first, no SPA layer
+
+Server-rendered Blade with Tailwind, plus small amounts of Alpine or plain JavaScript only where a page genuinely needs interactivity. Do not install Livewire, Inertia, Vue or React, and do not add paid UI kits.
+
+## Interactive screens use a normal request
+
+Preview, dry run and connection tests are ordinary form posts that re-render the page with the result. Reach for JavaScript only after a server-rendered version is genuinely insufficient.

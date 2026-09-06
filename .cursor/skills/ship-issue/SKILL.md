@@ -20,7 +20,7 @@ Take one human-approved issue from branch through PR and CI, then stop for human
 - **Base branch is always `main`.** Never commit, push, or merge to `main` (or `master`).
 - **Only implement issues that have the `ok` label.** If the issue lacks `ok`, stop and say it needs human approval. Do not start a branch, commits, or PR. Do not treat a verbal “just do it” as approval unless the user explicitly waives the `ok` gate for that issue in the same message.
 - **Never add or remove `ok`.** Humans own that label.
-- **Labels:** only use names from the [Label catalog](#label-catalog). When editing labels on an issue, only add or remove labels from that catalog — never invent new ones, never create missing labels in GitHub (report which are missing instead).
+- **Labels:** only use names from the [Label catalog](#label-catalog). They all exist already. Add or remove only those names — never invent a label, never create one in GitHub. If an expected label is missing, stop and report it.
 - Never merge the PR. After CI is green (or absent) and brief review comments are posted, hand off.
 - Never force-push or skip hooks unless the user explicitly asks.
 - Only commit when the user asked to ship / implement / commit / open a PR (or equivalent).
@@ -37,10 +37,12 @@ Exact names only:
 | `feature` | Kind |
 | `task` | Kind |
 | `config` | Kind |
-| `priority: high` | Priority |
-| `priority: medium` | Priority |
-| `priority: low` | Priority |
+| `high` | Priority |
+| `medium` | Priority |
+| `low` | Priority |
 | `ok` | Human approval to implement |
+
+This is the complete set. No other label may be applied.
 
 Rules: exactly one kind and exactly one priority on an issue when labels are complete. `ok` is optional until a human adds it. Agents never apply `ok`. Prefer higher priority when picking among `ok` issues (`high` → `medium` → `low`).
 

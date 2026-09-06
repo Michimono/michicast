@@ -1,0 +1,19 @@
+---
+description: MySQL, JSON provider config, and idempotency constraints
+globs: database/migrations/**,database/factories/**
+alwaysApply: false
+---
+
+# Database rules
+
+## MySQL everywhere
+
+Target MySQL 8+ / MariaDB 10.6+ in development, tests and CI, because production is shared hosting. Do not introduce PostgreSQL-only or SQLite-only behaviour.
+
+## Provider settings live in JSON, stable attributes in columns
+
+Provider-specific settings belong in a JSON `config` column. Never add provider-specific columns such as `rss_url`, `subreddit` or `html_selector` to shared tables. Attributes the application filters, sorts or joins on stay real columns.
+
+## Idempotency is enforced by the schema
+
+Content items are unique per source plus external id, falling back to source plus canonical URL. Deliveries are unique per content item, broadcast and destination. A repeated run must never produce a duplicate publish.

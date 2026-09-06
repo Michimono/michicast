@@ -1,0 +1,23 @@
+---
+description: Michicast application domain constraints (tenancy, providers, credentials)
+globs: app/**
+alwaysApply: false
+---
+
+# Application rules
+
+## Organization is the tenant boundary
+
+Every domain record (project, source, destination, broadcast, content item, run, delivery) belongs to exactly one organization, directly or through its project. Scope every query by the acting organization and authorize with Policies against the `organization_members` role enum: owner, admin, editor, viewer. Do not add a permissions package. Archive automation objects instead of hard-deleting them.
+
+## Providers stay behind the provider registry
+
+External services are reached only through the provider contracts: a source provider returns `ContentItem`s, a destination provider publishes one, a transformer maps one to another. Resolve implementations by type through the provider registry; never branch on `$source->type` in domain code, and never let provider-specific shapes leak past normalization. Keep the abstraction thin: interfaces at the integration boundary only, plain Laravel everywhere else.
+
+## Provider credentials are secrets
+
+Store credentials with encrypted casts, never return them to the UI after save, and never log them. Configuration and credentials are different concerns even when they live near each other.
+
+## Only free, policy-compliant providers
+
+Use services that are free at our volume with no paid tier ahead of them. Do not scrape X/Twitter and do not add an X provider; it stays a future integration behind the source contract. All outbound HTTP goes through the Laravel HTTP client with explicit timeouts and retries.

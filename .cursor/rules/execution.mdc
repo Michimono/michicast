@@ -1,0 +1,23 @@
+---
+description: Cron-only scheduling and project run execution
+globs: app/Console/**,routes/console.php
+alwaysApply: false
+---
+
+# Execution rules
+
+## Cron only, no queue workers
+
+Production is shared hosting with a single cron entry running `php artisan schedule:run` every minute. Do not add a queue worker, a daemon, or code that assumes one is running.
+
+## The scheduler is the clock, project schedules are data
+
+The Laravel scheduler only ticks. A dispatch command queries projects whose `next_run_at` has passed, claims each one atomically, and runs it inline within a time budget. Guard the scheduled entry with `withoutOverlapping()`.
+
+## Run now never executes in a web request
+
+A manual run marks the project as due so the next tick picks it up. HTTP requests must not perform provider fetches or publishing.
+
+## Timezones are domain data
+
+Resolve a schedule against the organization timezone, overridden by the project timezone when set. Never use the server timezone or the viewer's current timezone, and use Carbon for all DST-aware arithmetic.

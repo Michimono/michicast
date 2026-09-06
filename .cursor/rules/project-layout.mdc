@@ -1,0 +1,12 @@
+---
+description: Where project skills and rules live in this repo
+alwaysApply: true
+---
+
+# Project agent layout
+
+- Skills live in `.cursor/skills/` (version-controlled). Activate the matching skill when working in that domain.
+- Project rules live in `.cursor/rules/*.mdc` (version-controlled). Follow every rule whose globs cover files you are about to change.
+- Do not recreate `.agents/skills` or `.ai/rules` for this project. If Boost regenerates skills under `.agents/`, move them into `.cursor/skills/` and prefer `.cursor`.
+- Durable project decisions belong in `.cursor/rules/*.mdc` with YAML frontmatter (`description`, `globs`, `alwaysApply`). Prefer that over writing markdown under `.ai/rules`.
+- Local MCP secrets stay in `.cursor/mcp.json` (gitignored). Copy from `.cursor/mcp.example.json`.

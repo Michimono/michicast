@@ -1,0 +1,11 @@
+---
+description: Brand and URL values come from config, never hardcode
+globs: config/**,.env.example
+alwaysApply: false
+---
+
+# Configuration rules
+
+## Brand and URLs come from config
+
+The product is Michicast, under the Michimono brand. Never hardcode `michicast.com` or brand strings in code, views or tests. Read the URL from `APP_URL` via `config('app.url')` and brand values from the application's own config file, so the domain can change without a code change.

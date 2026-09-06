@@ -5,8 +5,9 @@ description: >-
   (Bug, Feature, Task, Config). Use when the user asks to open, file, or create
   an issue, ticket, bug report, feature request, task, or config change, or to
   set priority on an issue. Prefer templates under .github/ISSUE_TEMPLATE, set
-  kind and priority: high|medium|low from analysis. Never apply or remove the
-  ok label. After human ok, implementation uses the ship-issue skill.
+  the kind label and one priority label (high, medium, low) from analysis.
+  Never apply or remove the ok label. After human ok, implementation uses the
+  ship-issue skill.
 ---
 
 # Create GitHub Issue
@@ -17,8 +18,8 @@ Open issues through this repo’s templates so kind, labels, and body shape stay
 
 - **Never add or remove the `ok` label.** Humans mark issues ready to implement.
 - Always assign exactly one kind label: `bug` | `feature` | `task` | `config`.
-- Always assign exactly one priority: `priority: high` | `priority: medium` | `priority: low`.
-- **Labels:** only names in the [Label catalog](#label-catalog). When editing labels, only add or remove from that set — never invent names, never create missing labels in GitHub (report which are missing).
+- Always assign exactly one priority label: `high` | `medium` | `low`.
+- **Labels:** only the names in the [Label catalog](#label-catalog). Every one of them already exists in the repository. Add or remove only those names — never invent a label, never create one in GitHub. If an expected label is missing, stop and report it.
 - Before creating, search open issues for a duplicate; if one exists, point to it instead of opening another.
 
 ## Label catalog
@@ -29,10 +30,12 @@ Open issues through this repo’s templates so kind, labels, and body shape stay
 | `feature` | Kind |
 | `task` | Kind |
 | `config` | Kind |
-| `priority: high` | Priority |
-| `priority: medium` | Priority |
-| `priority: low` | Priority |
+| `high` | Priority |
+| `medium` | Priority |
+| `low` | Priority |
 | `ok` | Human approval (agents never set this) |
+
+This is the complete set. No other label may be applied.
 
 ## Templates
 
@@ -76,9 +79,9 @@ Choose from impact, urgency, and risk — not user tone alone:
 
 | Label | When |
 | --- | --- |
-| `priority: high` | Blocks users or development; data loss / security / production breakage; no reasonable workaround. |
-| `priority: medium` | Important and valuable but not blocking; workaround or limited scope. Default when unsure between high and low. |
-| `priority: low` | Nice-to-have, cosmetic, speculative, or safely deferred. |
+| `high` | Blocks users or development; data loss / security / production breakage; no reasonable workaround. |
+| `medium` | Important and valuable but not blocking; workaround or limited scope. Default when unsure between high and low. |
+| `low` | Nice-to-have, cosmetic, speculative, or safely deferred. |
 
 When touching an existing issue that lacks priority, set one using this table. Do not change an existing priority unless the user asks. Never add `ok` while doing so.
 
