@@ -58,8 +58,9 @@ Rules: exactly one kind and exactly one priority on an issue when labels are com
 
 ## Branch
 
-1. If on `main`, create or switch before any commit.
-2. Branch name when an issue applies:
+1. **Always branch from an up-to-date `main`.** Before creating a branch: `git checkout main`, then `git pull --ff-only`. Never branch from whatever happened to be checked out, and never branch from a stale `main` — the previous issue's PR may already be merged. Leave unrelated dirty files (for example a churned `package-lock.json`) unstaged rather than stashing or committing them.
+2. If on `main`, create or switch before any commit.
+3. Branch name when an issue applies:
 
 ```text
 <issue_type>_<issue_id>
@@ -67,8 +68,8 @@ Rules: exactly one kind and exactly one priority on an issue when labels are com
 
 Examples: `feature_9`, `bug_23`, `task_5`, `config_12`.
 
-3. **Resume if it already exists** (local or on `origin`). Do not invent a second branch for the same issue.
-4. Do all work for that issue on this branch only.
+4. **Resume if it already exists** (local or on `origin`). Do not invent a second branch for the same issue.
+5. Do all work for that issue on this branch only.
 
 ## Before every commit
 
@@ -85,18 +86,23 @@ Past tense for the subject and every body line.
 
 ```text
 <short past-tense summary under ~250 characters>
+
 <past-tense line describing one change>
 ...
 ```
 
 - Subject: Added, Fixed, Changed, Removed, Updated, …
+- **Leave a blank line after the subject.** Git treats the whole first paragraph as the subject, so body lines written directly under it collapse into one long subject in `git log` and in the PR.
 - Each following line: one change, same past-tense style
 - One logical chunk per commit; multiple commits on the branch are fine
+- Pass the message with `git commit -F <file>` when it has a body; chained `-m` flags and shell quoting mangle it.
+- **Never add Cursor attribution.** Do not pass `--trailer` for `Co-authored-by: Cursor`, `Made-with: Cursor`, or similar. After every commit, run `git log -1 --format=%B` and, if a Cursor trailer was injected, amend it out when the amend rules below allow; otherwise stop and tell the human.
 
 Example:
 
 ```text
 Added ship-issue agent skill
+
 Created workflow for branch commit PR and CI handoff
 Documented issue verbs and title length limit
 ```
@@ -158,7 +164,7 @@ When implementation is done, PR exists, and CI is green (or absent):
 ## Workflow
 
 1. Pick / confirm issue → verify `ok` → resolve type and id (backfill priority if missing).
-2. Create or resume `<type>_<id>` from `main`.
+2. Sync `main` (`git checkout main && git pull --ff-only`), then create or resume `<type>_<id>` from it.
 3. Implement on that branch only.
 4. Pre-commit checks → past-tense commit(s) → push to `origin`.
 5. Open or update PR; ensure title ends with `(#<pr_id>)`.
@@ -169,7 +175,9 @@ When implementation is done, PR exists, and CI is green (or absent):
 
 - [ ] Issue has `ok` (or explicit user waiver / true bootstrap); agent did not add or remove `ok`
 - [ ] Labels used are only from the catalog; no new label names created
-- [ ] Not on `main`; branch is `<type>_<id>` when issue-based; resumed existing branch/PR if present
+- [ ] Not on `main`; branched from a freshly pulled `main`; branch is `<type>_<id>` when issue-based; resumed existing branch/PR if present
+- [ ] Commit subject is separated from its body by a blank line
+- [ ] Commit message has no `Co-authored-by: Cursor` / `Made-with: Cursor` trailer unless the human asked for it
 - [ ] No secrets staged; `.gitignore` respected
 - [ ] Tests passed before each commit; Pint when PHP changed
 - [ ] Commits are past tense (subject + one-change body lines)

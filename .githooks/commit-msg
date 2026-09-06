@@ -1,0 +1,31 @@
+#!/bin/sh
+# Strip Cursor attribution trailers that tooling may inject into commit messages.
+# Enable with: git config core.hooksPath .githooks
+
+MSG_FILE="$1"
+
+if [ ! -f "$MSG_FILE" ]; then
+    exit 0
+fi
+
+TMP_FILE="${MSG_FILE}.tmp"
+
+grep -v -E '^Co-authored-by:[[:space:]]*Cursor[[:space:]]*<' "$MSG_FILE" \
+    | grep -v -E '^Made-with:[[:space:]]*Cursor[[:space:]]*$' \
+    > "$TMP_FILE" || true
+
+if [ -s "$TMP_FILE" ]; then
+    # Drop trailing blank lines left after removing a trailer block
+    awk '
+        { lines[NR] = $0 }
+        END {
+            end = NR
+            while (end > 0 && lines[end] ~ /^[[:space:]]*$/) end--
+            for (i = 1; i <= end; i++) print lines[i]
+        }
+    ' "$TMP_FILE" > "$MSG_FILE"
+fi
+
+rm -f "$TMP_FILE"
+
+exit 0
