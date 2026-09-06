@@ -33,6 +33,17 @@ npm run build
 php artisan test
 ```
 
+## Checks
+
+Run these before committing; CI enforces the same three.
+
+```sh
+composer test      # PHPUnit against the michicast_test schema
+composer lint      # Pint in check mode, reports violations without fixing
+composer format    # Pint, fixes style in place
+composer analyse   # PHPStan with the Larastan extension at level 5
+```
+
 ---
 
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
