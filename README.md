@@ -41,7 +41,7 @@ git config core.hooksPath .githooks
 
 ## Checks
 
-Run these before committing; CI enforces the same three.
+Run these before committing; CI enforces the same three. The workflow in `.github/workflows/ci.yml` runs them on every pull request against a MySQL service container.
 
 ```sh
 composer test      # PHPUnit against the michicast_test schema
