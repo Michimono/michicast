@@ -1,3 +1,40 @@
+# Michicast
+
+## Local setup
+
+Requires PHP 8.3+, Composer, Node and MySQL 8+ (or MariaDB 10.6+). The application and the test suite both run on MySQL, so development matches production; there is no SQLite fallback.
+
+1. Create a schema for development and one for tests:
+
+```sql
+CREATE DATABASE michicast;
+CREATE DATABASE michicast_test;
+```
+
+2. Install dependencies and create the environment file:
+
+```sh
+composer install
+php -r "file_exists('.env') || copy('.env.example', '.env');"
+php artisan key:generate
+```
+
+3. Set `DB_USERNAME` and `DB_PASSWORD` in `.env` to match your MySQL user, then migrate:
+
+```sh
+php artisan migrate
+```
+
+4. Build the frontend and run the suite. Tests use the `michicast_test` schema configured in `phpunit.xml`:
+
+```sh
+npm install
+npm run build
+php artisan test
+```
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
