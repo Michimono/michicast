@@ -96,6 +96,7 @@ Past tense for the subject and every body line.
 - Each following line: one change, same past-tense style
 - One logical chunk per commit; multiple commits on the branch are fine
 - Pass the message with `git commit -F <file>` when it has a body; chained `-m` flags and shell quoting mangle it.
+- **Never add Cursor attribution.** Do not pass `--trailer` for `Co-authored-by: Cursor`, `Made-with: Cursor`, or similar. After every commit, run `git log -1 --format=%B` and, if a Cursor trailer was injected, amend it out when the amend rules below allow; otherwise stop and tell the human.
 
 Example:
 
@@ -176,6 +177,7 @@ When implementation is done, PR exists, and CI is green (or absent):
 - [ ] Labels used are only from the catalog; no new label names created
 - [ ] Not on `main`; branched from a freshly pulled `main`; branch is `<type>_<id>` when issue-based; resumed existing branch/PR if present
 - [ ] Commit subject is separated from its body by a blank line
+- [ ] Commit message has no `Co-authored-by: Cursor` / `Made-with: Cursor` trailer unless the human asked for it
 - [ ] No secrets staged; `.gitignore` respected
 - [ ] Tests passed before each commit; Pint when PHP changed
 - [ ] Commits are past tense (subject + one-change body lines)

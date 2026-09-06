@@ -8,6 +8,7 @@ alwaysApply: true
 - Skills live in `.cursor/skills/` (version-controlled). Activate the matching skill when working in that domain.
 - Project rules live in `.cursor/rules/*.mdc` (version-controlled). Follow every rule whose globs cover files you are about to change.
 - Do not recreate `.agents/skills` or `.ai/rules` for this project. If Boost regenerates skills under `.agents/`, move them into `.cursor/skills/` and prefer `.cursor`.
-- `composer require` / `composer update` run `boost:update` via `post-update-cmd`, which rewrites `AGENTS.md` and Boost-authored skills back to stock `.ai/rules` and `record-rule` guidance. After any composer install or update, run `git status` and revert that clobber (`git checkout -- AGENTS.md .cursor/skills/<name>/SKILL.md boost.json`). Never commit the reverted-to-`.ai/rules` wording.
+- `composer require` / `composer update` must **not** run `boost:update`. That command stays out of `post-update-cmd`. Run `php artisan boost:update` only when a human deliberately wants Boost's stock guidelines or skills refreshed, then review the diff before committing.
+- `boost.json` keeps `"guidelines": false` so a manual `boost:update` does not rewrite `AGENTS.md`. House-owned or customized skills (for example `infer-conventions`, `ship-issue`) stay out of the `skills` list so Boost does not overwrite them. Prefer `.cursor/rules` over Boost `record-rule` / `.ai/rules`.
 - Durable project decisions belong in `.cursor/rules/*.mdc` with YAML frontmatter (`description`, `globs`, `alwaysApply`). Prefer that over writing markdown under `.ai/rules`.
 - Local MCP secrets stay in `.cursor/mcp.json` (gitignored). Copy from `.cursor/mcp.example.json`.

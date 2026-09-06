@@ -33,6 +33,12 @@ npm run build
 php artisan test
 ```
 
+5. Point Git at the project's hooks so Cursor attribution trailers are stripped from commit messages:
+
+```sh
+git config core.hooksPath .githooks
+```
+
 ## Checks
 
 Run these before committing; CI enforces the same three.
@@ -43,6 +49,8 @@ composer lint      # Pint in check mode, reports violations without fixing
 composer format    # Pint, fixes style in place
 composer analyse   # PHPStan with the Larastan extension at level 5
 ```
+
+`composer update` does not run `boost:update`. When you deliberately want Boost's stock guidelines or skills refreshed, run `php artisan boost:update` yourself and review the diff before committing.
 
 ---
 
