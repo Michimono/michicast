@@ -4,44 +4,29 @@
 
 Requires PHP 8.3+, Composer, Node and MySQL 8+ (or MariaDB 10.6+). The application and the test suite both run on MySQL, so development matches production; there is no SQLite fallback.
 
-1. Create a schema for development and one for tests:
-
-```sql
-CREATE DATABASE michicast;
-CREATE DATABASE michicast_test;
+```sh
+composer setup
 ```
 
-2. Install dependencies and create the environment file:
+That one command installs dependencies, creates `.env` from `.env.example`, creates `.cursor/mcp.json` from `.cursor/mcp.example.json`, points Git at the project's hooks, generates an app key, builds the frontend, creates the `michicast` and `michicast_test` schemas, and runs the migrations.
+
+If your MySQL user is not `root` with an empty password, `composer setup` stops at the database step. Set `DB_USERNAME` and `DB_PASSWORD` in `.env`, then finish with:
 
 ```sh
-composer install
-php -r "file_exists('.env') || copy('.env.example', '.env');"
-php artisan key:generate
-```
-
-3. Set `DB_USERNAME` and `DB_PASSWORD` in `.env` to match your MySQL user, then migrate:
-
-```sh
+php artisan db:prepare
 php artisan migrate
 ```
 
-4. Build the frontend and run the suite. Tests use the `michicast_test` schema configured in `phpunit.xml`:
+Two follow-ups `composer setup` cannot do for you:
 
-```sh
-npm install
-npm run build
-php artisan test
-```
+- `.cursor/mcp.json` is gitignored and ships with a placeholder GitHub token. Replace `YOUR_GITHUB_PAT` with a personal access token to enable the GitHub MCP server.
+- `composer setup` sets `core.hooksPath` for you, but confirm it took with `git config core.hooksPath`. The hook in `.githooks/commit-msg` strips Cursor attribution trailers from commit messages.
 
-5. Point Git at the project's hooks so Cursor attribution trailers are stripped from commit messages:
-
-```sh
-git config core.hooksPath .githooks
-```
+Tests run against the `michicast_test` schema configured in `phpunit.xml`.
 
 ## Checks
 
-Run these before committing; CI enforces the same three.
+Run these before committing.
 
 ```sh
 composer test      # PHPUnit against the michicast_test schema
@@ -50,7 +35,17 @@ composer format    # Pint, fixes style in place
 composer analyse   # PHPStan with the Larastan extension at level 5
 ```
 
-`composer update` does not run `boost:update`. When you deliberately want Boost's stock guidelines or skills refreshed, run `php artisan boost:update` yourself and review the diff before committing.
+## Laravel Boost
+
+Boost is already installed and configured; do not run `php artisan boost:install` again, and ignore the stock "Agentic Development" instructions further down this file. Installing it a second time rewrites `AGENTS.md` and the skills under `.cursor/skills/`.
+
+`composer install` and `composer update` deliberately do not run `boost:update`. Refresh Boost's guidelines only when you mean to:
+
+```sh
+php artisan boost:update
+```
+
+That rewrites only the `<laravel-boost-guidelines>` block at the top of `AGENTS.md`. The "Michicast House Rules" section below that block is hand-written and survives the regeneration, which is why project conventions belong there and never inside the block. Review the diff before committing either way.
 
 ---
 

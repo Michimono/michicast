@@ -1,6 +1,6 @@
 ---
 name: infer-conventions
-description: "Use this skill to analyze how a Laravel application is actually written and record its conventions as shared rules. Trigger when the user wants to detect, infer, document, or standardize project conventions or coding style, set up or grow `.cursor/rules`, resolve mixed or conflicting patterns (e.g. \"are we using Form Requests or inline validation?\"), or onboard agents and teammates to \"how we do things here\". Covers: a systematic sweep of ~49 Laravel convention dimensions (validation, models, architecture, testing, frontend, database, console), open-ended house-pattern discovery, conflict reporting, and recording rules as `.cursor/rules/*.mdc` with YAML frontmatter. Do not use for one-off code review, enforcing formatting a linter already handles, or editing rule files by hand without the mdc format."
+description: "Use this skill to analyze how a Laravel application is actually written and record its conventions as shared rules. Trigger when the user wants to detect, infer, document, or standardize project conventions or coding style, set up or grow `.ai/rules`, resolve mixed or conflicting patterns (e.g. \"are we using Form Requests or inline validation?\"), or onboard agents and teammates to \"how we do things here\". Covers: a systematic sweep of ~49 Laravel convention dimensions (validation, models, architecture, testing, frontend, database, console), open-ended house-pattern discovery, conflict reporting, and recording rules scoped to the right paths via the Boost `record-rule` MCP tool. Do not use for one-off code review, enforcing formatting a linter already handles, or editing `.ai/rules` files by hand."
 license: MIT
 metadata:
   author: laravel
@@ -16,7 +16,7 @@ Learn how this application writes Laravel, then record what you learn as durable
 - Skip what an active tool produces, keep what a tool would fight. Inspect the project's Pint and Rector configuration first; a Rector transformation is tooling-owned only when its package and relevant rule or set are installed and enabled. Active tools may rewrite code toward one canonical form: `$casts` to `casts()`, `$fillable` to attributes, magic accessors to the `Attribute` class, pipe-string rules to arrays, `$signature` to `#[Signature]`, named migrations to anonymous, and many more. When the app already sits at an active tool's target form, the tool owns it, so record nothing. But when the app deliberately holds a form an active tool would refactor away, such as legacy `getXxxAttribute()` accessors the `Attribute` class would replace, no tool can reproduce that choice and an agent defaults the other way. That against-the-grain hold is exactly what to record.
 - Record decisions, not defaults. A consistent pattern earns a rule only when it reflects a choice: the app took one valid option where the framework or common practice offered others, or the pattern would surprise a competent agent. Framework defaults steer nothing, so skip them: anonymous migrations, `$signature` commands, `ShouldQueue` jobs, `casts()` on Laravel 11+, named routes, Rule objects in `app/Rules`, and `Mail::fake()` or `Bus::fake()` to isolate framework services. A real fork is not enough on its own. Weigh the side the app took, and record only the side an agent would not reach for by itself: inline closures everywhere, legacy accessors, a bespoke query layer. Watch for the false fork too. "No Mockery" next to facade fakes is not a choice against Mockery, because they double different things. The test for every candidate: without this rule, would the next agent plausibly write it differently? Only "yes" earns a rule.
 - Architecture choices are the gold. Record presence and deliberate absence. The structural pattern the app commits to is the highest-signal convention and the one no tool can decide: Action classes and how they are invoked (`handle` / `execute` / `__invoke`), service objects, dedicated query objects exposing `builder()`, DTOs (spatie/laravel-data vs readonly classes), Form Request validation vs inline, an events and listeners spine vs direct calls, and domain or module folders. Also record a consistent non-pattern, such as "query Eloquent directly in controllers, no repository layer", so the next agent matches the app's altitude instead of over-engineering.
-- Never duplicate `.cursor/rules`. Read every `.mdc` file there before the sweep. A dimension already covered is marked done and skipped.
+- Never duplicate `.ai/rules`. Read `.ai/rules/index.md` and the area files before the sweep. A dimension already covered there is marked done and skipped.
 - Evidence or silence. A convention needs at least 3 consistent examples and no meaningful rival to become a candidate. Every Step 1 verdict applies this bar.
 - The recorded rule states the convention, nothing else. One or two imperative lines: this project does X, so do X here. Keep detection evidence out. No counts, ratios, current usage, file lists, or example paths, because that is proof for the confirm step, not part of the rule. One short syntax fragment at most, and point to `search-docs` for API details.
 
@@ -28,11 +28,11 @@ Fan out when you can. The sweep is embarrassingly parallel. If your environment 
 
 ### Step 0: Orient
 
-Read `composer.json` (installed packages tell you which checklist groups apply), the `pint.json` / PHPStan / Rector config, every file under `.cursor/rules/` if present, and most important, map the `app/` tree. List every directory under `app/` (and any `Modules/`, `src/`, `packages/`, or domain root). Every folder beyond Laravel's default skeleton (`Http`, `Models`, `Providers`, `Console`, `Exceptions`) is a structural pattern the app committed to and a high-value rule waiting to be written: `Actions`, `Services`, `Data` or DTOs, `Queries`, `Repositories`, `ViewModels`, `Pipelines`, `Support`, `Enums`, `Contracts`, `Observers`, or `Domain` and module roots. Note each one. You will confirm how it is used in Step 2.
+Read `composer.json` (installed packages tell you which checklist groups apply), the `pint.json` / PHPStan / Rector config, `.ai/rules/index.md` if present, and most important, map the `app/` tree. List every directory under `app/` (and any `Modules/`, `src/`, `packages/`, or domain root). Every folder beyond Laravel's default skeleton (`Http`, `Models`, `Providers`, `Console`, `Exceptions`) is a structural pattern the app committed to and a high-value rule waiting to be written: `Actions`, `Services`, `Data` or DTOs, `Queries`, `Repositories`, `ViewModels`, `Pipelines`, `Support`, `Enums`, `Contracts`, `Observers`, or `Domain` and module roots. Note each one. You will confirm how it is used in Step 2.
 
 This app has no Livewire/Inertia/Flux packages installed. Treat the frontend group as likely API-only: confirm from `resources/views` before spending time there, and skip the Livewire/Inertia/Flux dimensions.
 
-Done when: you have the applicable checklist groups, the dimensions already recorded in `.cursor/rules`, and a list of every non-default `app/` directory mapped to the pattern it represents.
+Done when: you have the applicable checklist groups, the dimensions already recorded in `.ai/rules`, and a list of every non-default `app/` directory mapped to the pattern it represents.
 
 ### Step 1: Predefined sweep
 
@@ -64,7 +64,7 @@ Done when: every candidate is approved, rejected, or (conflicts) decided.
 
 ### Step 4: Record
 
-For each approved convention, write or update a `.cursor/rules/<area>.mdc` file. Use YAML frontmatter with `description`, `globs` (comma-separated when needed), and `alwaysApply: false` unless the rule is truly global. Choose the most specific globs that cover the cited evidence from the mapping table below; if a convention spans models and migrations, record it under both domains so agents discover it from either path. The body note is the bare convention: strip every trace of detection (see the ground rule). Do not use Boost `record-rule` (it writes `.ai/rules`); this project keeps rules only under `.cursor/rules`.
+Make one `record-rule` call for each glob an approved convention applies to. Choose the most specific globs that cover the cited evidence from the mapping table below; if a convention spans models and migrations, record it under both domains so agents discover it from either path. The `note` is the bare convention: strip every trace of detection (see the ground rule). If `record-rule` is unavailable (rules disabled), report the full rule text so the user can enable `BOOST_RULES_ENABLED` or add it by hand.
 
 Record this:
 
@@ -74,11 +74,11 @@ Not this:
 
 > Accessors/mutators use the legacy magic-method style; the `Attribute`-class style is not used anywhere (13 legacy, 0 Attribute-class), e.g. `app/Models/Post.php`. Match the legacy style in existing models.
 
-Done when: every approved item is written to `.cursor/rules`, and any failure is reported with its rule text.
+Done when: every approved item has a successful tool response, and any failure is reported with its rule text.
 
 ### Step 5: Summarize
 
-List recorded rules (file and title), conflicts the user deferred, notable no-signals, and remind the user to commit `.cursor/rules` so their team and agents share the conventions.
+List recorded rules (file and title), conflicts the user deferred, notable no-signals, and remind the user to commit `.ai/rules` so their team and agents share the conventions.
 
 ## Glob mapping
 
@@ -93,12 +93,12 @@ Examples:
 - Migrations and database: `database/migrations/**`.
 - Truly app-wide (rare, e.g. auth retrieval): `app/**`.
 
-When a convention genuinely spans two domains (e.g. UUID keys touch models and migrations), put matching notes under each relevant `.mdc` (or list both globs); mentioning another path in the note alone does not make the rule discoverable there.
+`record-rule` takes one glob. When a convention genuinely spans two domains (e.g. UUID keys touch models and migrations), call it once per domain with the same title and note; mentioning another path in the note does not make the rule discoverable there.
 
 ## Edge cases
 
-- Cannot write rules: detection is read-only, so Steps 0 to 3 still run, and recording falls back to reporting the full rule text in Step 4 for the user to paste.
+- Rules disabled or `record-rule` missing: detection is read-only, so Steps 0 to 3 still run, and recording falls back to the manual path in Step 4.
 - Tiny or fresh app: most dimensions land on no-signal. Say so honestly ("not enough code to infer conventions yet") and record nothing.
 - Huge app: each dimension is a bounded grep plus a handful of file reads. Sample representative files, do not read everything.
-- Re-runs: reading `.cursor/rules` in Step 0 makes re-runs incremental, so only new or undecided dimensions surface.
+- Re-runs: reading `.ai/rules` in Step 0 makes re-runs incremental, so only new or undecided dimensions surface.
 - Non-standard layout (modules, DDD): the open-ended pass catches the layout itself as convention #1. Adapt the globs in the mapping table to the observed paths.
