@@ -1,0 +1,43 @@
+---
+description: Cruddy by Design — HTTP layer uses only the seven REST verbs; model custom actions as resources
+alwaysApply: true
+---
+
+# Cruddy by Design
+
+Controllers implement only `index`, `create`, `store`, `show`, `edit`, `update`, and `destroy`. A custom verb (`publish`, `run`, `archive`, `subscribe`) means you have not named the resource yet. Prefer a noun; do not invent verbs on resource controllers.
+
+This overrides the softer “custom verb is only a design signal” guidance in the laravel-best-practices routing skill: a custom action on an existing resource controller is wrong unless it already failed the techniques below and lives on its own dedicated controller.
+
+## Register routes as resources
+
+Use `Route::resource` / `Route::singleton` with `only()` / `except()`. No `/projects/{project}/publish`-style verb routes. Controllers stay HTTP coordinators; Actions or services may hold domain work but do not replace the resource shape of the HTTP layer.
+
+Controller class names are singular (`ProjectController`, `PublishedProjectController`, `ProjectSourceController`). URIs and route names stay plural kebab (`published-projects.store`). Keep controllers flat under `app/Http/Controllers` with compound names — no `Projects/SourceController` folders. Name Blade folders after the route resource (`project-sources.index`), not under the parent.
+
+Use implicit route model binding and `scopeBindings()` on nested resources. Authorize the underlying Eloquent model via existing Policies; a virtual HTTP resource does not need a new table or a new policy class.
+
+## Never reuse one action for two intents
+
+Do not share an action across two user intents via optional parent IDs, `if ($request->hasFile())` on a parent `update`, or query-flag branching that loads different models or returns different views. Each controller is concerned with one id type: nested create/index/store live on `ProjectSourceController` (project id); show/edit/update/destroy of the child live on `SourceController` (source id).
+
+## Four techniques (try in order)
+
+When the user action is not one of the seven verbs:
+
+1. **Nested collection** — `GET /projects/{project}/sources` is `ProjectSourceController@index`, not `ProjectController@sources` and not `SourceController@index($project = null)`.
+2. **Independently edited property** — a separate form is a separate resource. Prefer `Route::singleton('projects.logo', ProjectLogoController::class)` → `update` / `destroy`. Same table is fine; HTTP resources are not tables.
+3. **Pivot / membership** — ask *“after this, what do I have that I did not have before?”* Create/destroy that noun (`OrganizationMemberController@store` / `@destroy`). Parent id in the body or nest under the parent; both are valid. Promote a pivot to a real model when destroy needs its own id. Bulk sync is its own resource (`OrganizationMemberBatchController@update`), not conditionals on `store`.
+4. **State** — publish, archive, or mark due by creating or destroying a stateful resource. Persistence can be a column (`archived_at`, `next_run_at`). The state resource’s id is usually the parent model’s id.
+
+Do not add tables just to make a route look RESTful. Keep resourceful method names even when the controller has one action.
+
+## Michicast mappings
+
+- Archive / restore → `ArchivedProjectController@store` / `@destroy`
+- Run now → `DueProjectController@store` (HTTP only marks due; the scheduler executes)
+- Preview / dry-run / connection test → `ContentPreviewController@store`, `BroadcastDryRunController@store`, `SourceConnectionTestController@store`
+
+## Exception gate
+
+If the only noun is invented jargon, or the request is not a user-facing domain action (OAuth/provider callback, inbound webhook, signed download, health), a dedicated invokable or a single custom method on its own controller is allowed. Never add that method onto an existing resource controller. Invokables are the escape hatch, not the default.
