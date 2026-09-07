@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\SessionController;
@@ -7,6 +8,8 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
+
+Route::get('/up', HealthController::class)->name('health');
 
 Route::middleware('guest')->group(function (): void {
     Route::resource('users', UserController::class)->only(['create', 'store']);
