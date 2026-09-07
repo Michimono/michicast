@@ -2,7 +2,7 @@
 
 ## Local setup
 
-Requires PHP 8.3+, Composer, Node and MySQL 8+ (or MariaDB 10.6+). The application and the test suite both run on MySQL, so development matches production; there is no SQLite fallback.
+Requires PHP 8.4+, Composer, Node and MySQL 8+ (or MariaDB 10.6+). The application and the test suite both run on MySQL, so development matches production; there is no SQLite fallback.
 
 1. Create a schema for development and one for tests:
 
@@ -41,7 +41,7 @@ git config core.hooksPath .githooks
 
 ## Checks
 
-Run these before committing; CI enforces the same three.
+Run these before committing; CI enforces the same three. The workflow in `.github/workflows/ci.yml` runs them on every pull request against a MySQL service container.
 
 ```sh
 composer test      # PHPUnit against the michicast_test schema
