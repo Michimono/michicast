@@ -3,6 +3,8 @@
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PasswordResetLinkController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProfilePasswordController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +35,12 @@ Route::middleware('auth')->group(function (): void {
     Route::singleton('session', SessionController::class)
         ->destroyable()
         ->only(['destroy']);
+
+    Route::singleton('profile', ProfileController::class)->only(['edit', 'update']);
+
+    Route::singleton('profile/password', ProfilePasswordController::class)
+        ->only(['edit', 'update'])
+        ->names('profile.password');
 
     Route::view('/dashboard', 'dashboard')->name('dashboard');
 });

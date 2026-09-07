@@ -24,6 +24,7 @@
 
                         @auth
                             <a class="hover:underline" href="{{ route('dashboard') }}">Dashboard</a>
+                            <a class="hover:underline" href="{{ route('profile.edit') }}">Profile</a>
 
                             <form method="POST" action="{{ route('session.destroy') }}">
                                 @csrf
