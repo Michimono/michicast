@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  checks:
-    name: Tests, style and static analysis
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
 
     services:
@@ -41,7 +41,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: intl, pdo_mysql
           coverage: none
 
@@ -77,11 +77,66 @@ jobs:
           DB_DATABASE: michicast_test
         run: php artisan migrate --force
 
+      - name: Run the test suite
+        run: composer test
+
+  style:
+    name: Style
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
       - name: Check code style
         run: composer lint
 
+  static-analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Create the environment file
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
       - name: Run static analysis
         run: composer analyse
-
-      - name: Run the test suite
-        run: composer test
