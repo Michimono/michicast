@@ -79,7 +79,20 @@ Examples: `feature_9`, `bug_23`, `task_5`, `config_12`.
 
 ## Commit message format
 
+Decide the PR title **before** the first commit. The first commit's subject is that title, exactly. Later commits on the same branch keep a short past-tense subject.
+
 Past tense for the subject and every body line.
+
+First commit:
+
+```text
+<issue_type> <verb> #<issue_id> <Past description>
+
+<past-tense line describing one change>
+...
+```
+
+Later commits:
 
 ```text
 <short past-tense summary under ~250 characters>
@@ -88,21 +101,24 @@ Past tense for the subject and every body line.
 ...
 ```
 
-- Subject: Added, Fixed, Changed, Removed, Updated, …
+- First-commit subject: the PR title (`<issue_type> <verb> #<issue_id> <Past description>`), still ≈ 60 characters. Do not append `(#<pr_id>)`.
+- Later-commit subjects: Added, Fixed, Changed, Removed, Updated, …
 - **Leave a blank line after the subject.** Git treats the whole first paragraph as the subject, so body lines written directly under it collapse into one long subject in `git log` and in the PR.
 - Each following line: one change, same past-tense style
 - One logical chunk per commit; multiple commits on the branch are fine
 - Pass the message with `git commit -F <file>` when it has a body; chained `-m` flags and shell quoting mangle it.
 - **Never add Cursor attribution.** Do not pass `--trailer` for `Co-authored-by: Cursor`, `Made-with: Cursor`, or similar. After every commit, run `git log -1 --format=%B` and, if a Cursor trailer was injected, amend it out when the amend rules below allow; otherwise stop and tell the human.
 
-Example:
+Example first commit (PR title is the same first line):
 
 ```text
-Added ship-issue agent skill
+task resolve #48 Dropped trailing PR id from titles
 
-Created workflow for branch commit PR and CI handoff
-Documented issue verbs and title length limit
+Removed the create-then-retitle step from ship-issue
+Updated the title format, length guidance, workflow and checklist
 ```
+
+Bootstrap without an issue: the first commit subject is still the PR title (short past-tense, no trailing `(#N)`).
 
 ## Push
 
@@ -128,7 +144,7 @@ Whole title ≈ **60 characters or less**:
 
 If over ~60 characters, **shorten the description first** — never drop type, verb, or `#<issue_id>`.
 
-Do not append `(#<pr_id>)`. GitHub already shows the PR number in the UI and in links.
+Do not append `(#<pr_id>)`. GitHub already shows the PR number in the UI and in links. This title is also the first commit's subject.
 
 1. If a PR for this branch/issue already exists, **update that PR** (do not open a duplicate).
 2. Otherwise create the PR with this title. Do not retitle it afterwards to add a number.
@@ -163,8 +179,8 @@ When implementation is done, PR exists, and CI is green (or absent):
 1. Pick / confirm issue → verify `ok` → resolve type and id (backfill priority if missing).
 2. Sync `main` (`git checkout main && git pull --ff-only`), then create or resume `<type>_<id>` from it.
 3. Implement on that branch only, including the tests the change requires.
-4. Pre-commit checks (coverage for the change, then passing tests) → past-tense commit(s) → push to `origin`.
-5. Open or update PR; title matches the convention and has no trailing `(#<pr_id>)`.
+4. Decide the PR title, then pre-commit checks (coverage for the change, then passing tests) → past-tense commit(s), first subject = that title → push to `origin`.
+5. Open or update PR with that same title; no trailing `(#<pr_id>)`.
 6. CI fix loop until green (or no CI).
 7. Brief review comments + issue link; hand off with PR URL.
 
@@ -173,6 +189,7 @@ When implementation is done, PR exists, and CI is green (or absent):
 - [ ] Issue has `ok` (or explicit user waiver / true bootstrap); agent did not add or remove `ok`
 - [ ] Labels used are only from the catalog; no new label names created
 - [ ] Not on `main`; branched from a freshly pulled `main`; branch is `<type>_<id>` when issue-based; resumed existing branch/PR if present
+- [ ] First commit subject equals the PR title exactly; later commits use a short past-tense subject
 - [ ] Commit subject is separated from its body by a blank line
 - [ ] Commit message has no `Co-authored-by: Cursor` / `Made-with: Cursor` trailer unless the human asked for it
 - [ ] No secrets staged; `.gitignore` respected
