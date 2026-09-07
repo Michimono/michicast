@@ -20,7 +20,7 @@ Take one human-approved issue from branch through PR and CI, then stop for human
 - **Base branch is always `main`.** Never commit, push, or merge to `main` (or `master`).
 - **Only implement issues that have the `ok` label.** If the issue lacks `ok`, stop and say it needs human approval. Do not start a branch, commits, or PR. Do not treat a verbal “just do it” as approval unless the user explicitly waives the `ok` gate for that issue in the same message.
 - **Never add or remove `ok`.** Humans own that label.
-- **Labels:** only use names from the [Label catalog](#label-catalog). They all exist already. Add or remove only those names — never invent a label, never create one in GitHub. If an expected label is missing, stop and report it.
+- **Labels:** only use names from the [Label catalog](#label-catalog). They all exist already. Add or remove only those names — never invent a label, never create one in GitHub. If an expected label is missing, stop and report it. Kind is never a label; it lives on the GitHub issue type.
 - Never merge the PR. After CI is green (or absent) and brief review comments are posted, hand off.
 - Never force-push or skip hooks unless the user explicitly asks.
 - Only commit when the user asked to ship / implement / commit / open a PR (or equivalent).
@@ -33,24 +33,20 @@ Exact names only:
 
 | Label | Role |
 | --- | --- |
-| `bug` | Kind |
-| `feature` | Kind |
-| `task` | Kind |
-| `config` | Kind |
 | `high` | Priority |
 | `medium` | Priority |
 | `low` | Priority |
 | `ok` | Human approval to implement |
 
-This is the complete set. No other label may be applied.
+This is the complete set. No other label may be applied. Do not use or recreate `bug`, `feature`, `task`, or `config` labels.
 
-Rules: exactly one kind and exactly one priority on an issue when labels are complete. `ok` is optional until a human adds it. Agents never apply `ok`. Prefer higher priority when picking among `ok` issues (`high` → `medium` → `low`).
+Rules: every issue has exactly one GitHub issue type (`Bug`, `Feature`, `Task`, or `Config`) and exactly one priority label when labels are complete. `ok` is optional until a human adds it. Agents never apply `ok`. Prefer higher priority when picking among `ok` issues (`high` → `medium` → `low`).
 
 ## Issue picking
 
 1. If the user named an issue, use that id. Verify it has `ok` before any work.
 2. If the user asked to pick work, list open issues with `ok`, prefer higher priority, confirm the choice if more than one is reasonable.
-3. Derive `type` from GitHub issue type when set (`Bug` → `bug`, `Feature` → `feature`, `Task` → `task`). Otherwise use the kind label. For Config, use the `config` label (set issue type Config only when the org provides it).
+3. Derive branch `type` from the GitHub issue type: `Bug` → `bug`, `Feature` → `feature`, `Task` → `task`, `Config` → `config`. If the issue type is missing, stop and set it before branching — do not invent a kind label.
 4. If the issue is missing a priority label, set one per the `create-github-issue` skill analysis — still never add `ok`.
 5. Creating new issues is out of scope here; use `create-github-issue`.
 

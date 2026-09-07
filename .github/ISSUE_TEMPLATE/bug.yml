@@ -1,7 +1,6 @@
 name: Bug
 description: Something is broken or behaves unexpectedly.
 title: "[Bug]: "
-labels: ["bug"]
 type: Bug
 body:
   - type: textarea

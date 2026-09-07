@@ -5,48 +5,42 @@ description: >-
   (Bug, Feature, Task, Config). Use when the user asks to open, file, or create
   an issue, ticket, bug report, feature request, task, or config change, or to
   set priority on an issue. Prefer templates under .github/ISSUE_TEMPLATE, set
-  the kind label and one priority label (high, medium, low) from analysis.
+  the GitHub issue type and one priority label (high, medium, low) from analysis.
   Never apply or remove the ok label. After human ok, implementation uses the
   ship-issue skill.
 ---
 
 # Create GitHub Issue
 
-Open issues through this repo’s templates so kind, labels, and body shape stay consistent with `ship-issue`.
+Open issues through this repo’s templates so type, labels, and body shape stay consistent with `ship-issue`.
 
 ## Hard rules
 
 - **Never add or remove the `ok` label.** Humans mark issues ready to implement.
-- Always assign exactly one kind label: `bug` | `feature` | `task` | `config`.
+- Always assign exactly one GitHub **issue type**: `Bug` | `Feature` | `Task` | `Config`.
 - Always assign exactly one priority label: `high` | `medium` | `low`.
-- **Labels:** only the names in the [Label catalog](#label-catalog). Every one of them already exists in the repository. Add or remove only those names — never invent a label, never create one in GitHub. If an expected label is missing, stop and report it.
+- **Labels:** only the names in the [Label catalog](#label-catalog). Kind is never a label — it lives on the issue type. Add or remove only catalog names — never invent a label, never create one in GitHub. If an expected label is missing, stop and report it.
 - Before creating, search open issues for a duplicate; if one exists, point to it instead of opening another.
 
 ## Label catalog
 
 | Label | Role |
 | --- | --- |
-| `bug` | Kind |
-| `feature` | Kind |
-| `task` | Kind |
-| `config` | Kind |
 | `high` | Priority |
 | `medium` | Priority |
 | `low` | Priority |
 | `ok` | Human approval (agents never set this) |
 
-This is the complete set. No other label may be applied.
+This is the complete set. No other label may be applied. Do not use or recreate `bug`, `feature`, `task`, or `config` labels.
 
-## Templates
+## Issue types
 
-Files in `.github/ISSUE_TEMPLATE/`:
-
-| Kind | Template file | GitHub issue type | Kind label |
+| Kind | Template file | GitHub issue type | Title prefix |
 | --- | --- | --- | --- |
-| Bug | `bug.yml` | `Bug` | `bug` |
-| Feature | `feature.yml` | `Feature` | `feature` |
-| Task | `task.yml` | `Task` | `task` |
-| Config | `configuration.yml` | use when org provides Config | `config` |
+| Bug | `bug.yml` | `Bug` | `[Bug]: ` |
+| Feature | `feature.yml` | `Feature` | `[Feature]: ` |
+| Task | `task.yml` | `Task` | `[Task]: ` |
+| Config | `configuration.yml` | `Config` | `[Config]: ` |
 
 Chooser: `config.yml` (`blank_issues_enabled: false`). Config form file is `configuration.yml` because `config.yml` is reserved for the chooser.
 
@@ -57,10 +51,10 @@ Humans use the **New issue** template picker.
 Mirror the form (you cannot submit the YAML UI):
 
 1. Deduplicate against open issues.
-2. Pick kind (bug / feature / task / config).
-3. Title: template prefix (`[Bug]: `, `[Feature]: `, `[Task]: `, `[Config]: `) + short summary.
-4. Set GitHub issue type when available (`Bug`, `Feature`, `Task`; Config when the org has it).
-5. Set kind label + exactly one priority label. Do **not** set `ok`.
+2. Pick kind (Bug / Feature / Task / Config).
+3. Title: template prefix + short summary.
+4. Set the GitHub issue type to that kind (`Bug`, `Feature`, `Task`, or `Config`).
+5. Set exactly one priority label. Do **not** set a kind label. Do **not** set `ok`.
 6. Body: same headings as the form; required fields non-empty; no extra sections.
 
 ### Body shapes
@@ -92,13 +86,13 @@ Report the priority and a one-line rationale after create (keep the issue body m
 - Return URL, number, priority, and rationale.
 - State that implementation waits until a human adds `ok`.
 - Implementation and PR: `ship-issue` (`<type>_<id>` branch, commits, PR, CI, handoff).
-- Branch type mapping: `bug`, `feature`, `task`, `config` (lowercase).
+- Branch type mapping from the issue type: `Bug` → `bug`, `Feature` → `feature`, `Task` → `task`, `Config` → `config` (lowercase).
 
 ## Done checklist
 
 - [ ] Searched for duplicates before create
-- [ ] Correct template/kind and title prefix
-- [ ] Kind label + exactly one priority label; no `ok` added or removed
+- [ ] Correct template/kind, issue type, and title prefix
+- [ ] Issue type set; exactly one priority label; no kind label; no `ok` added or removed
 - [ ] Only catalog label names used; missing labels reported, not created
 - [ ] Required body fields filled
 - [ ] URL, number, and priority rationale returned

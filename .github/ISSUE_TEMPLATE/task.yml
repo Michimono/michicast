@@ -1,7 +1,6 @@
 name: Task
 description: A concrete piece of work that is not a bug or feature.
 title: "[Task]: "
-labels: ["task"]
 type: Task
 body:
   - type: textarea
