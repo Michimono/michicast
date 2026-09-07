@@ -19,11 +19,23 @@
                         {{ config('app.name') }}
                     </a>
 
-                    @isset($nav)
-                        <nav class="flex items-center gap-4 text-sm">
-                            {{ $nav }}
-                        </nav>
-                    @endisset
+                    <nav class="flex items-center gap-4 text-sm">
+                        {{ $nav ?? '' }}
+
+                        @auth
+                            <a class="hover:underline" href="{{ route('dashboard') }}">Dashboard</a>
+
+                            <form method="POST" action="{{ route('session.destroy') }}">
+                                @csrf
+                                @method('DELETE')
+
+                                <button class="hover:underline" type="submit">Log out</button>
+                            </form>
+                        @else
+                            <a class="hover:underline" href="{{ route('session.create') }}">Log in</a>
+                            <a class="hover:underline" href="{{ route('users.create') }}">Register</a>
+                        @endauth
+                    </nav>
                 </div>
             </header>
 
