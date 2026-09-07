@@ -116,7 +116,7 @@ Documented issue verbs and title length limit
 Whole title ≈ **60 characters or less**:
 
 ```text
-<issue_type> <verb> #<issue_id> <Past description> (#<pr_id>)
+<issue_type> <verb> #<issue_id> <Past description>
 ```
 
 | Issue type | Verb |
@@ -126,17 +126,17 @@ Whole title ≈ **60 characters or less**:
 | `task` | `resolve` |
 | `config` | `fix` if corrected; `resolve` if added or set up |
 
-If over ~60 characters, **shorten the description first** — never drop type, verb, `#<issue_id>`, or `(#<pr_id>)`.
+If over ~60 characters, **shorten the description first** — never drop type, verb, or `#<issue_id>`.
 
-GitHub does not append `(#<pr_id>)` automatically:
+Do not append `(#<pr_id>)`. GitHub already shows the PR number in the UI and in links.
 
 1. If a PR for this branch/issue already exists, **update that PR** (do not open a duplicate).
-2. Otherwise create the PR with the title **without** `(#<pr_id>)`, read the number, then update the title to append ` (#<pr_id>)`.
+2. Otherwise create the PR with this title. Do not retitle it afterwards to add a number.
 3. Base branch: `main`. Open as a ready PR (not draft) unless the user asks for draft.
 
-Example: `feature resolve #9 Added agent skills (#10)`
+Example: `feature resolve #9 Added agent skills`
 
-Bootstrap without an issue: short past-tense title, then append ` (#<pr_id>)`.
+Bootstrap without an issue: short past-tense title, still without a trailing `(#N)`.
 
 ### Body
 
@@ -164,7 +164,7 @@ When implementation is done, PR exists, and CI is green (or absent):
 2. Sync `main` (`git checkout main && git pull --ff-only`), then create or resume `<type>_<id>` from it.
 3. Implement on that branch only, including the tests the change requires.
 4. Pre-commit checks (coverage for the change, then passing tests) → past-tense commit(s) → push to `origin`.
-5. Open or update PR; ensure title ends with `(#<pr_id>)`.
+5. Open or update PR; title matches the convention and has no trailing `(#<pr_id>)`.
 6. CI fix loop until green (or no CI).
 7. Brief review comments + issue link; hand off with PR URL.
 
@@ -180,6 +180,6 @@ When implementation is done, PR exists, and CI is green (or absent):
 - [ ] Tests passed before each commit; Pint when PHP changed
 - [ ] Commits are past tense (subject + one-change body lines)
 - [ ] Pushed to `origin` on the issue branch only
-- [ ] PR title matches convention, ~60 chars, ends with `(#<pr_id>)`; body is commit messages
+- [ ] PR title matches convention, ~60 chars, no trailing `(#<pr_id>)`; body is commit messages
 - [ ] CI green or no CI
 - [ ] Brief review comments posted; PR not merged; PR URL returned
