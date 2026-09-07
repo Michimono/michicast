@@ -2,7 +2,7 @@
 
 ## Local setup
 
-Requires PHP 8.3+, Composer, Node and MySQL 8+ (or MariaDB 10.6+). The application and the test suite both run on MySQL, so development matches production; there is no SQLite fallback.
+Requires PHP 8.4+, Composer, Node and MySQL 8+ (or MariaDB 10.6+). The application and the test suite both run on MySQL, so development matches production; there is no SQLite fallback.
 
 1. Create a schema for development and one for tests:
 
