@@ -1,0 +1,12 @@
+---
+description: Application-code issues need new tests; a green suite is not coverage
+alwaysApply: true
+---
+
+# Tests cover the change
+
+A passing existing suite is not coverage for new behaviour. If the issue changes application code, add or update tests that exercise the change and its important failure modes before you commit or hand off.
+
+Follow the `testing-best-practices` skill: prefer feature tests for HTTP and other request-visible behaviour; write a unit test only when the logic does not use the framework.
+
+Issues that only change documentation, agent skills, rules, or other non-runtime files are exempt when no application behaviour changed.

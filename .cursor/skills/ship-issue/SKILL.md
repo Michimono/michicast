@@ -26,6 +26,7 @@ Take one human-approved issue from branch through PR and CI, then stop for human
 - Only commit when the user asked to ship / implement / commit / open a PR (or equivalent).
 - Treat `.gitignore` as the source of truth for ignored paths. Edit it only when new secret-bearing paths require it, and keep that change minimal.
 - Push only to `origin` on this repository, on the issue branch — never to `main`.
+- **New tests for application changes.** If the issue changes application code (runtime behaviour), add or update tests that cover the change and its important failure modes. Do not commit or hand off until those tests exist and pass. A green existing suite is not enough. Follow the `testing-best-practices` skill. Issues that only change documentation, agent skills, rules, or other non-runtime files are exempt when no application behaviour changed.
 
 ## Label catalog
 
@@ -72,7 +73,7 @@ Examples: `feature_9`, `bug_23`, `task_5`, `config_12`.
 1. **Secrets** — do not stage tokens, passwords, API keys, private credentials, or auth dumps. Ordinary app identifiers are fine.
 2. **Ignored / generated paths** — respect `.gitignore` (`vendor/`, `node_modules/`, `.env*`, caches, IDE folders, build artifacts, etc.).
 3. **New sensitive paths** — if needed, add the minimal `.gitignore` entry and call it out.
-4. **Tests** — relevant tests must pass. Prefer the narrowest set (`php artisan test --compact` with path or `--filter`); otherwise run the full suite. Do not commit on failures.
+4. **Tests** — if the issue changed application behaviour, the branch must include new or updated tests that exercise those cases and their important failure modes. Passing the unchanged suite is not enough. Then run the narrowest set that covers the change (`php artisan test --compact` with path or `--filter`); otherwise run the full suite. Do not commit on failures or on missing coverage.
 5. **PHP style** — if PHP changed, run `vendor/bin/pint --dirty --format agent`.
 6. **Frontend** — if JS/CSS or `package.json` changed in a way that warrants it, run the project’s usual frontend check (e.g. build or tests) when configured; if none exist, note that and continue.
 
@@ -152,7 +153,7 @@ PR body = this branch’s commit messages (subjects and body lines), in order. N
 
 When implementation is done, PR exists, and CI is green (or absent):
 
-1. Brief PR comment(s): what changed, how to verify. Do not over-explain.
+1. Brief PR comment(s): what changed, how to verify, and which tests cover the change (or why the issue is exempt). Do not over-explain.
 2. Comment linking `#<issue_id>` when an issue was used.
 3. Stop committing. Do not merge. Do not close the issue or alter `ok` after handoff — humans handle merge and issue lifecycle.
 4. Return the PR URL.
@@ -161,8 +162,8 @@ When implementation is done, PR exists, and CI is green (or absent):
 
 1. Pick / confirm issue → verify `ok` → resolve type and id (backfill priority if missing).
 2. Sync `main` (`git checkout main && git pull --ff-only`), then create or resume `<type>_<id>` from it.
-3. Implement on that branch only.
-4. Pre-commit checks → past-tense commit(s) → push to `origin`.
+3. Implement on that branch only, including the tests the change requires.
+4. Pre-commit checks (coverage for the change, then passing tests) → past-tense commit(s) → push to `origin`.
 5. Open or update PR; ensure title ends with `(#<pr_id>)`.
 6. CI fix loop until green (or no CI).
 7. Brief review comments + issue link; hand off with PR URL.
@@ -175,6 +176,7 @@ When implementation is done, PR exists, and CI is green (or absent):
 - [ ] Commit subject is separated from its body by a blank line
 - [ ] Commit message has no `Co-authored-by: Cursor` / `Made-with: Cursor` trailer unless the human asked for it
 - [ ] No secrets staged; `.gitignore` respected
+- [ ] Application-code issues include new or updated tests for the change and its important failure modes; a green unchanged suite is not enough
 - [ ] Tests passed before each commit; Pint when PHP changed
 - [ ] Commits are past tense (subject + one-change body lines)
 - [ ] Pushed to `origin` on the issue branch only
