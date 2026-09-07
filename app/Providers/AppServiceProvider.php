@@ -2,7 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +25,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        ResetPassword::createUrlUsing(fn (User $user, string $token): string => route('passwords.edit', [
+            'token' => $token,
+            'email' => $user->getEmailForPasswordReset(),
+        ]));
+
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by($this->emailAndIpKey($request)));
+
+        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(3)->by($this->emailAndIpKey($request)));
+    }
+
+    /**
+     * Build a rate limiter key that throttles per account without letting one
+     * address lock every account behind a shared network out.
+     */
+    private function emailAndIpKey(Request $request): string
+    {
+        return Str::transliterate($request->string('email')->lower()->toString().'|'.$request->ip());
     }
 }
