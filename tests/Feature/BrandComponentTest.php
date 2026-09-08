@@ -1,0 +1,51 @@
+<?php
+
+namespace Tests\Feature;
+
+use Tests\TestCase;
+
+class BrandComponentTest extends TestCase
+{
+    public function test_primary_buttons_carry_a_decorative_paw(): void
+    {
+        $view = $this->blade('<x-button>Run now</x-button>');
+
+        $view->assertSee('Run now');
+        $view->assertSee('aria-hidden="true"', false);
+    }
+
+    public function test_secondary_buttons_leave_the_paw_off(): void
+    {
+        $this->blade('<x-button variant="ghost">Preview content</x-button>')
+            ->assertSee('Preview content')
+            ->assertDontSee('<svg', false);
+    }
+
+    public function test_the_paw_can_be_suppressed_on_a_primary_button(): void
+    {
+        $this->blade('<x-button :paw="false">Save profile</x-button>')
+            ->assertSee('Save profile')
+            ->assertDontSee('<svg', false);
+    }
+
+    public function test_a_card_kicker_renders_its_label_beside_a_gradient_rule(): void
+    {
+        $view = $this->blade('<x-card kicker="Deliveries" heading="Recent deliveries">Body</x-card>');
+
+        $view->assertSee('Deliveries');
+        $view->assertSee('house-fill', false);
+    }
+
+    public function test_only_eared_cards_grow_ears(): void
+    {
+        $this->blade('<x-card heading="Plain" eared>Body</x-card>')->assertSee('<svg', false);
+        $this->blade('<x-card heading="Plain">Body</x-card>')->assertDontSee('<svg', false);
+    }
+
+    public function test_the_mark_can_be_filled_with_the_house_gradient(): void
+    {
+        $this->blade('<x-brand.mark variant="cat" gradient class="h-16" />')
+            ->assertSee('house-mark', false)
+            ->assertSee("--mark-src: url('/images/brand/logo-day-full.svg')", false);
+    }
+}

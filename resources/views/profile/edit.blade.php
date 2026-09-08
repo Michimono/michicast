@@ -18,13 +18,13 @@
             <x-button>Save profile</x-button>
         </form>
 
-        <p class="text-sm text-zinc-600">
+        <p class="text-sm text-muted">
             Account created <x-timestamp :value="$user->created_at" />.
         </p>
     </x-card>
 
     <x-card heading="Password" class="max-w-md">
-        <p class="text-sm text-zinc-700">Changing your password asks for the current one first.</p>
+        <p class="text-sm text-ink">Changing your password asks for the current one first.</p>
 
         <x-button href="{{ route('profile.password.edit') }}" class="self-start">Change password</x-button>
     </x-card>
