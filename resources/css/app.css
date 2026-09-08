@@ -8,11 +8,14 @@
 /*
  * Michimono house tokens.
  *
- * The three house stops and the product accent are the only values that differ
+ * The house stops and the product accent are the only values that differ
  * between Michimono products. Everything below them is shared house style, so a
- * sibling product changes four hex codes and inherits the rest.
+ * sibling product changes three hex codes and inherits the rest.
  *
- * Michicast's light palette is Sherbet: butter, flamingo, periwinkle.
+ * Michicast's ramp is Sherbet duo: flamingo into periwinkle. The palette's
+ * third stop, butter, was dropped because it measures 1.2:1 against paper and
+ * vanishes wherever the gradient is thin. These two hold on both surfaces, so
+ * the same ramp serves the light and the night theme.
  */
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
@@ -20,9 +23,8 @@
     --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
     --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-    --color-house-1: #ffe79a;
-    --color-house-2: #ff7ba9;
-    --color-house-3: #7b8bff;
+    --color-house-1: #ff7ba9;
+    --color-house-2: #7b8bff;
 
     --color-accent: #5a5fd8;
     --color-accent-lift: #a9b2ff;
@@ -47,32 +49,23 @@
 }
 
 :root {
-    --house-gradient: linear-gradient(
-        112deg,
-        var(--color-house-1) 2%,
-        var(--color-house-2) 50%,
-        var(--color-house-3) 100%
-    );
+    --house-gradient: linear-gradient(112deg, var(--color-house-1) 0%, var(--color-house-2) 100%);
 }
 
 /*
- * Night palette: Seiji — celadon, sky, wisteria — chosen because the pastel
- * ramp needs a dark surface to hold its own, which Sherbet does not need.
+ * Night theme. The ramp does not change — both stops clear 6:1 on ink — so the
+ * gradient stays the one signature across themes and only the surfaces flip.
+ * The accent pair swaps, because the violet that reads on paper is too dark to
+ * sit on ink, and the states lift to keep their meaning at low luminance.
  *
- * These are the locked colour values, not a working dark theme. Nothing carries
- * the `dark` class yet; introducing the surface and foreground roles the theme
- * needs is its own issue. That issue reuses these values rather than re-picking
- * a palette, and has two known problems to solve: `accent` currently serves
- * both link text and button fills, which one value cannot do on a dark surface,
- * and `hover:bg-ink` on buttons assumes a light background.
+ * These are locked values, not a working theme. Nothing carries the `dark`
+ * class yet; introducing the surface and foreground roles is its own issue.
+ * That issue inherits these rather than re-picking, and has one known problem
+ * to solve: `hover:bg-ink` on buttons assumes a light background.
  */
 .dark {
-    --color-house-1: #8fd4be;
-    --color-house-2: #a0d8ef;
-    --color-house-3: #a59aca;
-
-    --color-accent: #2e86c7;
-    --color-accent-lift: #9fd3f2;
+    --color-accent: #a9b2ff;
+    --color-accent-lift: #5a5fd8;
 
     --color-state-ok: #74d3a6;
     --color-state-skip: #9fb0c2;

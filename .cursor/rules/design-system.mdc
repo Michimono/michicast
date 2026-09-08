@@ -6,19 +6,21 @@ alwaysApply: false
 
 # Michimono design system
 
-Michicast is a Michimono product. The house style — neutrals, type, shape, motifs — is shared across products; only the three house stops and the product accent change per product. Never restyle a screen with ad-hoc values; extend the tokens or the components below.
+Michicast is a Michimono product. The house style — neutrals, type, shape, motifs — is shared across products; only the house stops and the product accent change per product. Never restyle a screen with ad-hoc values; extend the tokens or the components below.
 
-## Locked palettes
+## The locked ramp
 
-Two ramps were chosen by the product owner and are settled. Do not substitute, extend to a fourth stop, or re-pick them; propose a change to the human instead.
+**Sherbet duo.** Flamingo `#FF7BA9` → periwinkle `#7B8BFF`, accent periwinkle-violet `#5A5FD8`, lift `#A9B2FF`. Settled by the product owner. Do not substitute a stop, add a third, or re-pick; propose a change to the human instead.
 
-**Light — Sherbet.** Butter `#FFE79A` → flamingo `#FF7BA9` → periwinkle `#7B8BFF`, accent periwinkle-violet `#5A5FD8`, lift `#A9B2FF`. This is the live palette in `@theme`.
+Two stops, not three, and the same two in both themes. Sherbet began as butter → flamingo → periwinkle, but butter measures **1.2:1** against paper: at the sizes the gradient is actually used — a 2 px underline, a 1 px border, a 4 px track — the opening third of every sweep simply disappeared. The surviving pair measures 2.3:1 and 2.8:1 on paper and 7.6:1 and 6.2:1 on ink, which is what makes one ramp viable across light and dark. The night theme therefore flips surfaces and swaps the accent pair; the signature itself never changes, which is the whole point of having one.
 
-**Night — Seiji.** Celadon `#8FD4BE` → sky `#A0D8EF` → wisteria `#A59ACA`, accent `#2E86C7`, lift `#9FD3F2`, with lifted state colours. Recorded in the `.dark` block and not yet active; see the comment there for the two role-token problems the dark theme issue must solve.
+Butter is retired, not parked. Do not reintroduce it as a dark-theme-only stop.
 
-The pairing is deliberate: Sherbet's warm pastels hold up on paper, while Seiji is the ramp that needs a dark surface behind it. Both were picked from an Asian pigment vocabulary — sakura-at-dusk and celadon glaze respectively — so the family reads as one house across light and dark.
+Rejected along the way, so nobody re-proposes them: Marmalade, Koi and Neon citrus (a dark stop inside the ramp, or a stop that fights the delivery states); Sakura dusk, Ukiyo sunset, Kingyo and Matcha momo (warm middles crowd the failure red, or weak accents); Seiji, which was briefly the night palette until one ramp for both themes proved stronger; and deepening butter to marigold `#E9A020`, which still only reaches 2.1:1.
 
-Rejected along the way, so nobody re-proposes them: Marmalade, Koi and Neon citrus (dark stop inside the ramp, or a stop that fights the delivery states), Sakura dusk, Ukiyo sunset, Kingyo and Matcha momo (warm middles crowd the failure red, or weak accents).
+## Contrast floors
+
+The gradient is decoration and never carries body text — neither stop reaches the 4.5:1 that small text needs on paper. Display-size lettering, marks, rules, tracks and borders only. Readable text uses `ink` on paper (14:1) or `accent` for links (4.9:1); on ink it is `ink-contrast` and the dark `accent` (9.4:1). Any new colour must be measured against the surface it lands on before it goes in.
 
 ## Chrome is light
 
@@ -31,8 +33,8 @@ All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the genera
 - Surfaces: `paper` (page), `paper-raised` (cards, inputs), `ink` (chrome), `ink-raised`.
 - Text: `ink`, `muted`, and on dark chrome `ink-contrast`, `ink-muted`.
 - Strokes: `line`, `line-strong`. Borders are structural, never decorative.
-- Product accent: `accent` for links, primary buttons and focus rings; `accent-lift` for the same on ink.
-- House stops: `house-1`, `house-2`, `house-3`, composed as `--house-gradient`.
+- Product accent: `accent` for links, primary buttons and focus rings; `accent-lift` is its counterpart on the opposite surface. The pair swaps under `.dark`, so `accent` always means "the interactive colour that reads here".
+- House stops: `house-1`, `house-2`, composed as `--house-gradient`. Reach for the gradient, not the stops; nothing should use a single stop as a flat colour.
 
 ## Type roles
 
@@ -82,4 +84,4 @@ The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses
 
 ## Dark theme
 
-Not implemented, but the palette is decided (Seiji, above) and the variant strategy is set: `dark` is a class variant, declared with `@custom-variant` in `app.css`, not `prefers-color-scheme`. Use `dark:` utilities when the theme lands; never mix in a media-query approach alongside it. `ink-contrast` and `ink-muted` exist for text on dark surfaces.
+Not implemented, but the colours are decided (same ramp, swapped accent pair, lifted states — see the `.dark` block) and the variant strategy is set: `dark` is a class variant, declared with `@custom-variant` in `app.css`, not `prefers-color-scheme`. Use `dark:` utilities when the theme lands; never mix in a media-query approach alongside it. `ink-contrast` and `ink-muted` exist for text on dark surfaces.
