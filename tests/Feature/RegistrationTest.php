@@ -31,6 +31,7 @@ class RegistrationTest extends TestCase
         $user = User::whereEmail('ada@example.test')->sole();
 
         $this->assertSame('Ada Lovelace', $user->name);
+        $this->assertSame('UTC', $user->timezone);
         $this->assertTrue(Hash::check('analytical-engine', $user->password));
     }
 
