@@ -9,13 +9,13 @@
             <x-button>Log in</x-button>
         </form>
 
-        <p class="text-sm text-zinc-600">
-            <a class="underline hover:no-underline" href="{{ route('password-reset-links.create') }}">Forgot your password?</a>
+        <p class="text-sm text-muted">
+            <a class="text-accent underline hover:no-underline" href="{{ route('password-reset-links.create') }}">Forgot your password?</a>
         </p>
 
-        <p class="text-sm text-zinc-600">
+        <p class="text-sm text-muted">
             Need an account?
-            <a class="underline hover:no-underline" href="{{ route('users.create') }}">Register</a>.
+            <a class="text-accent underline hover:no-underline" href="{{ route('users.create') }}">Register</a>.
         </p>
     </x-card>
 </x-layout>

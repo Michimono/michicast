@@ -8,33 +8,39 @@
 
         <title>{{ $title ? $title.' - '.config('app.name') : config('app.name') }}</title>
 
+        <link rel="icon" href="/images/brand/logo-day-mark.svg" type="image/svg+xml">
+
         @fonts
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="bg-zinc-50 font-sans text-zinc-900 antialiased">
+    <body class="bg-paper font-sans text-ink antialiased">
         <div class="flex min-h-screen flex-col">
-            <header class="border-b border-zinc-200 bg-white">
+            <header class="border-b border-line bg-paper-raised">
                 <div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-6 px-6 py-4">
-                    <a class="text-lg font-semibold tracking-tight" href="{{ route('home') }}">
-                        {{ config('app.name') }}
+                    <a class="flex items-center gap-2.5" href="{{ route('home') }}">
+                        <x-brand.mark variant="face" class="h-6" />
+
+                        <span class="font-display text-xl tracking-tight">{{ config('app.name') }}</span>
                     </a>
 
-                    <nav class="flex items-center gap-4 text-sm">
+                    <nav class="flex items-center gap-5">
                         {{ $nav ?? '' }}
 
                         @auth
-                            <a class="hover:underline" href="{{ route('dashboard') }}">Dashboard</a>
-                            <a class="hover:underline" href="{{ route('profile.edit') }}">Profile</a>
+                            <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">Dashboard</x-nav-link>
+                            <x-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">Profile</x-nav-link>
 
                             <form method="POST" action="{{ route('session.destroy') }}">
                                 @csrf
                                 @method('DELETE')
 
-                                <button class="hover:underline" type="submit">Log out</button>
+                                <button class="text-sm text-muted transition-colors hover:text-ink" type="submit">
+                                    Log out
+                                </button>
                             </form>
                         @else
-                            <a class="hover:underline" href="{{ route('session.create') }}">Log in</a>
-                            <a class="hover:underline" href="{{ route('users.create') }}">Register</a>
+                            <x-nav-link :href="route('session.create')" :active="request()->routeIs('session.create')">Log in</x-nav-link>
+                            <x-nav-link :href="route('users.create')" :active="request()->routeIs('users.create')">Register</x-nav-link>
                         @endauth
                     </nav>
                 </div>
@@ -42,13 +48,13 @@
 
             <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
                 @if (session('success'))
-                    <p role="status" class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    <p role="status" class="rounded-md border border-state-ok/30 bg-state-ok/5 px-4 py-3 text-sm text-state-ok">
                         {{ session('success') }}
                     </p>
                 @endif
 
                 @if (session('error'))
-                    <p role="alert" class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                    <p role="alert" class="rounded-md border border-state-fail/30 bg-state-fail/5 px-4 py-3 text-sm text-state-fail">
                         {{ session('error') }}
                     </p>
                 @endif
@@ -56,8 +62,8 @@
                 {{ $slot }}
             </main>
 
-            <footer class="border-t border-zinc-200 bg-white">
-                <div class="mx-auto flex w-full max-w-5xl flex-col gap-1 px-6 py-6 text-sm text-zinc-600 sm:flex-row sm:items-center sm:justify-between">
+            <footer class="border-t border-line bg-paper-raised">
+                <div class="mx-auto flex w-full max-w-5xl flex-col gap-1 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
                     <p>A {{ config('michicast.brand') }} product.</p>
 
                     <a class="underline hover:no-underline" href="mailto:{{ config('michicast.support_email') }}">

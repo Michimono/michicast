@@ -3,7 +3,116 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Michimono house tokens.
+ *
+ * The house stops and the product accent are the only values that differ
+ * between Michimono products. Everything below them is shared house style, so a
+ * sibling product changes three hex codes and inherits the rest.
+ *
+ * Michicast's ramp is Sherbet duo: flamingo into periwinkle. The palette's
+ * third stop, butter, was dropped because it measures 1.2:1 against paper and
+ * vanishes wherever the gradient is thin. These two hold on both surfaces, so
+ * the same ramp serves the light and the night theme.
+ */
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --color-house-1: #ff7ba9;
+    --color-house-2: #7b8bff;
+
+    --color-accent: #5a5fd8;
+    --color-accent-lift: #a9b2ff;
+
+    --color-ink: #16130e;
+    --color-ink-raised: #1e1912;
+    --color-ink-line: #322b21;
+    --color-ink-muted: #a99c88;
+    --color-ink-contrast: #f5f0e7;
+
+    --color-paper: #fbf8f3;
+    --color-paper-raised: #ffffff;
+    --color-line: #e6e0d5;
+    --color-line-strong: #d2c9b9;
+    --color-muted: #6c6355;
+
+    --color-state-ok: #1d7a52;
+    --color-state-skip: #5b6b7c;
+    --color-state-fail: #b3261e;
+
+    --radius-card: 0.75rem;
+}
+
+:root {
+    --house-gradient: linear-gradient(112deg, var(--color-house-1) 0%, var(--color-house-2) 100%);
+}
+
+/*
+ * Night theme. The ramp does not change — both stops clear 6:1 on ink — so the
+ * gradient stays the one signature across themes and only the surfaces flip.
+ * The accent pair swaps, because the violet that reads on paper is too dark to
+ * sit on ink, and the states lift to keep their meaning at low luminance.
+ *
+ * These are locked values, not a working theme. Nothing carries the `dark`
+ * class yet; introducing the surface and foreground roles is its own issue.
+ * That issue inherits these rather than re-picking, and has one known problem
+ * to solve: `hover:bg-ink` on buttons assumes a light background.
+ */
+.dark {
+    --color-accent: #a9b2ff;
+    --color-accent-lift: #5a5fd8;
+
+    --color-state-ok: #74d3a6;
+    --color-state-skip: #9fb0c2;
+    --color-state-fail: #f0a19e;
+}
+
+/* Paints an element with the house gradient: rules, tracks, rings, fills. */
+@utility house-fill {
+    background-image: var(--house-gradient);
+}
+
+/* Gradient lettering. Reserved for a single figure or mark per screen. */
+@utility house-text {
+    background-image: var(--house-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/*
+ * Gradient border over a solid surface. Set --house-edge-surface when the
+ * element sits on anything other than a raised paper surface.
+ */
+@utility house-edge {
+    border-color: transparent;
+    background-image:
+        linear-gradient(
+            var(--house-edge-surface, var(--color-paper-raised)),
+            var(--house-edge-surface, var(--color-paper-raised))
+        ),
+        var(--house-gradient);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+/* Marks the active item in a navigation list. */
+@utility house-underline {
+    border-bottom: 2px solid transparent;
+    border-image: var(--house-gradient) 1;
+}
+
+/*
+ * Fills a logo silhouette with the gradient, for the moments the mark needs to
+ * pop. Requires --mark-src pointing at one of the brand SVGs.
+ */
+@utility house-mark {
+    background-image: var(--house-gradient);
+    -webkit-mask: var(--mark-src) no-repeat center / contain;
+    mask: var(--mark-src) no-repeat center / contain;
 }

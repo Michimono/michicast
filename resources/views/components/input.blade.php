@@ -10,13 +10,13 @@
         value="{{ old($name, $value) }}"
         @error($name) aria-invalid="true" aria-describedby="{{ $name }}-error" @enderror
         {{ $attributes->class([
-            'w-full rounded-md border bg-white px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900',
-            'border-zinc-300' => ! $errors->has($name),
-            'border-red-500' => $errors->has($name),
+            'w-full rounded-md border bg-paper-raised px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent',
+            'border-line' => ! $errors->has($name),
+            'border-state-fail' => $errors->has($name),
         ]) }}
     >
 
     @error($name)
-        <p id="{{ $name }}-error" class="text-sm text-red-700">{{ $message }}</p>
+        <p id="{{ $name }}-error" class="text-sm text-state-fail">{{ $message }}</p>
     @enderror
 </div>

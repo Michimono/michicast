@@ -11,8 +11,8 @@
             <x-button>Update password</x-button>
         </form>
 
-        <p class="text-sm text-zinc-600">
-            <a class="underline hover:no-underline" href="{{ route('profile.edit') }}">Back to your profile</a>
+        <p class="text-sm text-muted">
+            <a class="text-accent underline hover:no-underline" href="{{ route('profile.edit') }}">Back to your profile</a>
         </p>
     </x-card>
 </x-layout>

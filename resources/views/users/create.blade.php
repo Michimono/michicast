@@ -11,9 +11,9 @@
             <x-button>Create account</x-button>
         </form>
 
-        <p class="text-sm text-zinc-600">
+        <p class="text-sm text-muted">
             Already have an account?
-            <a class="underline hover:no-underline" href="{{ route('session.create') }}">Log in</a>.
+            <a class="text-accent underline hover:no-underline" href="{{ route('session.create') }}">Log in</a>.
         </p>
     </x-card>
 </x-layout>

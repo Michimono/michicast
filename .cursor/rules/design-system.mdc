@@ -1,0 +1,87 @@
+---
+description: Michimono brand tokens, gradient placement, cat motifs and copy voice
+globs: resources/views/**/*.blade.php,resources/css/**/*.css,public/images/brand/**
+alwaysApply: false
+---
+
+# Michimono design system
+
+Michicast is a Michimono product. The house style — neutrals, type, shape, motifs — is shared across products; only the house stops and the product accent change per product. Never restyle a screen with ad-hoc values; extend the tokens or the components below.
+
+## The locked ramp
+
+**Sherbet duo.** Flamingo `#FF7BA9` → periwinkle `#7B8BFF`, accent periwinkle-violet `#5A5FD8`, lift `#A9B2FF`. Settled by the product owner. Do not substitute a stop, add a third, or re-pick; propose a change to the human instead.
+
+Two stops, not three, and the same two in both themes. Sherbet began as butter → flamingo → periwinkle, but butter measures **1.2:1** against paper: at the sizes the gradient is actually used — a 2 px underline, a 1 px border, a 4 px track — the opening third of every sweep simply disappeared. The surviving pair measures 2.3:1 and 2.8:1 on paper and 7.6:1 and 6.2:1 on ink, which is what makes one ramp viable across light and dark. The night theme therefore flips surfaces and swaps the accent pair; the signature itself never changes, which is the whole point of having one.
+
+Butter is retired, not parked. Do not reintroduce it as a dark-theme-only stop.
+
+Rejected along the way, so nobody re-proposes them: Marmalade, Koi and Neon citrus (a dark stop inside the ramp, or a stop that fights the delivery states); Sakura dusk, Ukiyo sunset, Kingyo and Matcha momo (warm middles crowd the failure red, or weak accents); Seiji, which was briefly the night palette until one ramp for both themes proved stronger; and deepening butter to marigold `#E9A020`, which still only reaches 2.1:1.
+
+## Contrast floors
+
+The gradient is decoration and never carries body text — neither stop reaches the 4.5:1 that small text needs on paper. Display-size lettering, marks, rules, tracks and borders only. Readable text uses `ink` on paper (14:1) or `accent` for links (4.9:1); on ink it is `ink-contrast` and the dark `accent` (9.4:1). Any new colour must be measured against the surface it lands on before it goes in.
+
+## Chrome is light
+
+The header is a white bar with a hairline bottom border, the mark in its original black, and quiet grey navigation. Do not reintroduce dark chrome, an ink header band, or an inverted mark on light screens — it was tried and rejected. Darkness arrives only with the night theme, applied to whole surfaces rather than as a decorative band.
+
+## Tokens, never raw values
+
+All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the generated utilities (`bg-paper`, `text-ink`, `border-line`, `text-accent`, `font-display`, `rounded-card`). Do not write `zinc-*`, `gray-*`, another Tailwind palette, a hex code, or an arbitrary colour in a view. If a needed value is missing, add a token rather than a one-off.
+
+- Surfaces: `paper` (page), `paper-raised` (cards, inputs), `ink` (chrome), `ink-raised`.
+- Text: `ink`, `muted`, and on dark chrome `ink-contrast`, `ink-muted`.
+- Strokes: `line`, `line-strong`. Borders are structural, never decorative.
+- Product accent: `accent` for links, primary buttons and focus rings; `accent-lift` is its counterpart on the opposite surface. The pair swaps under `.dark`, so `accent` always means "the interactive colour that reads here".
+- House stops: `house-1`, `house-2`, composed as `--house-gradient`. Reach for the gradient, not the stops; nothing should use a single stop as a flat colour.
+
+## Type roles
+
+- `font-display` (Instrument Serif) — the wordmark, page and card headings. Weight 400 only; the serif *is* the emphasis, so do not bold it.
+- `font-sans` (Instrument Sans) — all interface text.
+- `font-mono` (IBM Plex Mono) — ids, destinations, URLs, timestamps, cron expressions, and the small uppercase kicker. Anything a person might copy or compare character by character belongs in mono.
+
+## Gradient placement is a closed list
+
+The house gradient is a signature, not a surface treatment. It is allowed only in these places, via the `house-*` utilities:
+
+- `house-mark` — the logo filled with the gradient, and only where the mark needs to pop: empty states, auth screens, marketing. Chrome uses the flat mark.
+- `house-underline` — the active navigation item.
+- `house-fill` — the kicker rule beside a card heading, status rings, outlined pills, progress bars and sparklines.
+- `house-text` — one hero figure per screen at most.
+- `house-edge` — the border of an empty state. Set `--house-edge-surface` when it sits on anything but `paper-raised`.
+
+Anything else stays flat. In particular: no gradient page backgrounds, no gradient header bands, no gradient buttons (primary buttons use the solid accent), and no gradient focus rings. Never place the gradient behind body text.
+
+## Delivery state colour is information, not decoration
+
+`state-ok` (emerald), `state-skip` (slate), `state-fail` (crimson) report what happened to content. They are never the brand accent and never the gradient, and colour alone never carries the meaning — always pair it with the word. `skipped` is deliberately neutral slate, not amber: skipping an item is an ordinary outcome, not a warning.
+
+## The cat earns its keep, then gets out of the way
+
+The mark is a cat and the product is allowed to know that, in places where nothing is at stake.
+
+- `<x-icons.paw>` rides on primary buttons and tilts on hover.
+- `<x-whisker-divider>` separates sections, drawn from the face mark.
+- `<x-card eared>` puts small ears on the *primary* card of a screen — one card, never several.
+- `<x-empty-state>` shows the sitting cat and one dry line.
+- Paw trails are the approved pattern for progress once runs exist: a row of `<x-icons.paw>`, the completed ones filled from `--house-gradient`.
+
+## Voice: playful where nothing is at stake, literal where something is
+
+Play is allowed in empty states, success notes, onboarding, loading and 404s — "Nothing to chase yet". Errors, validation messages, delivery logs, credential screens and timestamps stay literal and specific — "Telegram rejected the message: chat not found". People read those when something is broken, and a joke there costs trust. Never make the user decode a pun to understand what failed.
+
+## Brand assets
+
+`public/images/brand/logo-day-{full,face,mark}.svg`, served directly and rendered through `<x-brand.mark>`:
+
+- `face` (2:1) — header lockup.
+- `mark` (square) — favicon and small scales.
+- `cat` / `full` (tall) — empty states and hero moments.
+
+The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes.
+
+## Dark theme
+
+Not implemented, but the colours are decided (same ramp, swapped accent pair, lifted states — see the `.dark` block) and the variant strategy is set: `dark` is a class variant, declared with `@custom-variant` in `app.css`, not `prefers-color-scheme`. Use `dark:` utilities when the theme lands; never mix in a media-query approach alongside it. `ink-contrast` and `ink-muted` exist for text on dark surfaces.
