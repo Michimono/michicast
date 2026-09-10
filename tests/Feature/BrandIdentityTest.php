@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -36,6 +37,8 @@ class BrandIdentityTest extends TestCase
     public function test_the_current_page_is_marked_in_the_navigation_for_assistive_technology(): void
     {
         $user = User::factory()->create();
+
+        Organization::factory()->for($user, 'owner')->create();
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 
