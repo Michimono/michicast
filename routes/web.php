@@ -5,6 +5,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MemberRoleController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\OrganizationSettingController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\ProfileController;
@@ -57,5 +58,7 @@ Route::middleware('auth')->group(function (): void {
         Route::resource('members', MemberController::class)->only(['index']);
 
         Route::singleton('members.role', MemberRoleController::class)->only(['edit', 'update']);
+
+        Route::singleton('organization-settings', OrganizationSettingController::class)->only(['edit', 'update']);
     });
 });
