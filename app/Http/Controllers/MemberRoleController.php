@@ -26,7 +26,7 @@ class MemberRoleController extends Controller
         $member->update(['role' => $request->enum('role', Role::class)]);
 
         return redirect()
-            ->route('organizations.members.index', $member->organization)
+            ->route('members.index')
             ->with('success', 'The role has been updated.');
     }
 }

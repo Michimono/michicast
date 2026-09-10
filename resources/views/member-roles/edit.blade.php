@@ -19,9 +19,8 @@
             <x-button>Save role</x-button>
         </form>
 
-        <a
-            class="text-sm text-accent underline hover:no-underline"
-            href="{{ route('organizations.members.index', $member->organization) }}"
-        >Back to members</a>
+        <a class="text-sm text-accent underline hover:no-underline" href="{{ route('members.index') }}">
+            Back to members
+        </a>
     </x-card>
 </x-layout>

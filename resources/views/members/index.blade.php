@@ -1,4 +1,4 @@
-<x-layout :title="$organization->name.' members'">
+<x-layout title="Members">
     <x-card :heading="$organization->name" kicker="Members" eared>
         <p class="text-sm text-muted">Who belongs to this organization, and what each of them may do.</p>
 

@@ -72,7 +72,7 @@ class OrganizationCreationTest extends TestCase
 
         $organization = Organization::query()->sole();
 
-        $response->assertRedirect(route('organizations.members.index', $organization));
+        $response->assertRedirect(route('members.index'));
         $response->assertSessionHas('success');
 
         $this->assertSame('Michimono Labs', $organization->name);

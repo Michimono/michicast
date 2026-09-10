@@ -16,10 +16,7 @@ class OrganizationMembersTest extends TestCase
 
     public function test_guests_are_redirected_to_the_login_screen(): void
     {
-        $organization = Organization::factory()->create();
-
-        $this->get(route('organizations.members.index', $organization))
-            ->assertRedirect(route('session.create'));
+        $this->get(route('members.index'))->assertRedirect(route('session.create'));
     }
 
     public function test_the_members_screen_lists_every_member_with_their_role(): void
@@ -31,7 +28,7 @@ class OrganizationMembersTest extends TestCase
         $organization->members()->create(['user_id' => $viewer->getKey(), 'role' => Role::Viewer]);
 
         $this->actingAs($owner)
-            ->get(route('organizations.members.index', $organization))
+            ->get(route('members.index'))
             ->assertOk()
             ->assertSee('Ada Lovelace')
             ->assertSee('Owner')
@@ -39,14 +36,18 @@ class OrganizationMembersTest extends TestCase
             ->assertSee('Viewer');
     }
 
-    public function test_someone_who_does_not_belong_cannot_see_the_members(): void
+    public function test_the_screen_lists_nobody_from_another_organization(): void
     {
-        $organization = Organization::factory()->ownedBy(User::factory()->create())->create();
-        $stranger = User::factory()->create();
+        $user = User::factory()->create(['name' => 'Ada Lovelace']);
+        Organization::factory()->ownedBy($user)->create();
 
-        $this->actingAs($stranger)
-            ->get(route('organizations.members.index', $organization))
-            ->assertForbidden();
+        Organization::factory()->ownedBy(User::factory()->create(['name' => 'Alan Turing']))->create();
+
+        $this->actingAs($user)
+            ->get(route('members.index'))
+            ->assertOk()
+            ->assertSee('Ada Lovelace')
+            ->assertDontSee('Alan Turing');
     }
 
     public function test_an_owner_can_change_a_role(): void
@@ -58,7 +59,7 @@ class OrganizationMembersTest extends TestCase
             'role' => Role::Editor->value,
         ]);
 
-        $response->assertRedirect(route('organizations.members.index', $organization));
+        $response->assertRedirect(route('members.index'));
         $response->assertSessionHas('success');
 
         $this->assertSame(Role::Editor, $member->refresh()->role);
@@ -162,12 +163,12 @@ class OrganizationMembersTest extends TestCase
         $member = $this->member($organization, Role::Viewer);
 
         $this->actingAs($owner)
-            ->get(route('organizations.members.index', $organization))
+            ->get(route('members.index'))
             ->assertOk()
             ->assertSee(route('members.role.edit', $member), false);
 
         $this->actingAs($member->user)
-            ->get(route('organizations.members.index', $organization))
+            ->get(route('members.index'))
             ->assertOk()
             ->assertDontSee(route('members.role.edit', $member), false);
     }

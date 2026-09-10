@@ -1,5 +1,7 @@
 @props(['title' => null])
 
+@inject('currentOrganization', App\Support\CurrentOrganization::class)
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -27,6 +29,11 @@
                         {{ $nav ?? '' }}
 
                         @auth
+                            @if ($currentOrganization->isResolved())
+                                <x-organization-switcher />
+                                <x-nav-link :href="route('members.index')" :active="request()->routeIs('members.*')">Members</x-nav-link>
+                            @endif
+
                             <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">Dashboard</x-nav-link>
                             <x-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">Profile</x-nav-link>
 
