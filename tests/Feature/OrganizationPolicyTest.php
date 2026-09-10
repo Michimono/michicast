@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\Role;
 use App\Models\Organization;
+use App\Models\OrganizationInvitation;
 use App\Models\OrganizationMember;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,6 +47,39 @@ class OrganizationPolicyTest extends TestCase
         $this->assertSame($allowed, $user->can('update', $this->someoneElseIn($organization)));
     }
 
+    #[DataProvider('everyRoleAndWhetherItAdministers')]
+    public function test_only_admins_and_owners_may_remove_someone_else(Role $role, bool $allowed): void
+    {
+        [$user, $organization] = $this->memberHolding($role);
+
+        $this->assertSame($allowed, $user->can('delete', $this->someoneElseIn($organization)));
+    }
+
+    #[DataProvider('everyRole')]
+    public function test_every_role_may_leave(Role $role): void
+    {
+        [$user, $organization] = $this->memberHolding($role);
+        $membership = $organization->members()->where('user_id', $user->getKey())->sole();
+
+        $this->assertTrue($user->can('delete', $membership));
+    }
+
+    #[DataProvider('everyRoleAndWhetherItAdministers')]
+    public function test_only_admins_and_owners_may_send_invitations(Role $role, bool $allowed): void
+    {
+        [$user, $organization] = $this->memberHolding($role);
+
+        $this->assertSame($allowed, $user->can('create', [OrganizationInvitation::class, $organization]));
+    }
+
+    #[DataProvider('everyRoleAndWhetherItAdministers')]
+    public function test_only_admins_and_owners_may_cancel_invitations(Role $role, bool $allowed): void
+    {
+        [$user, $organization] = $this->memberHolding($role);
+
+        $this->assertSame($allowed, $user->can('delete', $this->invitationTo($organization)));
+    }
+
     public function test_a_user_who_belongs_to_no_organization_is_denied_everything(): void
     {
         $stranger = User::factory()->create();
@@ -55,6 +89,9 @@ class OrganizationPolicyTest extends TestCase
         $this->assertFalse($stranger->can('update', $organization));
         $this->assertFalse($stranger->can('view', $this->someoneElseIn($organization)));
         $this->assertFalse($stranger->can('update', $this->someoneElseIn($organization)));
+        $this->assertFalse($stranger->can('delete', $this->someoneElseIn($organization)));
+        $this->assertFalse($stranger->can('create', [OrganizationInvitation::class, $organization]));
+        $this->assertFalse($stranger->can('delete', $this->invitationTo($organization)));
     }
 
     public function test_an_owner_of_another_organization_is_a_stranger_here(): void
@@ -67,6 +104,9 @@ class OrganizationPolicyTest extends TestCase
         $this->assertFalse($outsider->can('update', $organization));
         $this->assertFalse($outsider->can('view', $this->someoneElseIn($organization)));
         $this->assertFalse($outsider->can('update', $this->someoneElseIn($organization)));
+        $this->assertFalse($outsider->can('delete', $this->someoneElseIn($organization)));
+        $this->assertFalse($outsider->can('create', [OrganizationInvitation::class, $organization]));
+        $this->assertFalse($outsider->can('delete', $this->invitationTo($organization)));
     }
 
     /**
@@ -108,5 +148,10 @@ class OrganizationPolicyTest extends TestCase
     private function someoneElseIn(Organization $organization): OrganizationMember
     {
         return OrganizationMember::factory()->for($organization)->role(Role::Viewer)->create();
+    }
+
+    private function invitationTo(Organization $organization): OrganizationInvitation
+    {
+        return OrganizationInvitation::factory()->for($organization)->create();
     }
 }

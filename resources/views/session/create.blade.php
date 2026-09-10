@@ -3,7 +3,7 @@
         <form class="flex flex-col gap-4" method="POST" action="{{ route('session.store') }}">
             @csrf
 
-            <x-input name="email" label="Email address" type="email" autocomplete="email" autofocus required />
+            <x-input name="email" label="Email address" type="email" :value="$email" autocomplete="email" autofocus required />
             <x-input name="password" label="Password" type="password" autocomplete="current-password" required />
 
             <x-button>Log in</x-button>
