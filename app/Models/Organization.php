@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 #[Fillable(['name', 'slug', 'timezone', 'plan'])]
@@ -42,10 +43,18 @@ class Organization extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * The role this user holds here, or null when they are not a member.
      */
-    public function owner(): BelongsTo
+    public function roleFor(User $user): ?Role
     {
-        return $this->belongsTo(User::class);
+        return $this->members()->firstWhere('user_id', $user->getKey())?->role;
+    }
+
+    /**
+     * @return HasMany<OrganizationMember, $this>
+     */
+    public function members(): HasMany
+    {
+        return $this->hasMany(OrganizationMember::class);
     }
 }

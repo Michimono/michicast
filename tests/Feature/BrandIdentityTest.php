@@ -38,7 +38,7 @@ class BrandIdentityTest extends TestCase
     {
         $user = User::factory()->create();
 
-        Organization::factory()->for($user, 'owner')->create();
+        Organization::factory()->ownedBy($user)->create();
 
         $response = $this->actingAs($user)->get(route('dashboard'));
 

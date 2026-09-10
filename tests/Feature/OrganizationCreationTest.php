@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,7 +37,7 @@ class OrganizationCreationTest extends TestCase
     {
         $user = User::factory()->create();
 
-        Organization::factory()->for($user, 'owner')->create();
+        Organization::factory()->ownedBy($user)->create();
 
         $this->actingAs($user)->get(route('dashboard'))->assertOk();
     }
@@ -69,16 +70,16 @@ class OrganizationCreationTest extends TestCase
             'timezone' => 'Europe/Madrid',
         ]);
 
-        $response->assertRedirect(route('dashboard'));
-        $response->assertSessionHas('success');
-
         $organization = Organization::query()->sole();
+
+        $response->assertRedirect(route('organizations.members.index', $organization));
+        $response->assertSessionHas('success');
 
         $this->assertSame('Michimono Labs', $organization->name);
         $this->assertSame('michimono-labs', $organization->slug);
         $this->assertSame('Europe/Madrid', $organization->timezone);
         $this->assertNull($organization->plan);
-        $this->assertTrue($organization->owner->is($user));
+        $this->assertSame(Role::Owner, $organization->roleFor($user));
     }
 
     public function test_a_second_organization_named_the_same_gets_its_own_slug(): void

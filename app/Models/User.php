@@ -19,11 +19,11 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * @return HasMany<Organization, $this>
+     * @return HasMany<OrganizationMember, $this>
      */
-    public function ownedOrganizations(): HasMany
+    public function memberships(): HasMany
     {
-        return $this->hasMany(Organization::class, 'owner_id');
+        return $this->hasMany(OrganizationMember::class);
     }
 
     /**

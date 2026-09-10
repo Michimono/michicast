@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\Role;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -19,11 +20,25 @@ class OrganizationFactory extends Factory
     public function definition(): array
     {
         return [
-            'owner_id' => User::factory(),
             'name' => fake()->unique()->company(),
             'slug' => fn (array $attributes) => Organization::uniqueSlugFrom((string) $attributes['name']),
             'timezone' => 'UTC',
             'plan' => null,
         ];
+    }
+
+    public function ownedBy(User $user): static
+    {
+        return $this->withMember($user, Role::Owner);
+    }
+
+    public function withMember(User $user, Role $role): static
+    {
+        return $this->afterCreating(function (Organization $organization) use ($user, $role): void {
+            $organization->members()->create([
+                'user_id' => $user->getKey(),
+                'role' => $role,
+            ]);
+        });
     }
 }

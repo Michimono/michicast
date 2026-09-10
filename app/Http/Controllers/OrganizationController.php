@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Role;
 use App\Http\Requests\StoreOrganizationRequest;
 use App\Models\Organization;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class OrganizationController extends Controller
@@ -23,14 +25,23 @@ class OrganizationController extends Controller
     {
         $name = $request->string('name')->toString();
 
-        $request->user()->ownedOrganizations()->create([
-            'name' => $name,
-            'slug' => Organization::uniqueSlugFrom($name),
-            'timezone' => $request->string('timezone')->toString(),
-        ]);
+        $organization = DB::transaction(function () use ($request, $name): Organization {
+            $organization = Organization::create([
+                'name' => $name,
+                'slug' => Organization::uniqueSlugFrom($name),
+                'timezone' => $request->string('timezone')->toString(),
+            ]);
+
+            $organization->members()->create([
+                'user_id' => $request->user()->getKey(),
+                'role' => Role::Owner,
+            ]);
+
+            return $organization;
+        });
 
         return redirect()
-            ->route('dashboard')
+            ->route('organizations.members.index', $organization)
             ->with('success', 'Your organization has been created.');
     }
 }
