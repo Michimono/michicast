@@ -1,0 +1,36 @@
+---
+description: How organization-scoped policies derive from the membership role
+globs: app/Policies/**,app/Http/Controllers/**,app/Http/Requests/**
+alwaysApply: false
+---
+
+# Authorization
+
+## Policies answer for a record, the middleware answers for the request
+
+`SetCurrentOrganization` decides which organization the request acts in. Policies never read it. A policy is given a record, finds the organization that record belongs to, and asks what role the user holds *there*. That is what makes a member of another organization a stranger here whatever role they hold at home.
+
+## Ask for a minimum role, never a list
+
+Roles rank viewer, editor, admin, owner — see `Role::atLeast()`. Use `ChecksOrganizationRole::memberIsAtLeast()` and name the lowest role that should be allowed; everything above it follows.
+
+```php
+public function update(User $user, Project $project): bool
+{
+    return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
+}
+```
+
+Do not write `in_array($role, [Role::Owner, Role::Admin], true)` in a policy, and do not add a per-ability predicate to the enum. Ranking a new role once is the whole point.
+
+The intended split: viewers read, editors manage projects and their configuration, admins manage members and organization settings, owners administer the organization itself.
+
+## Fail closed
+
+A missing policy method denies the action, and that is the desired default — add the method when the ability is real, rather than opening an ability early. Never return `true` from a policy to defer authorization to a later check.
+
+## Where the check lives
+
+Authorize in the controller with `Gate::authorize()`, or in the form request's `authorize()` when validation would otherwise mask the refusal (an editor submitting a role change should get 403, not a validation error). Keep the check even when a route's middleware already implies it: the policy is the record-level answer, and it is what a later reader greps for.
+
+Membership itself is not a policy question. "Is this organization one of mine?" is validation — see `UpdateCurrentOrganizationRequest`, where the choice is scoped to the user's own memberships.

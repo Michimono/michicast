@@ -10,11 +10,14 @@ enum Role: string
     case Viewer = 'viewer';
 
     /**
-     * Whether the role may list members and change their roles.
+     * Whether this role carries at least the authority of another.
+     *
+     * The order is viewer, editor, admin, owner. Policies ask this instead of
+     * listing roles, so a new role only has to be ranked once.
      */
-    public function managesMembers(): bool
+    public function atLeast(self $minimum): bool
     {
-        return in_array($this, [self::Owner, self::Admin], true);
+        return $this->rank() >= $minimum->rank();
     }
 
     public function label(): string
@@ -41,5 +44,18 @@ enum Role: string
         }
 
         return $options;
+    }
+
+    /**
+     * Authority as a number, so roles can be compared rather than listed.
+     */
+    private function rank(): int
+    {
+        return match ($this) {
+            self::Viewer => 1,
+            self::Editor => 2,
+            self::Admin => 3,
+            self::Owner => 4,
+        };
     }
 }
