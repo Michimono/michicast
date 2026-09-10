@@ -4,7 +4,7 @@
             @csrf
 
             <x-input name="name" label="Name" autocomplete="name" autofocus required />
-            <x-input name="email" label="Email address" type="email" autocomplete="email" required />
+            <x-input name="email" label="Email address" type="email" :value="$email" autocomplete="email" required />
             <x-input name="password" label="Password" type="password" autocomplete="new-password" required />
             <x-input name="password_confirmation" label="Confirm password" type="password" autocomplete="new-password" required />
 

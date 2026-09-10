@@ -26,4 +26,16 @@ class OrganizationMemberPolicy
     {
         return $this->memberIsAtLeast($user, $member->organization, Role::Admin);
     }
+
+    /**
+     * A member may leave. Owners and admins may remove someone else.
+     */
+    public function delete(User $user, OrganizationMember $member): bool
+    {
+        if ($user->is($member->user)) {
+            return true;
+        }
+
+        return $this->memberIsAtLeast($user, $member->organization, Role::Admin);
+    }
 }

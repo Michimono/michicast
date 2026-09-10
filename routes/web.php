@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\CurrentOrganizationController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MemberRoleController;
 use App\Http\Controllers\OrganizationController;
@@ -18,6 +20,10 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'home')->name('home');
 
 Route::get('/up', HealthController::class)->name('health');
+
+Route::resource('invitation-acceptances', AcceptedInvitationController::class)
+    ->only(['edit', 'update'])
+    ->parameters(['invitation-acceptances' => 'token']);
 
 Route::middleware('guest')->group(function (): void {
     Route::resource('users', UserController::class)->only(['create', 'store']);
@@ -55,9 +61,11 @@ Route::middleware('auth')->group(function (): void {
     Route::middleware(SetCurrentOrganization::class)->group(function (): void {
         Route::view('/dashboard', 'dashboard')->name('dashboard');
 
-        Route::resource('members', MemberController::class)->only(['index']);
+        Route::resource('members', MemberController::class)->only(['index', 'destroy']);
 
         Route::singleton('members.role', MemberRoleController::class)->only(['edit', 'update']);
+
+        Route::resource('invitations', InvitationController::class)->only(['store', 'destroy']);
 
         Route::singleton('organization-settings', OrganizationSettingController::class)->only(['edit', 'update']);
     });

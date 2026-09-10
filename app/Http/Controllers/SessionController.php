@@ -11,9 +11,11 @@ use Illuminate\View\View;
 
 class SessionController extends Controller
 {
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('session.create');
+        return view('session.create', [
+            'email' => $request->session()->get(AcceptedInvitationController::SESSION_EMAIL_KEY),
+        ]);
     }
 
     public function store(StoreSessionRequest $request): RedirectResponse
