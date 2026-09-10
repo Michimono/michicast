@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -22,6 +23,8 @@ class TimestampDisplayTest extends TestCase
     {
         $user = User::factory()->create(['timezone' => 'Asia/Tokyo']);
 
+        Organization::factory()->for($user, 'owner')->create();
+
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
@@ -31,6 +34,8 @@ class TimestampDisplayTest extends TestCase
     public function test_the_same_moment_renders_differently_for_a_user_reading_times_in_utc(): void
     {
         $user = User::factory()->create(['timezone' => 'UTC']);
+
+        Organization::factory()->for($user, 'owner')->create();
 
         $this->actingAs($user)
             ->get(route('dashboard'))

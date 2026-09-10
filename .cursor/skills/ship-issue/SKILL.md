@@ -3,17 +3,18 @@ name: ship-issue
 description: >-
   Implement an approved GitHub issue end-to-end: pick an ok-labeled issue,
   create or resume its branch, implement, run tests, commit, push, open or
-  update a pull request, fix CI, and hand off for human review without merging.
-  Use when the user asks to ship an issue, implement a ticket, pick the next
-  issue, start work on an ok issue, create a branch, commit and push, open a
-  PR, finish a feature/bug/task/config, prepare a pull request for review, or
-  fix failing CI on an issue branch. Never push or merge to main; never apply
-  or remove the ok label; only implement issues that already have ok.
+  update a pull request, run the CI checks locally, and hand off for human
+  review without merging. Use when the user asks to ship an issue, implement a
+  ticket, pick the next issue, start work on an ok issue, create a branch,
+  commit and push, open a PR, finish a feature/bug/task/config, prepare a pull
+  request for review, or fix a failing CI check on an issue branch. Never push
+  or merge to main; never apply or remove the ok label; only implement issues
+  that already have ok.
 ---
 
 # Ship Issue
 
-Take one human-approved issue from branch through PR and CI, then stop for human review. Never merge.
+Take one human-approved issue from branch through PR, with the CI checks run locally, then stop for human review. Never merge.
 
 ## Hard rules
 
@@ -21,7 +22,8 @@ Take one human-approved issue from branch through PR and CI, then stop for human
 - **Only implement issues that have the `ok` label.** If the issue lacks `ok`, stop and say it needs human approval. Do not start a branch, commits, or PR. Do not treat a verbal “just do it” as approval unless the user explicitly waives the `ok` gate for that issue in the same message.
 - **Never add or remove `ok`.** Humans own that label.
 - **Labels:** only use names from the [Label catalog](#label-catalog). They all exist already. Add or remove only those names — never invent a label, never create one in GitHub. If an expected label is missing, stop and report it. Kind is never a label; it lives on the GitHub issue type.
-- Never merge the PR. After CI is green (or absent) and brief review comments are posted, hand off.
+- **Run the CI checks locally; never wait on GitHub.** Reproduce every job in `.github/workflows/ci.yml` on this machine before pushing, and hand off as soon as they pass. Do not poll the PR checks, sleep for them, or block the handoff on them. See [Local CI](#local-ci).
+- Never merge the PR. After the local CI checks pass and brief review comments are posted, hand off.
 - Never force-push or skip hooks unless the user explicitly asks.
 - Only commit when the user asked to ship / implement / commit / open a PR (or equivalent).
 - Treat `.gitignore` as the source of truth for ignored paths. Edit it only when new secret-bearing paths require it, and keep that change minimal.
@@ -75,7 +77,7 @@ Examples: `feature_9`, `bug_23`, `task_5`, `config_12`.
 3. **New sensitive paths** — if needed, add the minimal `.gitignore` entry and call it out.
 4. **Tests** — if the issue changed application behaviour, the branch must include new or updated tests that exercise those cases and their important failure modes. Passing the unchanged suite is not enough. Then run the narrowest set that covers the change (`php artisan test --compact` with path or `--filter`); otherwise run the full suite. Do not commit on failures or on missing coverage.
 5. **PHP style** — if PHP changed, run `vendor/bin/pint --dirty --format agent`.
-6. **Frontend** — if JS/CSS or `package.json` changed in a way that warrants it, run the project’s usual frontend check (e.g. build or tests) when configured; if none exist, note that and continue.
+6. **Frontend** — if JS/CSS or `package.json` changed in a way that warrants it, run the build as described in [Local CI](#local-ci).
 
 ## Commit message format
 
@@ -120,6 +122,21 @@ Updated the title format, length guidance, workflow and checklist
 
 Bootstrap without an issue: the first commit subject is still the PR title (short past-tense, no trailing `(#N)`).
 
+## Local CI
+
+GitHub still runs `.github/workflows/ci.yml` on the PR, but the agent does not wait for it. Run the same checks here, before pushing:
+
+| CI job | Local command |
+| --- | --- |
+| Tests | `php artisan migrate` (test database), then `composer test` |
+| Style | `composer lint` — or `vendor/bin/pint --dirty --format agent` to fix, which satisfies it |
+| Static analysis | `composer analyse` |
+| Frontend build (part of Tests) | `npm run build`, and `npm ci` first when `package-lock.json` changed |
+
+Skip a job only when the branch cannot affect it — no PHP changed, so no Pint; no JS, CSS or `package.json` changed, so no build. Everything else runs.
+
+Fix failures locally and re-run until they pass, then push. Never poll the PR's checks, never sleep waiting for them, and never make the handoff conditional on them. If GitHub later disagrees with the local run, the human says so and the fix loop starts again from a new commit.
+
 ## Push
 
 - `git push -u origin HEAD` (or equivalent) on the issue branch only.
@@ -158,20 +175,13 @@ Bootstrap without an issue: short past-tense title, still without a trailing `(#
 
 PR body = this branch’s commit messages (subjects and body lines), in order. No long essay. No `Closes` / `Fixes` trailer — link the issue in a review comment with `#<issue_id>`.
 
-### CI loop
-
-1. Never merge into `main`.
-2. No CI checks → treat as passed.
-3. On failure → fix from CI feedback with a **new commit** (same commit rules), push, re-check.
-4. Repeat until green (or no CI).
-
 ### Hand off
 
-When implementation is done, PR exists, and CI is green (or absent):
+When implementation is done, the PR exists, and the [local CI](#local-ci) checks pass:
 
 1. Brief PR comment(s): what changed, how to verify, and which tests cover the change (or why the issue is exempt). Do not over-explain.
 2. Comment linking `#<issue_id>` when an issue was used.
-3. Stop committing. Do not merge. Do not close the issue or alter `ok` after handoff — humans handle merge and issue lifecycle.
+3. Stop committing. Do not merge, and do not wait for GitHub's checks to report. Do not close the issue or alter `ok` after handoff — humans handle merge and issue lifecycle.
 4. Return the PR URL.
 
 ## Workflow
@@ -179,10 +189,10 @@ When implementation is done, PR exists, and CI is green (or absent):
 1. Pick / confirm issue → verify `ok` → resolve type and id (backfill priority if missing).
 2. Sync `main` (`git checkout main && git pull --ff-only`), then create or resume `<type>_<id>` from it.
 3. Implement on that branch only, including the tests the change requires.
-4. Decide the PR title, then pre-commit checks (coverage for the change, then passing tests) → past-tense commit(s), first subject = that title → push to `origin`.
-5. Open or update PR with that same title; no trailing `(#<pr_id>)`.
-6. CI fix loop until green (or no CI).
-7. Brief review comments + issue link; hand off with PR URL.
+4. Decide the PR title, then pre-commit checks (coverage for the change, then passing tests) → past-tense commit(s), first subject = that title.
+5. Run the [local CI](#local-ci) checks; fix and re-run until they pass → push to `origin`.
+6. Open or update PR with that same title; no trailing `(#<pr_id>)`.
+7. Brief review comments + issue link; hand off with PR URL without waiting for GitHub's checks.
 
 ## Done checklist
 
@@ -198,5 +208,5 @@ When implementation is done, PR exists, and CI is green (or absent):
 - [ ] Commits are past tense (subject + one-change body lines)
 - [ ] Pushed to `origin` on the issue branch only
 - [ ] PR title matches convention, ~60 chars, no trailing `(#<pr_id>)`; body is commit messages
-- [ ] CI green or no CI
+- [ ] Every applicable CI job was run locally and passed; GitHub's checks were not waited on
 - [ ] Brief review comments posted; PR not merged; PR URL returned
