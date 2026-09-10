@@ -20,7 +20,7 @@ class DashboardAccessTest extends TestCase
     {
         $user = User::factory()->create();
 
-        Organization::factory()->for($user, 'owner')->create();
+        Organization::factory()->ownedBy($user)->create();
 
         $this->actingAs($user)
             ->get(route('dashboard'))

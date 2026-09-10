@@ -23,7 +23,7 @@ class TimestampDisplayTest extends TestCase
     {
         $user = User::factory()->create(['timezone' => 'Asia/Tokyo']);
 
-        Organization::factory()->for($user, 'owner')->create();
+        Organization::factory()->ownedBy($user)->create();
 
         $this->actingAs($user)
             ->get(route('dashboard'))
@@ -35,7 +35,7 @@ class TimestampDisplayTest extends TestCase
     {
         $user = User::factory()->create(['timezone' => 'UTC']);
 
-        Organization::factory()->for($user, 'owner')->create();
+        Organization::factory()->ownedBy($user)->create();
 
         $this->actingAs($user)
             ->get(route('dashboard'))

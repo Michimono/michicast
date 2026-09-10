@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\MemberRoleController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\OrganizationMemberController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\ProfileController;
@@ -45,6 +47,10 @@ Route::middleware('auth')->group(function (): void {
         ->names('profile.password');
 
     Route::resource('organizations', OrganizationController::class)->only(['create', 'store']);
+
+    Route::resource('organizations.members', OrganizationMemberController::class)->only(['index']);
+
+    Route::singleton('members.role', MemberRoleController::class)->only(['edit', 'update']);
 
     Route::middleware(EnsureUserHasOrganization::class)->group(function (): void {
         Route::view('/dashboard', 'dashboard')->name('dashboard');

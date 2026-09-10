@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        Organization::factory()->for($user, 'owner')->create([
+        Organization::factory()->ownedBy($user)->create([
             'name' => 'Test Organization',
             'slug' => 'test-organization',
         ]);
