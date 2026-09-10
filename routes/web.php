@@ -1,16 +1,17 @@
 <?php
 
+use App\Http\Controllers\CurrentOrganizationController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MemberRoleController;
 use App\Http\Controllers\OrganizationController;
-use App\Http\Controllers\OrganizationMemberController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfilePasswordController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\UserController;
-use App\Http\Middleware\EnsureUserHasOrganization;
+use App\Http\Middleware\SetCurrentOrganization;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
@@ -48,11 +49,13 @@ Route::middleware('auth')->group(function (): void {
 
     Route::resource('organizations', OrganizationController::class)->only(['create', 'store']);
 
-    Route::resource('organizations.members', OrganizationMemberController::class)->only(['index']);
+    Route::singleton('current-organization', CurrentOrganizationController::class)->only(['update']);
 
-    Route::singleton('members.role', MemberRoleController::class)->only(['edit', 'update']);
-
-    Route::middleware(EnsureUserHasOrganization::class)->group(function (): void {
+    Route::middleware(SetCurrentOrganization::class)->group(function (): void {
         Route::view('/dashboard', 'dashboard')->name('dashboard');
+
+        Route::resource('members', MemberController::class)->only(['index']);
+
+        Route::singleton('members.role', MemberRoleController::class)->only(['edit', 'update']);
     });
 });

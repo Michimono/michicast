@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Role;
+use App\Http\Middleware\SetCurrentOrganization;
 use App\Http\Requests\StoreOrganizationRequest;
 use App\Models\Organization;
 use DateTimeZone;
@@ -40,8 +41,10 @@ class OrganizationController extends Controller
             return $organization;
         });
 
+        $request->session()->put(SetCurrentOrganization::SESSION_KEY, $organization->getKey());
+
         return redirect()
-            ->route('organizations.members.index', $organization)
+            ->route('members.index')
             ->with('success', 'Your organization has been created.');
     }
 }
