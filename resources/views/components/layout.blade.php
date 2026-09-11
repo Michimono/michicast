@@ -31,6 +31,7 @@
                         @auth
                             @if ($currentOrganization->isResolved())
                                 <x-organization-switcher />
+                                <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.*')">Projects</x-nav-link>
                                 <x-nav-link :href="route('members.index')" :active="request()->routeIs('members.*')">Members</x-nav-link>
                                 @can('update', $currentOrganization->organization())
                                     <x-nav-link :href="route('organization-settings.edit')" :active="request()->routeIs('organization-settings.*')">Settings</x-nav-link>
