@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectStatus;
 use App\Enums\Role;
 use App\Models\Organization;
 use App\Models\Project;
@@ -68,6 +69,7 @@ class ProjectTest extends TestCase
         $this->assertSame('Pokemon TCGP News', $project->name);
         $this->assertSame('pokemon-tcgp-news', $project->slug);
         $this->assertSame('Pocket news.', $project->description);
+        $this->assertSame(ProjectStatus::Draft, $project->status);
     }
 
     public function test_a_viewer_cannot_create_a_project(): void
@@ -111,6 +113,20 @@ class ProjectTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertSame('news', $organization->projects()->sole()->slug);
+    }
+
+    public function test_a_status_in_the_payload_is_ignored(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+
+        $this->actingAs($user)
+            ->post(route('projects.store'), [
+                'name' => 'News',
+                'status' => 'active',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(ProjectStatus::Draft, $organization->projects()->sole()->status);
     }
 
     public function test_two_organizations_may_reuse_the_same_slug(): void

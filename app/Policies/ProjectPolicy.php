@@ -43,4 +43,12 @@ class ProjectPolicy
     {
         return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
     }
+
+    /**
+     * Editors and above activate, pause, resume, archive and restore a project.
+     */
+    public function changeStatus(User $user, Project $project): bool
+    {
+        return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
+    }
 }

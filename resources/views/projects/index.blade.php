@@ -23,6 +23,8 @@
                             </a>
                             <span class="font-mono text-xs text-muted">{{ $project->slug }}</span>
                         </div>
+
+                        <x-project-status :status="$project->status" />
                     </li>
                 @endforeach
             </ul>

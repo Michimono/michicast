@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ProjectStatus;
 use App\Models\Organization;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,6 +25,29 @@ class ProjectFactory extends Factory
             'name' => fake()->unique()->words(3, true),
             'slug' => fn (array $attributes): string => Str::slug((string) $attributes['name']).'-'.fake()->unique()->numerify('####'),
             'description' => null,
+            'status' => ProjectStatus::Draft,
         ];
+    }
+
+    public function active(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => ProjectStatus::Active,
+        ]);
+    }
+
+    public function paused(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => ProjectStatus::Paused,
+        ]);
+    }
+
+    public function archived(?ProjectStatus $from = ProjectStatus::Draft): static
+    {
+        return $this->state(fn (): array => [
+            'status' => ProjectStatus::Archived,
+            'archived_from' => $from,
+        ]);
     }
 }

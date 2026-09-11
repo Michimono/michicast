@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AcceptedInvitationController;
+use App\Http\Controllers\ActiveProjectController;
+use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\CurrentOrganizationController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationController;
@@ -10,6 +12,7 @@ use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationSettingController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PasswordResetLinkController;
+use App\Http\Controllers\PausedProjectController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfilePasswordController;
 use App\Http\Controllers\ProjectController;
@@ -63,6 +66,27 @@ Route::middleware('auth')->group(function (): void {
         Route::view('/dashboard', 'dashboard')->name('dashboard');
 
         Route::resource('projects', ProjectController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+
+        Route::singleton('projects.active-project', ActiveProjectController::class)
+            ->creatable()
+            ->only(['store'])
+            ->names(['store' => 'active-projects.store']);
+
+        Route::singleton('projects.paused-project', PausedProjectController::class)
+            ->creatable()
+            ->only(['store', 'destroy'])
+            ->names([
+                'store' => 'paused-projects.store',
+                'destroy' => 'paused-projects.destroy',
+            ]);
+
+        Route::singleton('projects.archived-project', ArchivedProjectController::class)
+            ->creatable()
+            ->only(['store', 'destroy'])
+            ->names([
+                'store' => 'archived-projects.store',
+                'destroy' => 'archived-projects.destroy',
+            ]);
 
         Route::resource('members', MemberController::class)->only(['index', 'destroy']);
 

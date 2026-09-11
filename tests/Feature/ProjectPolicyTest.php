@@ -41,6 +41,15 @@ class ProjectPolicyTest extends TestCase
         $this->assertSame($allowed, $user->can('update', $project));
     }
 
+    #[DataProvider('everyRoleAndWhetherItEdits')]
+    public function test_only_editors_and_above_may_change_a_project_status(Role $role, bool $allowed): void
+    {
+        [$user, $organization] = $this->memberHolding($role);
+        $project = Project::factory()->for($organization)->create();
+
+        $this->assertSame($allowed, $user->can('changeStatus', $project));
+    }
+
     public function test_a_user_who_belongs_to_no_organization_is_denied_everything(): void
     {
         $stranger = User::factory()->create();
@@ -51,6 +60,7 @@ class ProjectPolicyTest extends TestCase
         $this->assertFalse($stranger->can('view', $project));
         $this->assertFalse($stranger->can('create', [Project::class, $organization]));
         $this->assertFalse($stranger->can('update', $project));
+        $this->assertFalse($stranger->can('changeStatus', $project));
     }
 
     public function test_an_owner_of_another_organization_is_a_stranger_here(): void
@@ -63,6 +73,7 @@ class ProjectPolicyTest extends TestCase
         $this->assertFalse($outsider->can('view', $project));
         $this->assertFalse($outsider->can('create', [Project::class, $organization]));
         $this->assertFalse($outsider->can('update', $project));
+        $this->assertFalse($outsider->can('changeStatus', $project));
     }
 
     /**
