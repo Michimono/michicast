@@ -22,7 +22,7 @@ class ProjectController extends Controller
 
         return view('projects.index', [
             'organization' => $organization,
-            'projects' => $organization->projects()->oldest('id')->get(),
+            'projects' => $organization->projects()->notArchived()->oldest('id')->get(),
         ]);
     }
 
