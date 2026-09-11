@@ -26,6 +26,15 @@
                 <x-button href="{{ route('project-schedules.edit', $project) }}" variant="ghost" :paw="false">Schedule</x-button>
             @endcan
 
+            @can('markDue', $project)
+                @if ($project->canMarkDue())
+                    <form method="POST" action="{{ route('due-projects.store', $project) }}">
+                        @csrf
+                        <x-button>Run now</x-button>
+                    </form>
+                @endif
+            @endcan
+
             @can('changeStatus', $project)
                 @if ($project->canActivate())
                     <form method="POST" action="{{ route('active-projects.store', $project) }}">
