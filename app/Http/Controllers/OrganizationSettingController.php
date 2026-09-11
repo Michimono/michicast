@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateOrganizationSettingRequest;
+use App\Models\Project;
 use App\Support\CurrentOrganization;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
@@ -27,7 +28,15 @@ class OrganizationSettingController extends Controller
 
     public function update(UpdateOrganizationSettingRequest $request): RedirectResponse
     {
-        $this->current->organization()->update($request->safe()->only(['name', 'timezone']));
+        $organization = $this->current->organization();
+        $organization->update($request->safe()->only(['name', 'timezone']));
+
+        if ($organization->wasChanged('timezone')) {
+            $organization->projects()->whereNull('timezone')->each(function (Project $project): void {
+                $project->refreshNextRunAt();
+                $project->save();
+            });
+        }
 
         return redirect()
             ->route('organization-settings.edit')
