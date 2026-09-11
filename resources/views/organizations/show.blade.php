@@ -1,5 +1,5 @@
-<x-layout title="Dashboard">
-    <x-card heading="You are signed in" kicker="Dashboard" eared>
+<x-layout :title="$organization->name">
+    <x-card :heading="$organization->name" kicker="Dashboard" eared>
         <p class="text-sm text-ink">Signed in as {{ auth()->user()?->email }}.</p>
 
         <p class="text-sm text-muted">
@@ -11,6 +11,6 @@
 
     <x-empty-state
         heading="Nothing to manage yet"
-        message="Organizations, projects and broadcasts appear here as those features land."
+        message="Sources, destinations and broadcasts appear here as those features land."
     />
 </x-layout>

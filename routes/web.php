@@ -3,7 +3,7 @@
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\ArchivedProjectController;
-use App\Http\Controllers\CurrentOrganizationController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DueProjectController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationController;
@@ -61,57 +61,66 @@ Route::middleware('auth')->group(function (): void {
         ->only(['edit', 'update'])
         ->names('profile.password');
 
-    Route::resource('organizations', OrganizationController::class)->only(['create', 'store']);
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-    Route::singleton('current-organization', CurrentOrganizationController::class)->only(['update']);
+    Route::resource('organizations', OrganizationController::class)
+        ->only(['index', 'create', 'store', 'show'])
+        ->middlewareFor('show', SetCurrentOrganization::class);
 
-    Route::middleware(SetCurrentOrganization::class)->group(function (): void {
-        Route::view('/dashboard', 'dashboard')->name('dashboard');
+    /*
+     * Everything below belongs to one organization, and says so in its URL.
+     * SetCurrentOrganization turns that id into the acting organization, and
+     * scoped bindings keep a child of another organization out of reach.
+     */
+    Route::prefix('organizations/{organization}')
+        ->middleware(SetCurrentOrganization::class)
+        ->scopeBindings()
+        ->group(function (): void {
+            Route::resource('projects', ProjectController::class)
+                ->only(['index', 'create', 'store', 'show', 'edit', 'update']);
 
-        Route::resource('projects', ProjectController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+            Route::singleton('projects.schedule', ProjectScheduleController::class)
+                ->only(['edit', 'update'])
+                ->names([
+                    'edit' => 'project-schedules.edit',
+                    'update' => 'project-schedules.update',
+                ]);
 
-        Route::singleton('projects.schedule', ProjectScheduleController::class)
-            ->only(['edit', 'update'])
-            ->names([
-                'edit' => 'project-schedules.edit',
-                'update' => 'project-schedules.update',
-            ]);
+            Route::match(['POST', 'PATCH'], 'projects/{project}/schedule-preview', [ProjectSchedulePreviewController::class, 'store'])
+                ->name('project-schedule-previews.store');
 
-        Route::match(['POST', 'PATCH'], 'projects/{project}/schedule-preview', [ProjectSchedulePreviewController::class, 'store'])
-            ->name('project-schedule-previews.store');
+            Route::singleton('projects.due-project', DueProjectController::class)
+                ->creatable()
+                ->only(['store'])
+                ->names(['store' => 'due-projects.store']);
 
-        Route::singleton('projects.due-project', DueProjectController::class)
-            ->creatable()
-            ->only(['store'])
-            ->names(['store' => 'due-projects.store']);
+            Route::singleton('projects.active-project', ActiveProjectController::class)
+                ->creatable()
+                ->only(['store'])
+                ->names(['store' => 'active-projects.store']);
 
-        Route::singleton('projects.active-project', ActiveProjectController::class)
-            ->creatable()
-            ->only(['store'])
-            ->names(['store' => 'active-projects.store']);
+            Route::singleton('projects.paused-project', PausedProjectController::class)
+                ->creatable()
+                ->only(['store', 'destroy'])
+                ->names([
+                    'store' => 'paused-projects.store',
+                    'destroy' => 'paused-projects.destroy',
+                ]);
 
-        Route::singleton('projects.paused-project', PausedProjectController::class)
-            ->creatable()
-            ->only(['store', 'destroy'])
-            ->names([
-                'store' => 'paused-projects.store',
-                'destroy' => 'paused-projects.destroy',
-            ]);
+            Route::singleton('projects.archived-project', ArchivedProjectController::class)
+                ->creatable()
+                ->only(['store', 'destroy'])
+                ->names([
+                    'store' => 'archived-projects.store',
+                    'destroy' => 'archived-projects.destroy',
+                ]);
 
-        Route::singleton('projects.archived-project', ArchivedProjectController::class)
-            ->creatable()
-            ->only(['store', 'destroy'])
-            ->names([
-                'store' => 'archived-projects.store',
-                'destroy' => 'archived-projects.destroy',
-            ]);
+            Route::resource('members', MemberController::class)->only(['index', 'destroy']);
 
-        Route::resource('members', MemberController::class)->only(['index', 'destroy']);
+            Route::singleton('members.role', MemberRoleController::class)->only(['edit', 'update']);
 
-        Route::singleton('members.role', MemberRoleController::class)->only(['edit', 'update']);
+            Route::resource('invitations', InvitationController::class)->only(['store', 'destroy']);
 
-        Route::resource('invitations', InvitationController::class)->only(['store', 'destroy']);
-
-        Route::singleton('organization-settings', OrganizationSettingController::class)->only(['edit', 'update']);
-    });
+            Route::singleton('organization-settings', OrganizationSettingController::class)->only(['edit', 'update']);
+        });
 });

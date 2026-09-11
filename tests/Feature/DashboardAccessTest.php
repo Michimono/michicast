@@ -16,15 +16,13 @@ class DashboardAccessTest extends TestCase
         $this->get(route('dashboard'))->assertRedirect(route('session.create'));
     }
 
-    public function test_an_authenticated_user_can_open_the_dashboard(): void
+    public function test_an_authenticated_user_is_sent_to_their_organization(): void
     {
         $user = User::factory()->create();
-
-        Organization::factory()->ownedBy($user)->create();
+        $organization = Organization::factory()->ownedBy($user)->create();
 
         $this->actingAs($user)
             ->get(route('dashboard'))
-            ->assertOk()
-            ->assertSee($user->email);
+            ->assertRedirect(route('organizations.show', $organization));
     }
 }

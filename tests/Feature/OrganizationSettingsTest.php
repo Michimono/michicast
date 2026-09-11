@@ -15,8 +15,10 @@ class OrganizationSettingsTest extends TestCase
 
     public function test_guests_are_redirected_to_the_login_screen(): void
     {
-        $this->get(route('organization-settings.edit'))->assertRedirect(route('session.create'));
-        $this->patch(route('organization-settings.update'), [
+        $organization = Organization::factory()->create();
+
+        $this->get(route('organization-settings.edit', $organization))->assertRedirect(route('session.create'));
+        $this->patch(route('organization-settings.update', $organization), [
             'name' => 'Michimono Labs',
             'timezone' => 'UTC',
         ])->assertRedirect(route('session.create'));
@@ -30,7 +32,7 @@ class OrganizationSettingsTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('organization-settings.edit'))
+            ->get(route('organization-settings.edit', $organization))
             ->assertOk()
             ->assertSee('Michimono Labs')
             ->assertSee('<option value="Europe/Madrid" selected>', false)
@@ -46,12 +48,12 @@ class OrganizationSettingsTest extends TestCase
             'timezone' => 'UTC',
         ]);
 
-        $response = $this->actingAs($user)->patch(route('organization-settings.update'), [
+        $response = $this->actingAs($user)->patch(route('organization-settings.update', $organization), [
             'name' => 'Second Studio',
             'timezone' => 'Asia/Tokyo',
         ]);
 
-        $response->assertRedirect(route('organization-settings.edit'));
+        $response->assertRedirect(route('organization-settings.edit', $organization));
         $response->assertSessionHas('success');
 
         $organization->refresh();
@@ -64,10 +66,10 @@ class OrganizationSettingsTest extends TestCase
     #[DataProvider('nonAdministrativeRoles')]
     public function test_a_non_administrator_cannot_open_the_settings_screen(Role $role): void
     {
-        [$user] = $this->memberHolding($role);
+        [$user, $organization] = $this->memberHolding($role);
 
         $this->actingAs($user)
-            ->get(route('organization-settings.edit'))
+            ->get(route('organization-settings.edit', $organization))
             ->assertForbidden();
     }
 
@@ -80,7 +82,7 @@ class OrganizationSettingsTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->patch(route('organization-settings.update'), [
+            ->patch(route('organization-settings.update', $organization), [
                 'name' => 'Second Studio',
                 'timezone' => 'Asia/Tokyo',
             ])
@@ -94,18 +96,18 @@ class OrganizationSettingsTest extends TestCase
 
     public function test_the_settings_link_is_offered_only_to_administrators(): void
     {
-        [$owner] = $this->memberHolding(Role::Owner);
-        [$editor] = $this->memberHolding(Role::Editor);
+        [$owner, $ownersOrganization] = $this->memberHolding(Role::Owner);
+        [$editor, $editorsOrganization] = $this->memberHolding(Role::Editor);
 
         $this->actingAs($owner)
-            ->get(route('dashboard'))
+            ->get(route('organizations.show', $ownersOrganization))
             ->assertOk()
-            ->assertSee(route('organization-settings.edit'), false);
+            ->assertSee(route('organization-settings.edit', $ownersOrganization), false);
 
         $this->actingAs($editor)
-            ->get(route('dashboard'))
+            ->get(route('organizations.show', $editorsOrganization))
             ->assertOk()
-            ->assertDontSee(route('organization-settings.edit'), false);
+            ->assertDontSee(route('organization-settings.edit', $editorsOrganization), false);
     }
 
     public function test_an_unknown_timezone_identifier_is_rejected(): void
@@ -113,7 +115,7 @@ class OrganizationSettingsTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Owner, ['timezone' => 'UTC']);
 
         $this->actingAs($user)
-            ->patch(route('organization-settings.update'), [
+            ->patch(route('organization-settings.update', $organization), [
                 'name' => $organization->name,
                 'timezone' => 'Mars/Olympus_Mons',
             ])
@@ -127,7 +129,7 @@ class OrganizationSettingsTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Owner, ['timezone' => 'UTC']);
 
         $this->actingAs($user)
-            ->patch(route('organization-settings.update'), [
+            ->patch(route('organization-settings.update', $organization), [
                 'name' => $organization->name,
                 'timezone' => '+02:00',
             ])
@@ -141,7 +143,7 @@ class OrganizationSettingsTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Owner, ['name' => 'Michimono Labs']);
 
         $this->actingAs($user)
-            ->patch(route('organization-settings.update'), [
+            ->patch(route('organization-settings.update', $organization), [
                 'name' => '',
                 'timezone' => 'UTC',
             ])
@@ -155,7 +157,7 @@ class OrganizationSettingsTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Owner, ['plan' => null]);
 
         $this->actingAs($user)
-            ->patch(route('organization-settings.update'), [
+            ->patch(route('organization-settings.update', $organization), [
                 'name' => 'Michimono Labs',
                 'timezone' => 'UTC',
                 'plan' => 'paid',
@@ -168,10 +170,10 @@ class OrganizationSettingsTest extends TestCase
     public function test_a_dangerous_name_is_escaped_on_the_settings_screen(): void
     {
         $name = '<script>alert("xss")</script>';
-        [$user] = $this->memberHolding(Role::Owner, ['name' => $name]);
+        [$user, $organization] = $this->memberHolding(Role::Owner, ['name' => $name]);
 
         $this->actingAs($user)
-            ->get(route('organization-settings.edit'))
+            ->get(route('organization-settings.edit', $organization))
             ->assertOk()
             ->assertDontSee($name, false)
             ->assertSee($name);

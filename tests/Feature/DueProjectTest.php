@@ -32,8 +32,8 @@ class DueProjectTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->post(route('due-projects.store', $project))
-            ->assertRedirect(route('projects.show', $project))
+            ->post(route('due-projects.store', [$organization, $project]))
+            ->assertRedirect(route('projects.show', [$organization, $project]))
             ->assertSessionHas('success', 'The run is queued for the next scheduler tick, within about a minute.');
 
         $this->assertSame(0, $runner->runs);
@@ -56,8 +56,8 @@ class DueProjectTest extends TestCase
             'next_run_at' => Carbon::parse('2026-03-16 09:00:00', 'UTC'),
         ]);
 
-        $this->actingAs($user)->post(route('due-projects.store', $project))->assertSessionHasNoErrors();
-        $this->actingAs($user)->post(route('due-projects.store', $project))->assertSessionHasNoErrors();
+        $this->actingAs($user)->post(route('due-projects.store', [$organization, $project]))->assertSessionHasNoErrors();
+        $this->actingAs($user)->post(route('due-projects.store', [$organization, $project]))->assertSessionHasNoErrors();
 
         $project->refresh();
 
@@ -81,8 +81,8 @@ class DueProjectTest extends TestCase
         $project->save();
 
         $this->actingAs($user)
-            ->post(route('due-projects.store', $project))
-            ->assertRedirect(route('projects.show', $project))
+            ->post(route('due-projects.store', [$organization, $project]))
+            ->assertRedirect(route('projects.show', [$organization, $project]))
             ->assertSessionHas('success', 'The run is queued for the next scheduler tick, within about a minute.');
 
         $project->refresh();
@@ -97,10 +97,10 @@ class DueProjectTest extends TestCase
         $project = Project::factory()->for($organization)->active()->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', $project))
+            ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Run now')
-            ->assertSee(route('due-projects.store', $project), false);
+            ->assertSee(route('due-projects.store', [$organization, $project]), false);
     }
 
     public function test_a_draft_project_does_not_show_run_now(): void
@@ -109,7 +109,7 @@ class DueProjectTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', $project))
+            ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertDontSee('Run now');
     }
@@ -120,12 +120,12 @@ class DueProjectTest extends TestCase
         $project = Project::factory()->for($organization)->active()->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', $project))
+            ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertDontSee('Run now');
 
         $this->actingAs($user)
-            ->post(route('due-projects.store', $project))
+            ->post(route('due-projects.store', [$organization, $project]))
             ->assertForbidden();
 
         $this->assertNull($project->refresh()->next_run_at);
@@ -135,7 +135,7 @@ class DueProjectTest extends TestCase
     {
         $project = Project::factory()->active()->create();
 
-        $this->post(route('due-projects.store', $project))
+        $this->post(route('due-projects.store', [$project->organization, $project]))
             ->assertRedirect(route('session.create'));
     }
 
@@ -148,7 +148,7 @@ class DueProjectTest extends TestCase
         ]);
 
         $this->actingAs($outsider)
-            ->post(route('due-projects.store', $project))
+            ->post(route('due-projects.store', [$organization, $project]))
             ->assertNotFound();
 
         $this->assertTrue($project->refresh()->next_run_at->equalTo(Carbon::parse('2026-03-16 09:00:00', 'UTC')));
@@ -165,7 +165,7 @@ class DueProjectTest extends TestCase
         ])->create();
 
         $this->actingAs($user)
-            ->post(route('due-projects.store', $project))
+            ->post(route('due-projects.store', [$organization, $project]))
             ->assertRedirect()
             ->assertSessionHas('error', 'Only an active project can be marked due.');
 

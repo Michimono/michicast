@@ -6,14 +6,32 @@ use App\Enums\Role;
 use App\Http\Middleware\SetCurrentOrganization;
 use App\Http\Requests\StoreOrganizationRequest;
 use App\Models\Organization;
+use App\Models\OrganizationMember;
 use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class OrganizationController extends Controller
 {
+    /**
+     * Every organization the signed-in user belongs to, which is also how
+     * they move between them.
+     */
+    public function index(Request $request): View
+    {
+        return view('organizations.index', [
+            'memberships' => $request->user()
+                ->memberships()
+                ->with('organization')
+                ->get()
+                ->sortBy(fn (OrganizationMember $membership): string => $membership->organization->name)
+                ->values(),
+        ]);
+    }
+
     public function create(Request $request): View
     {
         return view('organizations.create', [
@@ -44,7 +62,19 @@ class OrganizationController extends Controller
         $request->session()->put(SetCurrentOrganization::SESSION_KEY, $organization->getKey());
 
         return redirect()
-            ->route('members.index')
+            ->route('members.index', $organization)
             ->with('success', 'Your organization has been created.');
+    }
+
+    /**
+     * The organization's own screen, and the first thing its sidebar links to.
+     */
+    public function show(Organization $organization): View
+    {
+        Gate::authorize('view', $organization);
+
+        return view('organizations.show', [
+            'organization' => $organization,
+        ]);
     }
 }

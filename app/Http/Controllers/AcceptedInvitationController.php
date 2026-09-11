@@ -76,7 +76,7 @@ class AcceptedInvitationController extends Controller
         $request->session()->forget([self::SESSION_TOKEN_KEY, self::SESSION_EMAIL_KEY]);
 
         return redirect()
-            ->route('members.index')
+            ->route('members.index', $invitation->organization)
             ->with('success', 'You have joined '.$invitation->organization->name.'.');
     }
 }

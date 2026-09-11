@@ -38,12 +38,12 @@ class BrandIdentityTest extends TestCase
     {
         $user = User::factory()->create();
 
-        Organization::factory()->ownedBy($user)->create();
+        $organization = Organization::factory()->ownedBy($user)->create();
 
-        $response = $this->actingAs($user)->get(route('dashboard'));
+        $response = $this->actingAs($user)->get(route('organizations.show', $organization));
 
         $response->assertOk();
-        $this->assertAnchorIsCurrent(route('dashboard'), $response->getContent());
+        $this->assertAnchorIsCurrent(route('organizations.show', $organization), $response->getContent());
         $this->assertAnchorIsNotCurrent(route('profile.edit'), $response->getContent());
     }
 
@@ -55,7 +55,7 @@ class BrandIdentityTest extends TestCase
 
         $response->assertOk();
         $this->assertAnchorIsCurrent(route('profile.edit'), $response->getContent());
-        $this->assertAnchorIsNotCurrent(route('dashboard'), $response->getContent());
+        $this->assertAnchorIsNotCurrent(route('organizations.index'), $response->getContent());
     }
 
     private function assertAnchorIsCurrent(string $url, string $html): void

@@ -1,0 +1,14 @@
+<svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    {{ $attributes->class('size-5') }}
+>
+    <path d="M12 3.5 20.5 8 12 12.5 3.5 8z" />
+    <path d="m3.5 12 8.5 4.5 8.5-4.5" />
+    <path d="m3.5 16 8.5 4.5 8.5-4.5" />
+</svg>

@@ -39,7 +39,9 @@ class OrganizationCreationTest extends TestCase
 
         Organization::factory()->ownedBy($user)->create();
 
-        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('organizations.show', Organization::query()->sole()));
     }
 
     public function test_a_user_without_an_organization_can_still_open_the_creation_screen_and_log_out(): void
@@ -72,7 +74,7 @@ class OrganizationCreationTest extends TestCase
 
         $organization = Organization::query()->sole();
 
-        $response->assertRedirect(route('members.index'));
+        $response->assertRedirect(route('members.index', $organization));
         $response->assertSessionHas('success');
 
         $this->assertSame('Michimono Labs', $organization->name);

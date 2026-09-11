@@ -20,7 +20,7 @@ class OrganizationMemberRemovalTest extends TestCase
         [$owner, $organization] = $this->memberHolding(Role::Owner);
         $member = $this->someoneElseIn($organization, Role::Viewer);
 
-        $this->delete(route('members.destroy', $member))
+        $this->delete(route('members.destroy', [$organization, $member]))
             ->assertRedirect(route('session.create'));
 
         $this->assertSame(Role::Viewer, $organization->fresh()->roleFor($member->user));
@@ -32,8 +32,8 @@ class OrganizationMemberRemovalTest extends TestCase
         $member = $this->someoneElseIn($organization, Role::Viewer);
 
         $this->actingAs($owner)
-            ->delete(route('members.destroy', $member))
-            ->assertRedirect(route('members.index'))
+            ->delete(route('members.destroy', [$organization, $member]))
+            ->assertRedirect(route('members.index', $organization))
             ->assertSessionHas('success');
 
         $this->assertNull($organization->fresh()->roleFor($member->user));
@@ -45,7 +45,7 @@ class OrganizationMemberRemovalTest extends TestCase
         $member = $this->someoneElseIn($organization, Role::Editor);
 
         $this->actingAs($member->user)
-            ->delete(route('members.destroy', $member))
+            ->delete(route('members.destroy', [$organization, $member]))
             ->assertRedirect(route('dashboard'))
             ->assertSessionHas('success');
 
@@ -58,11 +58,11 @@ class OrganizationMemberRemovalTest extends TestCase
         [$owner, $organization] = $this->memberHolding(Role::Owner);
         $member = $this->someoneElseIn($organization, Role::Viewer);
 
-        $this->actingAs($owner)->delete(route('members.destroy', $member));
+        $this->actingAs($owner)->delete(route('members.destroy', [$organization, $member]));
 
         $this->actingAs($member->user)
-            ->get(route('members.index'))
-            ->assertRedirect(route('organizations.create'));
+            ->get(route('members.index', $organization))
+            ->assertNotFound();
     }
 
     public function test_the_last_owner_cannot_be_removed_or_leave(): void
@@ -71,8 +71,8 @@ class OrganizationMemberRemovalTest extends TestCase
         $ownership = $organization->members()->where('user_id', $owner->getKey())->sole();
 
         $this->actingAs($owner)
-            ->delete(route('members.destroy', $ownership))
-            ->assertRedirect(route('members.index'))
+            ->delete(route('members.destroy', [$organization, $ownership]))
+            ->assertRedirect(route('members.index', $organization))
             ->assertSessionHas('error');
 
         $this->assertSame(Role::Owner, $organization->fresh()->roleFor($owner));
@@ -85,7 +85,7 @@ class OrganizationMemberRemovalTest extends TestCase
         $ownership = $organization->members()->where('user_id', $owner->getKey())->sole();
 
         $this->actingAs($owner)
-            ->delete(route('members.destroy', $ownership))
+            ->delete(route('members.destroy', [$organization, $ownership]))
             ->assertRedirect(route('dashboard'));
 
         $this->assertNull($organization->fresh()->roleFor($owner));
@@ -98,7 +98,7 @@ class OrganizationMemberRemovalTest extends TestCase
         $member = $this->someoneElseIn($organization, Role::Viewer);
 
         $this->actingAs($user)
-            ->delete(route('members.destroy', $member))
+            ->delete(route('members.destroy', [$organization, $member]))
             ->assertForbidden();
 
         $this->assertSame(Role::Viewer, $member->refresh()->role);
@@ -111,7 +111,7 @@ class OrganizationMemberRemovalTest extends TestCase
         $member = $this->someoneElseIn($organization, Role::Viewer);
 
         $this->actingAs($outsider)
-            ->delete(route('members.destroy', $member))
+            ->delete(route('members.destroy', [$organization, $member]))
             ->assertNotFound();
 
         $this->assertSame(Role::Viewer, $member->refresh()->role);

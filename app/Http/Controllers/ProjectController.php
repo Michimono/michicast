@@ -4,20 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
+use App\Models\Organization;
 use App\Models\Project;
-use App\Support\CurrentOrganization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class ProjectController extends Controller
 {
-    public function __construct(private CurrentOrganization $current) {}
-
-    public function index(): View
+    public function index(Organization $organization): View
     {
-        $organization = $this->current->organization();
-
         Gate::authorize('viewAny', [Project::class, $organization]);
 
         return view('projects.index', [
@@ -26,16 +22,15 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Organization $organization): View
     {
-        Gate::authorize('create', [Project::class, $this->current->organization()]);
+        Gate::authorize('create', [Project::class, $organization]);
 
         return view('projects.create');
     }
 
-    public function store(StoreProjectRequest $request): RedirectResponse
+    public function store(StoreProjectRequest $request, Organization $organization): RedirectResponse
     {
-        $organization = $this->current->organization();
         $name = $request->string('name')->toString();
 
         $project = $organization->projects()->create([
@@ -49,10 +44,8 @@ class ProjectController extends Controller
             ->with('success', 'The project has been created.');
     }
 
-    public function show(Project $project): View
+    public function show(Organization $organization, Project $project): View
     {
-        $this->ensureCurrent($project);
-
         Gate::authorize('view', $project);
 
         return view('projects.show', [
@@ -60,10 +53,8 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function edit(Project $project): View
+    public function edit(Organization $organization, Project $project): View
     {
-        $this->ensureCurrent($project);
-
         Gate::authorize('update', $project);
 
         return view('projects.edit', [
@@ -71,7 +62,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function update(UpdateProjectRequest $request, Project $project): RedirectResponse
+    public function update(UpdateProjectRequest $request, Organization $organization, Project $project): RedirectResponse
     {
         $project->update([
             'name' => $request->string('name')->toString(),
@@ -81,15 +72,5 @@ class ProjectController extends Controller
         return redirect()
             ->route('projects.show', $project)
             ->with('success', 'The project has been updated.');
-    }
-
-    /**
-     * Hide another organization's project rather than refusing it.
-     */
-    private function ensureCurrent(Project $project): void
-    {
-        if ($project->organization()->isNot($this->current->organization())) {
-            abort(404);
-        }
     }
 }
