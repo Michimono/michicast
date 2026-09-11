@@ -12,6 +12,7 @@ use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfilePasswordController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\SetCurrentOrganization;
@@ -60,6 +61,8 @@ Route::middleware('auth')->group(function (): void {
 
     Route::middleware(SetCurrentOrganization::class)->group(function (): void {
         Route::view('/dashboard', 'dashboard')->name('dashboard');
+
+        Route::resource('projects', ProjectController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
 
         Route::resource('members', MemberController::class)->only(['index', 'destroy']);
 

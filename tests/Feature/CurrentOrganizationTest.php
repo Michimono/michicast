@@ -132,6 +132,7 @@ class CurrentOrganizationTest extends TestCase
             ->get(route('organizations.create'))
             ->assertOk()
             ->assertDontSee(route('current-organization.update'), false)
-            ->assertDontSee(route('members.index'), false);
+            ->assertDontSee(route('members.index'), false)
+            ->assertDontSee(route('projects.index'), false);
     }
 }
