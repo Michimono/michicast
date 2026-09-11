@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\ProjectStatus;
 use App\Models\Organization;
 use App\Models\Project;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -29,6 +30,7 @@ class ProjectFactory extends Factory
             'schedule' => null,
             'timezone' => null,
             'next_run_at' => null,
+            'claimed_at' => null,
         ];
     }
 
@@ -66,6 +68,17 @@ class ProjectFactory extends Factory
                 'hours' => $hours,
             ],
             'timezone' => $timezone,
+        ]);
+    }
+
+    public function due(?DateTimeInterface $at = null): static
+    {
+        return $this->active()->state(fn (): array => [
+            'schedule' => [
+                'frequency' => 'daily',
+                'time' => '09:00',
+            ],
+            'next_run_at' => $at ?? now()->subMinute(),
         ]);
     }
 
