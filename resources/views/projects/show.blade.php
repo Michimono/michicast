@@ -9,9 +9,21 @@
             <p class="text-sm text-ink">{{ $project->description }}</p>
         @endif
 
+        @if ($project->next_run_at)
+            <p class="font-mono text-sm text-ink">
+                Next run {{ $project->next_run_at->timezone($project->effectiveTimezone())->format('l, F j, Y \a\t g:i A T') }}
+            </p>
+            <p class="text-sm text-muted">
+                Shown in {{ $project->effectiveTimezone() }}, the {{ $project->hasTimezoneOverride() ? 'project override' : 'organization timezone' }}.
+            </p>
+        @else
+            <p class="text-sm text-muted">This project has no schedule yet.</p>
+        @endif
+
         <div class="flex flex-wrap items-center gap-2">
             @can('update', $project)
                 <x-button href="{{ route('projects.edit', $project) }}" variant="ghost" :paw="false">Edit project</x-button>
+                <x-button href="{{ route('project-schedules.edit', $project) }}" variant="ghost" :paw="false">Schedule</x-button>
             @endcan
 
             @can('changeStatus', $project)

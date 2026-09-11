@@ -16,6 +16,8 @@ use App\Http\Controllers\PausedProjectController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfilePasswordController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectScheduleController;
+use App\Http\Controllers\ProjectSchedulePreviewController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\SetCurrentOrganization;
@@ -66,6 +68,16 @@ Route::middleware('auth')->group(function (): void {
         Route::view('/dashboard', 'dashboard')->name('dashboard');
 
         Route::resource('projects', ProjectController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+
+        Route::singleton('projects.schedule', ProjectScheduleController::class)
+            ->only(['edit', 'update'])
+            ->names([
+                'edit' => 'project-schedules.edit',
+                'update' => 'project-schedules.update',
+            ]);
+
+        Route::match(['POST', 'PATCH'], 'projects/{project}/schedule-preview', [ProjectSchedulePreviewController::class, 'store'])
+            ->name('project-schedule-previews.store');
 
         Route::singleton('projects.active-project', ActiveProjectController::class)
             ->creatable()

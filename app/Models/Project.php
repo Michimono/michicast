@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\ProjectStatus;
 use App\Exceptions\InvalidProjectTransitionException;
+use App\Support\NextRunCalculator;
+use Carbon\CarbonInterface;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -11,11 +13,15 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * @property ProjectStatus $status
  * @property ProjectStatus|null $archived_from
+ * @property array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}|null $schedule
+ * @property string|null $timezone
+ * @property Carbon|null $next_run_at
  */
 #[Fillable(['name', 'slug', 'description'])]
 class Project extends Model
@@ -108,6 +114,7 @@ class Project extends Model
         }
 
         $this->status = ProjectStatus::Active;
+        $this->refreshNextRunAt();
         $this->save();
     }
 
@@ -118,6 +125,7 @@ class Project extends Model
         }
 
         $this->status = ProjectStatus::Paused;
+        $this->refreshNextRunAt();
         $this->save();
     }
 
@@ -128,6 +136,7 @@ class Project extends Model
         }
 
         $this->status = ProjectStatus::Active;
+        $this->refreshNextRunAt();
         $this->save();
     }
 
@@ -139,6 +148,7 @@ class Project extends Model
 
         $this->archived_from = $this->status;
         $this->status = ProjectStatus::Archived;
+        $this->refreshNextRunAt();
         $this->save();
     }
 
@@ -150,7 +160,47 @@ class Project extends Model
 
         $this->status = $this->archived_from ?? ProjectStatus::Draft;
         $this->archived_from = null;
+        $this->refreshNextRunAt();
         $this->save();
+    }
+
+    /**
+     * The timezone the schedule is resolved against.
+     */
+    public function effectiveTimezone(): string
+    {
+        if (is_string($this->timezone) && $this->timezone !== '') {
+            return $this->timezone;
+        }
+
+        return $this->organization->timezone;
+    }
+
+    public function hasTimezoneOverride(): bool
+    {
+        return is_string($this->timezone) && $this->timezone !== '';
+    }
+
+    /**
+     * @param  array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}  $schedule
+     */
+    public function applySchedule(array $schedule, ?string $timezone): void
+    {
+        $this->schedule = $schedule;
+        $this->timezone = $timezone;
+        $this->refreshNextRunAt();
+        $this->save();
+    }
+
+    public function refreshNextRunAt(?CarbonInterface $from = null): void
+    {
+        $next = (new NextRunCalculator)->next(
+            $this->schedule,
+            $this->effectiveTimezone(),
+            $from ?? now(),
+        );
+
+        $this->next_run_at = $next === null ? null : Carbon::instance($next);
     }
 
     /**
@@ -198,6 +248,8 @@ class Project extends Model
         return [
             'status' => ProjectStatus::class,
             'archived_from' => ProjectStatus::class,
+            'schedule' => 'array',
+            'next_run_at' => 'datetime',
         ];
     }
 }

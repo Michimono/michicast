@@ -26,7 +26,47 @@ class ProjectFactory extends Factory
             'slug' => fn (array $attributes): string => Str::slug((string) $attributes['name']).'-'.fake()->unique()->numerify('####'),
             'description' => null,
             'status' => ProjectStatus::Draft,
+            'schedule' => null,
+            'timezone' => null,
+            'next_run_at' => null,
         ];
+    }
+
+    public function dailyAt(string $time, ?string $timezone = null): static
+    {
+        return $this->state(fn (): array => [
+            'schedule' => [
+                'frequency' => 'daily',
+                'time' => $time,
+            ],
+            'timezone' => $timezone,
+        ]);
+    }
+
+    /**
+     * @param  list<int>  $weekdays
+     */
+    public function weeklyAt(string $time, array $weekdays, ?string $timezone = null): static
+    {
+        return $this->state(fn (): array => [
+            'schedule' => [
+                'frequency' => 'weekly',
+                'time' => $time,
+                'weekdays' => $weekdays,
+            ],
+            'timezone' => $timezone,
+        ]);
+    }
+
+    public function everyHours(int $hours, ?string $timezone = null): static
+    {
+        return $this->state(fn (): array => [
+            'schedule' => [
+                'frequency' => 'interval',
+                'hours' => $hours,
+            ],
+            'timezone' => $timezone,
+        ]);
     }
 
     public function active(): static
