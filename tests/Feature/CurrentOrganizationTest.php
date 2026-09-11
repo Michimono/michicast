@@ -27,72 +27,49 @@ class CurrentOrganizationTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('dashboard'))
+            ->assertRedirect(route('organizations.show', $organization));
+
+        $this->actingAs($user)
+            ->get(route('organizations.show', $organization))
             ->assertOk()
             ->assertSee('Michimono Labs');
 
         $this->assertSame($organization->getKey(), session(SetCurrentOrganization::SESSION_KEY));
     }
 
-    public function test_a_user_with_one_organization_sees_its_name_rather_than_a_switcher(): void
+    public function test_visiting_another_organization_is_how_the_user_switches(): void
     {
         $user = User::factory()->create();
-        Organization::factory()->ownedBy($user)->create(['name' => 'Michimono Labs']);
-
-        $this->actingAs($user)
-            ->get(route('dashboard'))
-            ->assertOk()
-            ->assertSee('Michimono Labs')
-            ->assertDontSee(route('current-organization.update'), false);
-    }
-
-    public function test_a_user_with_several_organizations_is_offered_a_switcher(): void
-    {
-        $user = User::factory()->create();
-        Organization::factory()->ownedBy($user)->create(['name' => 'Michimono Labs']);
-        Organization::factory()->withMember($user, Role::Editor)->create(['name' => 'Second Studio']);
-
-        $this->actingAs($user)
-            ->get(route('dashboard'))
-            ->assertOk()
-            ->assertSee(route('current-organization.update'), false)
-            ->assertSee('Michimono Labs')
-            ->assertSee('Second Studio');
-    }
-
-    public function test_switching_changes_the_organization_for_later_requests(): void
-    {
-        $user = User::factory()->create();
-        Organization::factory()->ownedBy($user)->create(['name' => 'Michimono Labs']);
+        $first = Organization::factory()->ownedBy($user)->create(['name' => 'Michimono Labs']);
         $second = Organization::factory()->withMember($user, Role::Editor)->create(['name' => 'Second Studio']);
 
-        $response = $this->actingAs($user)->patch(route('current-organization.update'), [
-            'organization' => $second->getKey(),
-        ]);
+        $this->actingAs($user)
+            ->get(route('organizations.show', $first))
+            ->assertOk()
+            ->assertSee('Michimono Labs');
 
-        $response->assertRedirect(route('dashboard'));
-        $response->assertSessionHas('success');
+        $this->actingAs($user)
+            ->get(route('organizations.show', $second))
+            ->assertOk()
+            ->assertSee('Second Studio')
+            ->assertDontSee('Michimono Labs');
 
         $this->assertSame($second->getKey(), session(SetCurrentOrganization::SESSION_KEY));
 
         $this->actingAs($user)
-            ->get(route('members.index'))
-            ->assertOk()
-            ->assertSee('Second Studio');
+            ->get(route('dashboard'))
+            ->assertRedirect(route('organizations.show', $second));
     }
 
-    public function test_switching_to_an_organization_the_user_does_not_belong_to_is_refused(): void
+    public function test_an_organization_the_user_does_not_belong_to_is_not_found(): void
     {
         $user = User::factory()->create();
-        $own = Organization::factory()->ownedBy($user)->create();
+        Organization::factory()->ownedBy($user)->create();
         $foreign = Organization::factory()->ownedBy(User::factory()->create())->create();
 
         $this->actingAs($user)
-            ->patch(route('current-organization.update'), ['organization' => $foreign->getKey()])
-            ->assertSessionHasErrors('organization');
-
-        $this->actingAs($user)->get(route('dashboard'))->assertOk();
-
-        $this->assertSame($own->getKey(), session(SetCurrentOrganization::SESSION_KEY));
+            ->get(route('organizations.show', $foreign))
+            ->assertNotFound();
     }
 
     public function test_an_organization_id_the_user_never_belonged_to_is_never_honoured(): void
@@ -103,12 +80,8 @@ class CurrentOrganizationTest extends TestCase
 
         $this->actingAs($user)
             ->withSession([SetCurrentOrganization::SESSION_KEY => $foreign->getKey()])
-            ->get(route('members.index'))
-            ->assertOk()
-            ->assertSee('Michimono Labs')
-            ->assertDontSee('Not Yours');
-
-        $this->assertSame($own->getKey(), session(SetCurrentOrganization::SESSION_KEY));
+            ->get(route('dashboard'))
+            ->assertRedirect(route('organizations.show', $own));
     }
 
     public function test_a_new_organization_becomes_the_one_being_worked_in(): void
@@ -116,23 +89,15 @@ class CurrentOrganizationTest extends TestCase
         $user = User::factory()->create();
         Organization::factory()->ownedBy($user)->create(['name' => 'Michimono Labs']);
 
-        $this->actingAs($user)->post(route('organizations.store'), [
+        $response = $this->actingAs($user)->post(route('organizations.store'), [
             'name' => 'Second Studio',
             'timezone' => 'UTC',
-        ])->assertRedirect(route('members.index'));
+        ]);
 
         $second = Organization::query()->where('name', 'Second Studio')->sole();
 
-        $this->assertSame($second->getKey(), session(SetCurrentOrganization::SESSION_KEY));
-    }
+        $response->assertRedirect(route('members.index', $second));
 
-    public function test_the_switcher_stays_out_of_the_way_before_the_first_organization_exists(): void
-    {
-        $this->actingAs(User::factory()->create())
-            ->get(route('organizations.create'))
-            ->assertOk()
-            ->assertDontSee(route('current-organization.update'), false)
-            ->assertDontSee(route('members.index'), false)
-            ->assertDontSee(route('projects.index'), false);
+        $this->assertSame($second->getKey(), session(SetCurrentOrganization::SESSION_KEY));
     }
 }

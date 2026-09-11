@@ -23,10 +23,10 @@ class TimestampDisplayTest extends TestCase
     {
         $user = User::factory()->create(['timezone' => 'Asia/Tokyo']);
 
-        Organization::factory()->ownedBy($user)->create();
+        $organization = Organization::factory()->ownedBy($user)->create();
 
         $this->actingAs($user)
-            ->get(route('dashboard'))
+            ->get(route('organizations.show', $organization))
             ->assertOk()
             ->assertSee('Jan 3, 2026 8:30 AM JST');
     }
@@ -35,10 +35,10 @@ class TimestampDisplayTest extends TestCase
     {
         $user = User::factory()->create(['timezone' => 'UTC']);
 
-        Organization::factory()->ownedBy($user)->create();
+        $organization = Organization::factory()->ownedBy($user)->create();
 
         $this->actingAs($user)
-            ->get(route('dashboard'))
+            ->get(route('organizations.show', $organization))
             ->assertOk()
             ->assertSee('Jan 2, 2026 11:30 PM UTC')
             ->assertSee('datetime="2026-01-02T23:30:00+00:00"', false);

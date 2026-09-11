@@ -22,12 +22,12 @@ class OrganizationInvitationTest extends TestCase
 
         [$owner, $organization] = $this->memberHolding(Role::Owner);
 
-        $response = $this->actingAs($owner)->post(route('invitations.store'), [
+        $response = $this->actingAs($owner)->post(route('invitations.store', $organization), [
             'email' => 'Ada@example.test',
             'role' => Role::Editor->value,
         ]);
 
-        $response->assertRedirect(route('members.index'));
+        $response->assertRedirect(route('members.index', $organization));
         $response->assertSessionHas('success', 'Invitation sent.');
 
         $invitation = OrganizationInvitation::query()->sole();
@@ -47,28 +47,29 @@ class OrganizationInvitationTest extends TestCase
     public function test_guests_cannot_send_or_cancel_invitations(): void
     {
         $invitation = OrganizationInvitation::factory()->create();
+        $organization = $invitation->organization;
 
-        $this->post(route('invitations.store'), [
+        $this->post(route('invitations.store', $organization), [
             'email' => 'ada@example.test',
             'role' => Role::Viewer->value,
         ])->assertRedirect(route('session.create'));
 
-        $this->delete(route('invitations.destroy', $invitation))
+        $this->delete(route('invitations.destroy', [$organization, $invitation]))
             ->assertRedirect(route('session.create'));
     }
 
     public function test_the_invitation_form_is_offered_only_to_administrators(): void
     {
-        [$owner] = $this->memberHolding(Role::Owner);
-        [$editor] = $this->memberHolding(Role::Editor);
+        [$owner, $ownersOrganization] = $this->memberHolding(Role::Owner);
+        [$editor, $editorsOrganization] = $this->memberHolding(Role::Editor);
 
         $this->actingAs($owner)
-            ->get(route('members.index'))
+            ->get(route('members.index', $ownersOrganization))
             ->assertOk()
             ->assertSee('Send invitation');
 
         $this->actingAs($editor)
-            ->get(route('members.index'))
+            ->get(route('members.index', $editorsOrganization))
             ->assertOk()
             ->assertDontSee('Send invitation');
     }
@@ -77,10 +78,10 @@ class OrganizationInvitationTest extends TestCase
     {
         Mail::fake();
 
-        [$owner] = $this->memberHolding(Role::Owner);
+        [$owner, $organization] = $this->memberHolding(Role::Owner);
 
         $this->actingAs($owner)
-            ->post(route('invitations.store'), [])
+            ->post(route('invitations.store', $organization), [])
             ->assertSessionHasErrors(['email', 'role']);
 
         Mail::assertNothingSent();
@@ -90,11 +91,11 @@ class OrganizationInvitationTest extends TestCase
     {
         Mail::fake();
 
-        [$owner] = $this->memberHolding(Role::Owner);
+        [$owner, $organization] = $this->memberHolding(Role::Owner);
         $existing = User::factory()->create(['email' => 'ada@example.test']);
 
         $this->actingAs($owner)
-            ->post(route('invitations.store'), [
+            ->post(route('invitations.store', $organization), [
                 'email' => 'ada@example.test',
                 'role' => Role::Viewer->value,
             ])
@@ -113,7 +114,7 @@ class OrganizationInvitationTest extends TestCase
         $organization->members()->create(['user_id' => $member->getKey(), 'role' => Role::Viewer]);
 
         $this->actingAs($owner)
-            ->post(route('invitations.store'), [
+            ->post(route('invitations.store', $organization), [
                 'email' => 'Ada@example.test',
                 'role' => Role::Editor->value,
             ])
@@ -128,10 +129,10 @@ class OrganizationInvitationTest extends TestCase
     {
         Mail::fake();
 
-        [$user] = $this->memberHolding($role);
+        [$user, $organization] = $this->memberHolding($role);
 
         $this->actingAs($user)
-            ->post(route('invitations.store'), [
+            ->post(route('invitations.store', $organization), [
                 'email' => 'ada@example.test',
                 'role' => Role::Viewer->value,
             ])
@@ -162,7 +163,7 @@ class OrganizationInvitationTest extends TestCase
 
         $this->actingAs($invitee)
             ->patch(route('invitation-acceptances.update', $token))
-            ->assertRedirect(route('members.index'))
+            ->assertRedirect(route('members.index', $organization))
             ->assertSessionHas('success');
 
         $this->assertSame(Role::Editor, $organization->fresh()->roleFor($invitee));
@@ -197,7 +198,7 @@ class OrganizationInvitationTest extends TestCase
         ])->assertRedirect(route('invitation-acceptances.edit', 'invitation-token'));
 
         $this->patch(route('invitation-acceptances.update', 'invitation-token'))
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('members.index', $organization));
 
         $this->assertSame(Role::Editor, $organization->fresh()->roleFor($invitee));
     }
@@ -252,7 +253,7 @@ class OrganizationInvitationTest extends TestCase
         $this->assertAuthenticated();
 
         $this->patch(route('invitation-acceptances.update', 'invitation-token'))
-            ->assertRedirect(route('members.index'));
+            ->assertRedirect(route('members.index', $organization));
 
         $user = User::whereEmail('ada@example.test')->sole();
 
@@ -340,8 +341,8 @@ class OrganizationInvitationTest extends TestCase
             ->create();
 
         $this->actingAs($owner)
-            ->delete(route('invitations.destroy', $invitation))
-            ->assertRedirect(route('members.index'));
+            ->delete(route('invitations.destroy', [$organization, $invitation]))
+            ->assertRedirect(route('members.index', $organization));
 
         $this->actingAs($invitee)
             ->patch(route('invitation-acceptances.update', 'invitation-token'))
@@ -378,7 +379,7 @@ class OrganizationInvitationTest extends TestCase
             ->create();
 
         $this->actingAs($outsider)
-            ->delete(route('invitations.destroy', $invitation))
+            ->delete(route('invitations.destroy', [$organization, $invitation]))
             ->assertNotFound();
 
         $this->assertDatabaseHas('organization_invitations', ['id' => $invitation->getKey()]);
@@ -396,7 +397,7 @@ class OrganizationInvitationTest extends TestCase
             ->create();
 
         $this->actingAs($editor)
-            ->delete(route('invitations.destroy', $invitation))
+            ->delete(route('invitations.destroy', [$organization, $invitation]))
             ->assertForbidden();
 
         $this->assertDatabaseHas('organization_invitations', ['id' => $invitation->getKey()]);
@@ -411,14 +412,14 @@ class OrganizationInvitationTest extends TestCase
     {
         Mail::fake();
 
-        [$owner] = $this->memberHolding(Role::Owner);
+        [$owner, $organization] = $this->memberHolding(Role::Owner);
 
-        $this->actingAs($owner)->post(route('invitations.store'), [
+        $this->actingAs($owner)->post(route('invitations.store', $organization), [
             'email' => 'ada@example.test',
             'role' => Role::Viewer->value,
         ]);
 
-        $this->actingAs($owner)->post(route('invitations.store'), [
+        $this->actingAs($owner)->post(route('invitations.store', $organization), [
             'email' => 'ada@example.test',
             'role' => Role::Editor->value,
         ])->assertSessionHasNoErrors();

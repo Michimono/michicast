@@ -20,7 +20,7 @@ class ProjectLifecycleTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
 
         $this->actingAs($user)
-            ->post(route('projects.store'), ['name' => 'News'])
+            ->post(route('projects.store', $organization), ['name' => 'News'])
             ->assertSessionHasNoErrors();
 
         $project = $organization->projects()->sole();
@@ -35,8 +35,8 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('active-projects.store', $project))
-            ->assertRedirect(route('projects.show', $project))
+            ->post(route('active-projects.store', [$organization, $project]))
+            ->assertRedirect(route('projects.show', [$organization, $project]))
             ->assertSessionHas('success', 'The project has been activated.');
 
         $project->refresh();
@@ -51,8 +51,8 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->active()->create();
 
         $this->actingAs($user)
-            ->post(route('paused-projects.store', $project))
-            ->assertRedirect(route('projects.show', $project))
+            ->post(route('paused-projects.store', [$organization, $project]))
+            ->assertRedirect(route('projects.show', [$organization, $project]))
             ->assertSessionHas('success', 'The project has been paused.');
 
         $project->refresh();
@@ -67,8 +67,8 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->paused()->create();
 
         $this->actingAs($user)
-            ->delete(route('paused-projects.destroy', $project))
-            ->assertRedirect(route('projects.show', $project))
+            ->delete(route('paused-projects.destroy', [$organization, $project]))
+            ->assertRedirect(route('projects.show', [$organization, $project]))
             ->assertSessionHas('success', 'The project has been resumed.');
 
         $project->refresh();
@@ -85,8 +85,8 @@ class ProjectLifecycleTest extends TestCase
         $previous = $project->status;
 
         $this->actingAs($user)
-            ->post(route('archived-projects.store', $project))
-            ->assertRedirect(route('projects.show', $project))
+            ->post(route('archived-projects.store', [$organization, $project]))
+            ->assertRedirect(route('projects.show', [$organization, $project]))
             ->assertSessionHas('success', 'The project has been archived.');
 
         $project->refresh();
@@ -102,8 +102,8 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->archived(ProjectStatus::Active)->create();
 
         $this->actingAs($user)
-            ->delete(route('archived-projects.destroy', $project))
-            ->assertRedirect(route('projects.show', $project))
+            ->delete(route('archived-projects.destroy', [$organization, $project]))
+            ->assertRedirect(route('projects.show', [$organization, $project]))
             ->assertSessionHas('success', 'The project has been restored.');
 
         $project->refresh();
@@ -120,11 +120,11 @@ class ProjectLifecycleTest extends TestCase
         Project::factory()->for($organization)->archived()->create(['name' => 'Old Pipeline']);
 
         $this->actingAs($user)
-            ->get(route('projects.index'))
+            ->get(route('projects.index', $organization))
             ->assertOk()
             ->assertSee('Live Pipeline')
             ->assertDontSee('Old Pipeline')
-            ->assertSee(route('projects.show', $visible), false)
+            ->assertSee(route('projects.show', [$organization, $visible]), false)
             ->assertSee('Draft');
 
         $this->assertSame(
@@ -139,7 +139,7 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->archived()->create(['name' => 'Old Pipeline']);
 
         $this->actingAs($user)
-            ->get(route('projects.show', $project))
+            ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Old Pipeline')
             ->assertSee('Archived')
@@ -153,7 +153,7 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', $project))
+            ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Activate')
             ->assertSee('Archive')
@@ -168,7 +168,7 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('active-projects.store', $project))
+            ->post(route('active-projects.store', [$organization, $project]))
             ->assertForbidden();
 
         $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
@@ -178,7 +178,7 @@ class ProjectLifecycleTest extends TestCase
     {
         $project = Project::factory()->create();
 
-        $this->post(route('active-projects.store', $project))
+        $this->post(route('active-projects.store', [$project->organization, $project]))
             ->assertRedirect(route('session.create'));
 
         $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
@@ -191,7 +191,7 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($outsider)
-            ->post(route('active-projects.store', $project))
+            ->post(route('active-projects.store', [$organization, $project]))
             ->assertNotFound();
 
         $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
@@ -209,7 +209,7 @@ class ProjectLifecycleTest extends TestCase
         $status = $project->status;
 
         $this->actingAs($user)
-            ->{$method}(route($route, $project))
+            ->{$method}(route($route, [$organization, $project]))
             ->assertRedirect()
             ->assertSessionHas('error', $message);
 

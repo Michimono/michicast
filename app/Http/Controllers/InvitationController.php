@@ -5,19 +5,16 @@ namespace App\Http\Controllers;
 use App\Enums\Role;
 use App\Http\Requests\StoreInvitationRequest;
 use App\Mail\OrganizationInvitationMail;
+use App\Models\Organization;
 use App\Models\OrganizationInvitation;
-use App\Support\CurrentOrganization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 
 class InvitationController extends Controller
 {
-    public function __construct(private CurrentOrganization $current) {}
-
-    public function store(StoreInvitationRequest $request): RedirectResponse
+    public function store(StoreInvitationRequest $request, Organization $organization): RedirectResponse
     {
-        $organization = $this->current->organization();
         $email = $request->normalizedEmail();
         $plain = OrganizationInvitation::generatePlainToken();
 
@@ -44,12 +41,8 @@ class InvitationController extends Controller
             ->with('success', 'Invitation sent.');
     }
 
-    public function destroy(OrganizationInvitation $invitation): RedirectResponse
+    public function destroy(Organization $organization, OrganizationInvitation $invitation): RedirectResponse
     {
-        if ($invitation->organization()->isNot($this->current->organization())) {
-            abort(404);
-        }
-
         Gate::authorize('delete', $invitation);
 
         $invitation->delete();

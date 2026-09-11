@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Enums\Role;
 use App\Http\Middleware\SetCurrentOrganization;
+use App\Models\Organization;
 use App\Models\OrganizationMember;
-use App\Support\CurrentOrganization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -13,12 +13,8 @@ use Illuminate\View\View;
 
 class MemberController extends Controller
 {
-    public function __construct(private CurrentOrganization $current) {}
-
-    public function index(): View
+    public function index(Organization $organization): View
     {
-        $organization = $this->current->organization();
-
         Gate::authorize('view', $organization);
 
         return view('members.index', [
@@ -29,12 +25,8 @@ class MemberController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, OrganizationMember $member): RedirectResponse
+    public function destroy(Request $request, Organization $organization, OrganizationMember $member): RedirectResponse
     {
-        if ($member->organization()->isNot($this->current->organization())) {
-            abort(404);
-        }
-
         Gate::authorize('delete', $member);
 
         if ($member->isLastOwner()) {
