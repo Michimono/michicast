@@ -51,4 +51,12 @@ class ProjectPolicy
     {
         return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
     }
+
+    /**
+     * Editors and above queue a project for the next dispatcher tick.
+     */
+    public function markDue(User $user, Project $project): bool
+    {
+        return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
+    }
 }

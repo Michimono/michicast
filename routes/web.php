@@ -4,6 +4,7 @@ use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\CurrentOrganizationController;
+use App\Http\Controllers\DueProjectController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MemberController;
@@ -78,6 +79,11 @@ Route::middleware('auth')->group(function (): void {
 
         Route::match(['POST', 'PATCH'], 'projects/{project}/schedule-preview', [ProjectSchedulePreviewController::class, 'store'])
             ->name('project-schedule-previews.store');
+
+        Route::singleton('projects.due-project', DueProjectController::class)
+            ->creatable()
+            ->only(['store'])
+            ->names(['store' => 'due-projects.store']);
 
         Route::singleton('projects.active-project', ActiveProjectController::class)
             ->creatable()

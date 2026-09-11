@@ -71,6 +71,11 @@ class Project extends Model
         return $this->status === ProjectStatus::Active;
     }
 
+    public function canMarkDue(): bool
+    {
+        return $this->status === ProjectStatus::Active;
+    }
+
     public function canActivate(): bool
     {
         return $this->status === ProjectStatus::Draft && $this->hasRequiredBroadcasts();
@@ -162,6 +167,27 @@ class Project extends Model
         $this->status = $this->archived_from ?? ProjectStatus::Draft;
         $this->archived_from = null;
         $this->refreshNextRunAt();
+        $this->save();
+    }
+
+    /**
+     * Queue this project for the next dispatcher tick. Does not run it.
+     */
+    public function markDue(): void
+    {
+        if (! $this->canMarkDue()) {
+            throw new InvalidProjectTransitionException('Only an active project can be marked due.');
+        }
+
+        if ($this->claimed_at !== null) {
+            return;
+        }
+
+        if ($this->next_run_at !== null && $this->next_run_at->lte(now())) {
+            return;
+        }
+
+        $this->next_run_at = now();
         $this->save();
     }
 
