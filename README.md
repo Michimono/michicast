@@ -39,6 +39,14 @@ php artisan test
 git config core.hooksPath .githooks
 ```
 
+## Scheduler
+
+Production uses a single cron entry. The Laravel scheduler ticks every minute and runs due projects inline; there is no queue worker.
+
+```cron
+* * * * * cd /path/to/michicast && php artisan schedule:run >> /dev/null 2>&1
+```
+
 ## Checks
 
 Run these before committing; CI enforces the same three. The workflow in `.github/workflows/ci.yml` runs them on every pull request against a MySQL service container.

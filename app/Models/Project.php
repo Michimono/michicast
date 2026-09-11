@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
  * @property array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}|null $schedule
  * @property string|null $timezone
  * @property Carbon|null $next_run_at
+ * @property Carbon|null $claimed_at
  */
 #[Fillable(['name', 'slug', 'description'])]
 class Project extends Model
@@ -204,6 +205,24 @@ class Project extends Model
     }
 
     /**
+     * Atomically claim this project for a dispatch tick. Returns false when
+     * another tick already holds a fresh claim.
+     */
+    public function claimDueRun(CarbonInterface $now, CarbonInterface $staleBefore): bool
+    {
+        return static::query()
+            ->dispatchable()
+            ->whereKey($this->getKey())
+            ->whereNotNull('next_run_at')
+            ->where('next_run_at', '<=', $now)
+            ->where(function (Builder $query) use ($staleBefore): void {
+                $query->whereNull('claimed_at')
+                    ->orWhere('claimed_at', '<=', $staleBefore);
+            })
+            ->update(['claimed_at' => $now]) === 1;
+    }
+
+    /**
      * @return BelongsTo<Organization, $this>
      */
     public function organization(): BelongsTo
@@ -250,6 +269,7 @@ class Project extends Model
             'archived_from' => ProjectStatus::class,
             'schedule' => 'array',
             'next_run_at' => 'datetime',
+            'claimed_at' => 'datetime',
         ];
     }
 }

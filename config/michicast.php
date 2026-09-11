@@ -28,4 +28,20 @@ return [
 
     'support_email' => env('SUPPORT_EMAIL', 'support@michicast.com'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Due Project Dispatch
+    |--------------------------------------------------------------------------
+    |
+    | The scheduler ticks every minute and runs due projects inline. The time
+    | budget leaves headroom before the next cron tick. A stale claim is
+    | reclaimed after this many seconds so a crashed run does not stick.
+    |
+    */
+
+    'dispatch' => [
+        'time_budget' => (int) env('DISPATCH_TIME_BUDGET', 50),
+        'stale_claim_after' => (int) env('DISPATCH_STALE_CLAIM_AFTER', 120),
+    ],
+
 ];
