@@ -12,10 +12,9 @@
  * between Michimono products. Everything below them is shared house style, so a
  * sibling product changes three hex codes and inherits the rest.
  *
- * Michicast's ramp is Sherbet duo: flamingo into periwinkle. The palette's
- * third stop, butter, was dropped because it measures 1.2:1 against paper and
- * vanishes wherever the gradient is thin. These two hold on both surfaces, so
- * the same ramp serves the light and the night theme.
+ * Michicast's ramp is Wanderer duo: canopy fuchsia into forest blue, drawn from
+ * the misty pine wallpaper. Cool mist paper and navy ink replace Sherbet's warm
+ * cream. Two stops only — the same pair in both themes.
  */
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
@@ -23,26 +22,26 @@
     --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
     --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-    --color-house-1: #ff7ba9;
-    --color-house-2: #7b8bff;
+    --color-house-1: #fe7af8;
+    --color-house-2: #5b8ad4;
 
-    --color-accent: #5a5fd8;
-    --color-accent-lift: #a9b2ff;
+    --color-accent: #2e5490;
+    --color-accent-lift: #89b6d5;
 
-    --color-ink: #16130e;
-    --color-ink-raised: #1e1912;
-    --color-ink-line: #322b21;
-    --color-ink-muted: #a99c88;
-    --color-ink-contrast: #f5f0e7;
+    --color-ink: #12324f;
+    --color-ink-raised: #1c466b;
+    --color-ink-line: #2e5490;
+    --color-ink-muted: #7a9bb8;
+    --color-ink-contrast: #e8f2f8;
 
-    --color-paper: #fbf8f3;
+    --color-paper: #eef5fa;
     --color-paper-raised: #ffffff;
-    --color-line: #e6e0d5;
-    --color-line-strong: #d2c9b9;
-    --color-muted: #6c6355;
+    --color-line: #c5d6e3;
+    --color-line-strong: #9bb4c9;
+    --color-muted: #5a7390;
 
     --color-state-ok: #1d7a52;
-    --color-state-skip: #5b6b7c;
+    --color-state-skip: #5a7390;
     --color-state-fail: #b3261e;
 
     --radius-card: 0.75rem;
@@ -53,9 +52,9 @@
 }
 
 /*
- * Night theme. The ramp does not change — both stops clear 6:1 on ink — so the
+ * Night theme. The ramp does not change — both stops clear on navy ink — so the
  * gradient stays the one signature across themes and only the surfaces flip.
- * The accent pair swaps, because the violet that reads on paper is too dark to
+ * The accent pair swaps, because the navy that reads on paper is too dark to
  * sit on ink, and the states lift to keep their meaning at low luminance.
  *
  * These are locked values, not a working theme. Nothing carries the `dark`
@@ -64,8 +63,8 @@
  * to solve: `hover:bg-ink` on buttons assumes a light background.
  */
 .dark {
-    --color-accent: #a9b2ff;
-    --color-accent-lift: #5a5fd8;
+    --color-accent: #89b6d5;
+    --color-accent-lift: #2e5490;
 
     --color-state-ok: #74d3a6;
     --color-state-skip: #9fb0c2;
@@ -109,10 +108,18 @@
 
 /*
  * Fills a logo silhouette with the gradient, for the moments the mark needs to
- * pop. Requires --mark-src pointing at one of the brand SVGs.
+ * pop. The mask image itself is set inline on the mark so the SVG URL resolves
+ * against the page origin (not the Vite stylesheet origin during `npm run
+ * dev`). Alpha mode keeps the black artwork visible as a silhouette.
  */
 @utility house-mark {
     background-image: var(--house-gradient);
-    -webkit-mask: var(--mark-src) no-repeat center / contain;
-    mask: var(--mark-src) no-repeat center / contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    -webkit-mask-source-type: alpha;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    mask-mode: alpha;
 }

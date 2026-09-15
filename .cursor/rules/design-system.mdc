@@ -10,17 +10,17 @@ Michicast is a Michimono product. The house style — neutrals, type, shape, mot
 
 ## The locked ramp
 
-**Sherbet duo.** Flamingo `#FF7BA9` → periwinkle `#7B8BFF`, accent periwinkle-violet `#5A5FD8`, lift `#A9B2FF`. Settled by the product owner. Do not substitute a stop, add a third, or re-pick; propose a change to the human instead.
+**Wanderer duo.** Canopy fuchsia `#FE7AF8` → forest blue `#5B8AD4`, accent navy `#2E5490`, lift mist `#89B6D5`. Settled by the product owner (issue #76). Do not substitute a stop, add a third, or re-pick; propose a change to the human instead.
 
-Two stops, not three, and the same two in both themes. Sherbet began as butter → flamingo → periwinkle, but butter measures **1.2:1** against paper: at the sizes the gradient is actually used — a 2 px underline, a 1 px border, a 4 px track — the opening third of every sweep simply disappeared. The surviving pair measures 2.3:1 and 2.8:1 on paper and 7.6:1 and 6.2:1 on ink, which is what makes one ramp viable across light and dark. The night theme therefore flips surfaces and swaps the accent pair; the signature itself never changes, which is the whole point of having one.
+Two stops, not three, and the same two in both themes. Cool mist paper and navy ink replace the retired Sherbet cream ramp. The night theme therefore flips surfaces and swaps the accent pair; the signature itself never changes, which is the whole point of having one.
 
-Butter is retired, not parked. Do not reintroduce it as a dark-theme-only stop.
+Sherbet (flamingo → periwinkle on warm cream) is retired. Do not reintroduce its stops, butter as a third stop, or warm cream paper.
 
-Rejected along the way, so nobody re-proposes them: Marmalade, Koi and Neon citrus (a dark stop inside the ramp, or a stop that fights the delivery states); Sakura dusk, Ukiyo sunset, Kingyo and Matcha momo (warm middles crowd the failure red, or weak accents); Seiji, which was briefly the night palette until one ramp for both themes proved stronger; and deepening butter to marigold `#E9A020`, which still only reaches 2.1:1.
+Rejected along the way, so nobody re-proposes them: Marmalade, Koi and Neon citrus (a dark stop inside the ramp, or a stop that fights the delivery states); Sakura dusk, Ukiyo sunset, Kingyo and Matcha momo (warm middles crowd the failure red, or weak accents); Seiji, which was briefly the night palette until one ramp for both themes proved stronger; deepening butter to marigold `#E9A020`; and Sherbet once Wanderer became the house look.
 
 ## Contrast floors
 
-The gradient is decoration and never carries body text — neither stop reaches the 4.5:1 that small text needs on paper. Display-size lettering, marks, rules, tracks and borders only. Readable text uses `ink` on paper (14:1) or `accent` for links (4.9:1); on ink it is `ink-contrast` and the dark `accent` (9.4:1). Any new colour must be measured against the surface it lands on before it goes in.
+The gradient is decoration and never carries body text — neither stop reaches the 4.5:1 that small text needs on paper. Display-size lettering, marks, rules, tracks and borders only. Readable text uses `ink` on paper or `accent` for links; on ink it is `ink-contrast` and the dark `accent`. Any new colour must be measured against the surface it lands on before it goes in.
 
 ## Chrome is light
 
@@ -36,6 +36,10 @@ All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the genera
 - Product accent: `accent` for links, primary buttons and focus rings; `accent-lift` is its counterpart on the opposite surface. The pair swaps under `.dark`, so `accent` always means "the interactive colour that reads here".
 - House stops: `house-1`, `house-2`, composed as `--house-gradient`. Reach for the gradient, not the stops; nothing should use a single stop as a flat colour.
 
+## Do not PHPUnit the palette
+
+Theme hex values, CSS utilities, inline mask/style recipes, and visual contrast are not PHPUnit coverage. Spot-check the shell in a browser when tokens or `house-*` utilities change. Assert markup structure and behaviour in tests (which component path rendered, accessible names), not computed colours or stylesheet declarations.
+
 ## Type roles
 
 - `font-display` (Instrument Serif) — the wordmark, page and card headings. Weight 400 only; the serif *is* the emphasis, so do not bold it.
@@ -46,7 +50,7 @@ All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the genera
 
 The house gradient is a signature, not a surface treatment. It is allowed only in these places, via the `house-*` utilities:
 
-- `house-mark` — the logo filled with the gradient, and only where the mark needs to pop: empty states, auth screens, marketing. Chrome uses the flat mark.
+- `house-mark` — the logo filled with the gradient, and only where the mark needs to pop: empty states, auth screens, marketing. Chrome uses the flat mark. The mask image is set inline so the SVG URL resolves against the page.
 - `house-underline` — the active navigation item.
 - `house-fill` — the kicker rule beside a card heading, status rings, outlined pills, progress bars and sparklines.
 - `house-text` — one hero figure per screen at most.

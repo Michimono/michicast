@@ -9,4 +9,6 @@ A passing existing suite is not coverage for new behaviour. If the issue changes
 
 Follow the `testing-best-practices` skill: prefer feature tests for HTTP and other request-visible behaviour; write a unit test only when the logic does not use the framework.
 
+Do not PHPUnit theme tokens, CSS utilities, inline styles, or visual appearance. Those belong to the design system and a browser spot-check; see `.cursor/rules/design-system.mdc`.
+
 Issues that only change documentation, agent skills, rules, or other non-runtime files are exempt when no application behaviour changed.

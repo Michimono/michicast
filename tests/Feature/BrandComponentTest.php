@@ -46,6 +46,7 @@ class BrandComponentTest extends TestCase
     {
         $this->blade('<x-brand.mark variant="cat" gradient class="h-16" />')
             ->assertSee('house-mark', false)
-            ->assertSee("--mark-src: url('/images/brand/logo-day-full.svg')", false);
+            ->assertSee('role="img"', false)
+            ->assertDontSee('<img', false);
     }
 }
