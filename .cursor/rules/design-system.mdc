@@ -36,6 +36,10 @@ All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the genera
 - Product accent: `accent` for links, primary buttons and focus rings; `accent-lift` is its counterpart on the opposite surface. The pair swaps under `.dark`, so `accent` always means "the interactive colour that reads here".
 - House stops: `house-1`, `house-2`, composed as `--house-gradient`. Reach for the gradient, not the stops; nothing should use a single stop as a flat colour.
 
+## Do not PHPUnit the palette
+
+Theme hex values, CSS utilities, inline mask/style recipes, and visual contrast are not PHPUnit coverage. Spot-check the shell in a browser when tokens or `house-*` utilities change. Assert markup structure and behaviour in tests (which component path rendered, accessible names), not computed colours or stylesheet declarations.
+
 ## Type roles
 
 - `font-display` (Instrument Serif) — the wordmark, page and card headings. Weight 400 only; the serif *is* the emphasis, so do not bold it.
