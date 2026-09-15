@@ -108,10 +108,18 @@
 
 /*
  * Fills a logo silhouette with the gradient, for the moments the mark needs to
- * pop. Requires --mark-src pointing at one of the brand SVGs.
+ * pop. The mask image itself is set inline on the mark so the SVG URL resolves
+ * against the page origin (not the Vite stylesheet origin during `npm run
+ * dev`). Alpha mode keeps the black artwork visible as a silhouette.
  */
 @utility house-mark {
     background-image: var(--house-gradient);
-    -webkit-mask: var(--mark-src) no-repeat center / contain;
-    mask: var(--mark-src) no-repeat center / contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    -webkit-mask-source-type: alpha;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    mask-mode: alpha;
 }

@@ -44,8 +44,10 @@ class BrandComponentTest extends TestCase
 
     public function test_the_mark_can_be_filled_with_the_house_gradient(): void
     {
-        $this->blade('<x-brand.mark variant="cat" gradient class="h-16" />')
-            ->assertSee('house-mark', false)
-            ->assertSee("--mark-src: url('/images/brand/logo-day-full.svg')", false);
+        $html = (string) $this->blade('<x-brand.mark variant="cat" gradient class="h-16" />');
+
+        $this->assertStringContainsString('house-mark', $html);
+        $this->assertStringContainsString("mask-image: url('/images/brand/logo-day-full.svg')", $html);
+        $this->assertStringContainsString('mask-mode: alpha', $html);
     }
 }

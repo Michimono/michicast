@@ -14,7 +14,7 @@
     <span
         role="img"
         aria-label="{{ config('app.name') }}"
-        style="--mark-src: url('{{ $mark['src'] }}')"
+        style="-webkit-mask-image: url('{{ $mark['src'] }}'); -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; -webkit-mask-size: contain; -webkit-mask-source-type: alpha; mask-image: url('{{ $mark['src'] }}'); mask-repeat: no-repeat; mask-position: center; mask-size: contain; mask-mode: alpha"
         {{ $attributes->class(['house-mark block', $mark['aspect']]) }}
     ></span>
 @else

@@ -46,7 +46,7 @@ All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the genera
 
 The house gradient is a signature, not a surface treatment. It is allowed only in these places, via the `house-*` utilities:
 
-- `house-mark` — the logo filled with the gradient, and only where the mark needs to pop: empty states, auth screens, marketing. Chrome uses the flat mark.
+- `house-mark` — the logo filled with the gradient, and only where the mark needs to pop: empty states, auth screens, marketing. Chrome uses the flat mark. The mask image is set inline so the SVG URL resolves against the page.
 - `house-underline` — the active navigation item.
 - `house-fill` — the kicker rule beside a card heading, status rings, outlined pills, progress bars and sparklines.
 - `house-text` — one hero figure per screen at most.
