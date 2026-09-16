@@ -6,8 +6,10 @@ use App\Models\User;
 use App\Support\CurrentOrganization;
 use App\Support\ProjectRunner;
 use App\Support\RecordingProjectRunner;
+use App\Support\SourceProviderRegistry;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -28,6 +30,16 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(CurrentOrganization::class);
+
+        $this->app->singleton(SourceProviderRegistry::class, function (Application $app): SourceProviderRegistry {
+            $registry = new SourceProviderRegistry($app);
+
+            foreach ((array) config('michicast.sources', []) as $type => $provider) {
+                $registry->register((string) $type, $provider);
+            }
+
+            return $registry;
+        });
     }
 
     /**

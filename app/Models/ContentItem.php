@@ -33,6 +33,22 @@ use Illuminate\Support\Carbon;
  * @property array<string, mixed>|null $raw_payload
  * @property Carbon|null $published_at
  * @property Carbon $discovered_at
+ *
+ * @phpstan-type ContentItemAttributes array{
+ *     project_id: int,
+ *     source_id: int,
+ *     external_id?: string|null,
+ *     canonical_url?: string|null,
+ *     title?: string|null,
+ *     body?: string|null,
+ *     author?: string|null,
+ *     published_at?: Carbon|\DateTimeInterface|string|null,
+ *     media?: list<array<array-key, mixed>>|null,
+ *     metadata?: array<array-key, mixed>|null,
+ *     raw_payload?: array<array-key, mixed>|null,
+ *     lifecycle?: ContentItemLifecycle|string|null,
+ *     discovered_at?: Carbon|\DateTimeInterface|string|null
+ * }
  */
 #[Fillable([
     'project_id',
@@ -67,27 +83,24 @@ class ContentItem extends Model
      * Persist by identity. Same identity + same hash is a no-op; same identity +
      * changed hash updates the existing row.
      *
-     * @param  array{
-     *     project_id: int,
-     *     source_id: int,
-     *     external_id?: string|null,
-     *     canonical_url?: string|null,
-     *     title?: string|null,
-     *     body?: string|null,
-     *     author?: string|null,
-     *     published_at?: Carbon|\DateTimeInterface|string|null,
-     *     media?: list<array<string, mixed>>|null,
-     *     metadata?: array<string, mixed>|null,
-     *     raw_payload?: array<string, mixed>|null,
-     *     lifecycle?: ContentItemLifecycle|string|null,
-     *     discovered_at?: Carbon|\DateTimeInterface|string|null
-     * }  $attributes
+     * @param  ContentItemAttributes  $attributes
      */
     public static function record(array $attributes): self
     {
+        return self::normalize($attributes)->persist();
+    }
+
+    /**
+     * Put a source's raw item into the canonical shape, with its identity and
+     * content hash resolved. The item is not saved, so providers can hand back
+     * items the caller decides what to do with.
+     *
+     * @param  ContentItemAttributes  $attributes
+     */
+    public static function normalize(array $attributes): self
+    {
         $externalId = self::nullableString($attributes['external_id'] ?? null);
         $canonicalUrl = self::nullableString($attributes['canonical_url'] ?? null);
-        $identityKey = self::identityKey($externalId, $canonicalUrl);
 
         $title = $attributes['title'] ?? null;
         $body = $attributes['body'] ?? null;
@@ -99,26 +112,11 @@ class ContentItem extends Model
             $media = null;
         }
 
-        $contentHash = $hasher->hash([
-            'title' => $title,
-            'body' => $body,
-            'author' => $author,
-            'published_at' => $publishedAt,
-            'canonical_url' => $canonicalUrl,
-            'media' => $media,
-        ]);
-
-        $item = static::query()->firstOrNew([
-            'source_id' => $attributes['source_id'],
-            'identity_key' => $identityKey,
-        ]);
-
-        if ($item->exists && $item->content_hash === $contentHash) {
-            return $item;
-        }
+        $item = new self;
 
         $item->fill([
             'project_id' => $attributes['project_id'],
+            'source_id' => $attributes['source_id'],
             'external_id' => $externalId,
             'canonical_url' => $canonicalUrl,
             'title' => $title,
@@ -130,17 +128,60 @@ class ContentItem extends Model
             'raw_payload' => $attributes['raw_payload'] ?? null,
         ]);
 
-        $item->identity_key = $identityKey;
-        $item->content_hash = $contentHash;
-
-        if (! $item->exists) {
-            $item->discovered_at = Carbon::parse($attributes['discovered_at'] ?? now());
-            $item->lifecycle = $attributes['lifecycle'] ?? ContentItemLifecycle::Discovered;
-        }
-
-        $item->save();
+        $item->identity_key = self::identityKey($externalId, $canonicalUrl);
+        $item->content_hash = $hasher->hash([
+            'title' => $title,
+            'body' => $body,
+            'author' => $author,
+            'published_at' => $publishedAt,
+            'canonical_url' => $canonicalUrl,
+            'media' => $media,
+        ]);
+        $item->discovered_at = Carbon::parse($attributes['discovered_at'] ?? now());
+        $item->lifecycle = $attributes['lifecycle'] ?? ContentItemLifecycle::Discovered;
 
         return $item;
+    }
+
+    /**
+     * Store this normalized item under its identity. When the source has shown
+     * the identity before, the existing row is updated rather than duplicated,
+     * and its discovery time and lifecycle are left alone.
+     */
+    public function persist(): self
+    {
+        $existing = static::query()
+            ->where('source_id', $this->source_id)
+            ->where('identity_key', $this->identity_key)
+            ->first();
+
+        if ($existing === null) {
+            $this->save();
+
+            return $this;
+        }
+
+        if ($existing->content_hash === $this->content_hash) {
+            return $existing;
+        }
+
+        $existing->fill($this->only([
+            'project_id',
+            'external_id',
+            'canonical_url',
+            'title',
+            'body',
+            'author',
+            'published_at',
+            'media',
+            'metadata',
+            'raw_payload',
+        ]));
+
+        $existing->content_hash = $this->content_hash;
+        $existing->save();
+
+        return $existing;
     }
 
     /**

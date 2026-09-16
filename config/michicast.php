@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\FakeSourceProvider;
+
 return [
 
     /*
@@ -42,6 +44,21 @@ return [
     'dispatch' => [
         'time_budget' => (int) env('DISPATCH_TIME_BUDGET', 50),
         'stale_claim_after' => (int) env('DISPATCH_STALE_CLAIM_AFTER', 120),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Source Providers
+    |--------------------------------------------------------------------------
+    |
+    | Source types are resolved through the registry by the key used here, so
+    | adding a provider is a line in this list rather than a change to domain
+    | code. The fake source stands in until the first real provider lands.
+    |
+    */
+
+    'sources' => [
+        'fake' => FakeSourceProvider::class,
     ],
 
 ];
