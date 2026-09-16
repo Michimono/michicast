@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\FakeSourceProvider;
+use App\Support\RecordingDestinationProvider;
 
 return [
 
@@ -59,6 +60,21 @@ return [
 
     'sources' => [
         'fake' => FakeSourceProvider::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Destination Providers
+    |--------------------------------------------------------------------------
+    |
+    | Destination types are resolved the same way sources are. The recording
+    | destination keeps what it was asked to publish instead of sending it,
+    | which stands in until the first real provider lands.
+    |
+    */
+
+    'destinations' => [
+        'recording' => RecordingDestinationProvider::class,
     ],
 
 ];

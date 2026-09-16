@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Support\CurrentOrganization;
+use App\Support\DestinationProviderRegistry;
 use App\Support\ProjectRunner;
 use App\Support\RecordingProjectRunner;
 use App\Support\SourceProviderRegistry;
@@ -35,6 +36,16 @@ class AppServiceProvider extends ServiceProvider
             $registry = new SourceProviderRegistry($app);
 
             foreach ((array) config('michicast.sources', []) as $type => $provider) {
+                $registry->register((string) $type, $provider);
+            }
+
+            return $registry;
+        });
+
+        $this->app->singleton(DestinationProviderRegistry::class, function (Application $app): DestinationProviderRegistry {
+            $registry = new DestinationProviderRegistry($app);
+
+            foreach ((array) config('michicast.destinations', []) as $type => $provider) {
                 $registry->register((string) $type, $provider);
             }
 
