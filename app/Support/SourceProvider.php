@@ -29,6 +29,14 @@ interface SourceProvider
      */
     public function configurationRules(): array;
 
+    /**
+     * The fields a source form renders for this provider, in display order.
+     * Each one is validated by the matching configuration rule.
+     *
+     * @return list<ConfigurationField>
+     */
+    public function configurationFields(): array;
+
     public function capabilities(): SourceProviderCapabilities;
 
     /**

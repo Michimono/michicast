@@ -21,6 +21,10 @@
         @endif
 
         <div class="flex flex-wrap items-center gap-2">
+            @can('viewAny', [App\Models\Source::class, $project])
+                <x-button href="{{ route('project-sources.index', $project) }}" variant="ghost" :paw="false">Sources</x-button>
+            @endcan
+
             @can('update', $project)
                 <x-button href="{{ route('projects.edit', $project) }}" variant="ghost" :paw="false">Edit project</x-button>
                 <x-button href="{{ route('project-schedules.edit', $project) }}" variant="ghost" :paw="false">Schedule</x-button>

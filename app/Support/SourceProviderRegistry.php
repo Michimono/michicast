@@ -83,4 +83,20 @@ class SourceProviderRegistry
     {
         return $this->get($type)->configurationRules();
     }
+
+    /**
+     * @return list<ConfigurationField>
+     */
+    public function configurationFields(string $type): array
+    {
+        return $this->get($type)->configurationFields();
+    }
+
+    /**
+     * The type to show when a form has not been told which one to render.
+     */
+    public function defaultType(): ?string
+    {
+        return $this->types()[0] ?? null;
+    }
 }

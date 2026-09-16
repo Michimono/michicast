@@ -3,8 +3,10 @@
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\ArchivedProjectController;
+use App\Http\Controllers\ArchivedSourceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DueProjectController;
+use App\Http\Controllers\EnabledSourceController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MemberController;
@@ -19,7 +21,9 @@ use App\Http\Controllers\ProfilePasswordController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectScheduleController;
 use App\Http\Controllers\ProjectSchedulePreviewController;
+use App\Http\Controllers\ProjectSourceController;
 use App\Http\Controllers\SessionController;
+use App\Http\Controllers\SourceController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\SetCurrentOrganization;
 use Illuminate\Support\Facades\Route;
@@ -113,6 +117,32 @@ Route::middleware('auth')->group(function (): void {
                 ->names([
                     'store' => 'archived-projects.store',
                     'destroy' => 'archived-projects.destroy',
+                ]);
+
+            Route::resource('projects.sources', ProjectSourceController::class)
+                ->only(['index', 'create', 'store'])
+                ->names([
+                    'index' => 'project-sources.index',
+                    'create' => 'project-sources.create',
+                    'store' => 'project-sources.store',
+                ]);
+
+            Route::resource('sources', SourceController::class)->only(['edit', 'update']);
+
+            Route::singleton('sources.enabled-source', EnabledSourceController::class)
+                ->creatable()
+                ->only(['store', 'destroy'])
+                ->names([
+                    'store' => 'enabled-sources.store',
+                    'destroy' => 'enabled-sources.destroy',
+                ]);
+
+            Route::singleton('sources.archived-source', ArchivedSourceController::class)
+                ->creatable()
+                ->only(['store', 'destroy'])
+                ->names([
+                    'store' => 'archived-sources.store',
+                    'destroy' => 'archived-sources.destroy',
                 ]);
 
             Route::resource('members', MemberController::class)->only(['index', 'destroy']);

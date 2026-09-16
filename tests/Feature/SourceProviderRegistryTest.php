@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ConfigurationFieldType;
 use App\Exceptions\UnknownSourceProviderException;
 use App\Models\ContentItem;
 use App\Models\Project;
@@ -53,6 +54,17 @@ class SourceProviderRegistryTest extends TestCase
     public function test_capabilities_are_queried_without_knowing_the_provider(): void
     {
         $this->assertTrue($this->registry()->capabilities('fake')->supportsConnectionTest);
+    }
+
+    public function test_a_provider_declares_the_fields_a_form_renders_for_it(): void
+    {
+        $fields = $this->registry()->configurationFields('fake');
+
+        $this->assertCount(1, $fields);
+        $this->assertSame('feed_url', $fields[0]->name);
+        $this->assertSame('Feed URL', $fields[0]->label);
+        $this->assertSame(ConfigurationFieldType::Url, $fields[0]->type);
+        $this->assertArrayHasKey($fields[0]->name, $this->registry()->configurationRules('fake'));
     }
 
     public function test_configuration_is_validated_against_the_provider_rules(): void
