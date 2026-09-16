@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Str;
 
 #[Fillable(['name', 'slug', 'timezone', 'plan'])]
@@ -72,5 +73,17 @@ class Organization extends Model
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
+    }
+
+    /**
+     * Every source under this organization's projects. Scoped route bindings
+     * resolve `sources/{source}` through this, so another organization's
+     * source is a 404 rather than a record to authorize.
+     *
+     * @return HasManyThrough<Source, Project, $this>
+     */
+    public function sources(): HasManyThrough
+    {
+        return $this->hasManyThrough(Source::class, Project::class);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\ConfigurationFieldType;
 use App\Models\ContentItem;
 
 /**
@@ -29,6 +30,21 @@ class FakeSourceProvider implements SourceProvider
         return [
             'feed_url' => ['required', 'url'],
             'items' => ['sometimes', 'array'],
+        ];
+    }
+
+    /**
+     * @return list<ConfigurationField>
+     */
+    public function configurationFields(): array
+    {
+        return [
+            new ConfigurationField(
+                name: 'feed_url',
+                label: 'Feed URL',
+                type: ConfigurationFieldType::Url,
+                hint: 'The address this fake source pretends to read.',
+            ),
         ];
     }
 
