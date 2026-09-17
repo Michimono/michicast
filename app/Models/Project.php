@@ -274,6 +274,14 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<Destination, $this>
+     */
+    public function destinations(): HasMany
+    {
+        return $this->hasMany(Destination::class);
+    }
+
+    /**
      * Broadcasts are not modeled yet (M5). Until they exist, activation does
      * not require one.
      */

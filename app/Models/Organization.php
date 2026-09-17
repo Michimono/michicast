@@ -86,4 +86,15 @@ class Organization extends Model
     {
         return $this->hasManyThrough(Source::class, Project::class);
     }
+
+    /**
+     * Every destination under this organization's projects. Scoped route
+     * bindings resolve `destinations/{destination}` through this.
+     *
+     * @return HasManyThrough<Destination, Project, $this>
+     */
+    public function destinations(): HasManyThrough
+    {
+        return $this->hasManyThrough(Destination::class, Project::class);
+    }
 }

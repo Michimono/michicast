@@ -92,4 +92,28 @@ class DestinationProviderRegistry
     {
         return $this->get($type)->credentialRules();
     }
+
+    /**
+     * @return list<ConfigurationField>
+     */
+    public function configurationFields(string $type): array
+    {
+        return $this->get($type)->configurationFields();
+    }
+
+    /**
+     * @return list<ConfigurationField>
+     */
+    public function credentialFields(string $type): array
+    {
+        return $this->get($type)->credentialFields();
+    }
+
+    /**
+     * The type to show when a form has not been told which one to render.
+     */
+    public function defaultType(): ?string
+    {
+        return $this->types()[0] ?? null;
+    }
 }

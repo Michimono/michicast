@@ -2,10 +2,13 @@
 
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
+use App\Http\Controllers\ArchivedDestinationController;
 use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\ArchivedSourceController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
+use App\Http\Controllers\EnabledDestinationController;
 use App\Http\Controllers\EnabledSourceController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationController;
@@ -19,6 +22,7 @@ use App\Http\Controllers\PausedProjectController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfilePasswordController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectDestinationController;
 use App\Http\Controllers\ProjectScheduleController;
 use App\Http\Controllers\ProjectSchedulePreviewController;
 use App\Http\Controllers\ProjectSourceController;
@@ -143,6 +147,32 @@ Route::middleware('auth')->group(function (): void {
                 ->names([
                     'store' => 'archived-sources.store',
                     'destroy' => 'archived-sources.destroy',
+                ]);
+
+            Route::resource('projects.destinations', ProjectDestinationController::class)
+                ->only(['index', 'create', 'store'])
+                ->names([
+                    'index' => 'project-destinations.index',
+                    'create' => 'project-destinations.create',
+                    'store' => 'project-destinations.store',
+                ]);
+
+            Route::resource('destinations', DestinationController::class)->only(['edit', 'update']);
+
+            Route::singleton('destinations.enabled-destination', EnabledDestinationController::class)
+                ->creatable()
+                ->only(['store', 'destroy'])
+                ->names([
+                    'store' => 'enabled-destinations.store',
+                    'destroy' => 'enabled-destinations.destroy',
+                ]);
+
+            Route::singleton('destinations.archived-destination', ArchivedDestinationController::class)
+                ->creatable()
+                ->only(['store', 'destroy'])
+                ->names([
+                    'store' => 'archived-destinations.store',
+                    'destroy' => 'archived-destinations.destroy',
                 ]);
 
             Route::resource('members', MemberController::class)->only(['index', 'destroy']);

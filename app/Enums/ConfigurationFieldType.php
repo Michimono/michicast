@@ -13,4 +13,5 @@ enum ConfigurationFieldType: string
     case Number = 'number';
     case Textarea = 'textarea';
     case Select = 'select';
+    case Password = 'password';
 }

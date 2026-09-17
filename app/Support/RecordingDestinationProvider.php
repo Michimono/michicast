@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\ConfigurationFieldType;
 use Illuminate\Validation\Rule;
 
 /**
@@ -33,8 +34,23 @@ class RecordingDestinationProvider implements DestinationProvider
     public function configurationRules(): array
     {
         return [
-            'channel' => ['required', 'string'],
+            'channel' => ['required', 'string', 'max:255'],
             'outcome' => ['sometimes', Rule::in(['success', 'permanent_failure', 'transient_failure'])],
+        ];
+    }
+
+    /**
+     * @return list<ConfigurationField>
+     */
+    public function configurationFields(): array
+    {
+        return [
+            new ConfigurationField(
+                name: 'channel',
+                label: 'Channel',
+                type: ConfigurationFieldType::Text,
+                hint: 'Where this recording destination pretends to publish.',
+            ),
         ];
     }
 
@@ -45,6 +61,21 @@ class RecordingDestinationProvider implements DestinationProvider
     {
         return [
             'token' => ['required', 'string'],
+        ];
+    }
+
+    /**
+     * @return list<ConfigurationField>
+     */
+    public function credentialFields(): array
+    {
+        return [
+            new ConfigurationField(
+                name: 'token',
+                label: 'Token',
+                type: ConfigurationFieldType::Password,
+                hint: 'Shown only when you type it. Leave blank on edit to keep the stored value.',
+            ),
         ];
     }
 

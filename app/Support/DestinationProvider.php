@@ -27,12 +27,27 @@ interface DestinationProvider
     public function configurationRules(): array;
 
     /**
+     * The fields a destination form renders for visible settings.
+     *
+     * @return list<ConfigurationField>
+     */
+    public function configurationFields(): array;
+
+    /**
      * Validation rules for the provider's secrets, kept apart from the config
      * rules because the two are stored and shown differently.
      *
      * @return array<string, mixed>
      */
     public function credentialRules(): array;
+
+    /**
+     * The secret fields a destination form asks for. Values are never shown
+     * again after save; an empty edit keeps the stored secret.
+     *
+     * @return list<ConfigurationField>
+     */
+    public function credentialFields(): array;
 
     public function capabilities(): DestinationProviderCapabilities;
 
