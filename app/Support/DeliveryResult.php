@@ -16,6 +16,7 @@ readonly class DeliveryResult
         public ?string $externalReference = null,
         public ?string $failureReason = null,
         public ?DeliveryFailure $failure = null,
+        public ?int $retryAfterSeconds = null,
     ) {}
 
     /**
@@ -35,11 +36,13 @@ readonly class DeliveryResult
     }
 
     /**
-     * The attempt failed for a reason that may pass later, such as a timeout.
+     * The attempt failed for a reason that may pass later, such as a timeout
+     * or a rate limit. When the destination says how long to wait, that hint
+     * is carried as retryAfterSeconds.
      */
-    public static function transientFailure(string $reason): self
+    public static function transientFailure(string $reason, ?int $retryAfterSeconds = null): self
     {
-        return new self(false, null, $reason, DeliveryFailure::Transient);
+        return new self(false, null, $reason, DeliveryFailure::Transient, $retryAfterSeconds);
     }
 
     public function isRetryable(): bool

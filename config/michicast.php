@@ -3,6 +3,7 @@
 use App\Support\FakeSourceProvider;
 use App\Support\RecordingDestinationProvider;
 use App\Support\RssSourceProvider;
+use App\Support\TelegramDestinationProvider;
 
 return [
 
@@ -71,12 +72,13 @@ return [
     |
     | Destination types are resolved the same way sources are. The recording
     | destination keeps what it was asked to publish instead of sending it,
-    | which stands in until the first real provider lands.
+    | useful in tests. Telegram is the first live destination.
     |
     */
 
     'destinations' => [
         'recording' => RecordingDestinationProvider::class,
+        'telegram' => TelegramDestinationProvider::class,
     ],
 
 ];
