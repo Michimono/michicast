@@ -3,8 +3,8 @@
 namespace App\Support;
 
 /**
- * One message ready to publish. A transformer builds this from a content item
- * (M6), so destinations never read the item themselves.
+ * One message ready to publish. A transformer builds this from a content item,
+ * so destinations never read the item themselves.
  */
 readonly class PreparedMessage
 {
