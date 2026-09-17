@@ -13,10 +13,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * One route from a source to a destination inside a project. Filter and
- * transform JSON are owned by later issues; this model owns the routing.
+ * One route from a source to a destination inside a project. Filter JSON is
+ * a list of closed rules evaluated with AND; transform JSON lands later.
  *
- * @property array<string, mixed>|null $filter
+ * @property array{rules?: list<array<string, mixed>>}|null $filter
  * @property array<string, mixed>|null $transform
  * @property bool $enabled
  * @property Carbon|null $archived_at

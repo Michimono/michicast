@@ -7,6 +7,7 @@ use App\Http\Controllers\ArchivedDestinationController;
 use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\ArchivedSourceController;
 use App\Http\Controllers\BroadcastController;
+use App\Http\Controllers\BroadcastFilterController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
@@ -188,6 +189,13 @@ Route::middleware('auth')->group(function (): void {
                 ]);
 
             Route::resource('broadcasts', BroadcastController::class)->only(['edit', 'update']);
+
+            Route::singleton('broadcasts.filter', BroadcastFilterController::class)
+                ->only(['edit', 'update'])
+                ->names([
+                    'edit' => 'broadcast-filters.edit',
+                    'update' => 'broadcast-filters.update',
+                ]);
 
             Route::singleton('broadcasts.enabled-broadcast', EnabledBroadcastController::class)
                 ->creatable()
