@@ -25,6 +25,10 @@
                 <x-button href="{{ route('project-sources.index', $project) }}" variant="ghost" :paw="false">Sources</x-button>
             @endcan
 
+            @can('viewAny', [App\Models\Destination::class, $project])
+                <x-button href="{{ route('project-destinations.index', $project) }}" variant="ghost" :paw="false">Destinations</x-button>
+            @endcan
+
             @can('update', $project)
                 <x-button href="{{ route('projects.edit', $project) }}" variant="ghost" :paw="false">Edit project</x-button>
                 <x-button href="{{ route('project-schedules.edit', $project) }}" variant="ghost" :paw="false">Schedule</x-button>

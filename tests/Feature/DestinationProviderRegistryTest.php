@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ConfigurationFieldType;
 use App\Enums\DeliveryFailure;
 use App\Exceptions\UnknownDestinationProviderException;
 use App\Support\DestinationDefinition;
@@ -69,6 +70,21 @@ class DestinationProviderRegistryTest extends TestCase
 
         $this->assertTrue(Validator::make(['channel' => 'updates'], $configurationRules)->passes());
         $this->assertTrue(Validator::make([], $credentialRules)->fails());
+    }
+
+    public function test_a_provider_declares_the_fields_a_form_renders_for_it(): void
+    {
+        $registry = $this->registry();
+        $configFields = $registry->configurationFields('recording');
+        $credentialFields = $registry->credentialFields('recording');
+
+        $this->assertCount(1, $configFields);
+        $this->assertSame('channel', $configFields[0]->name);
+        $this->assertSame(ConfigurationFieldType::Text, $configFields[0]->type);
+
+        $this->assertCount(1, $credentialFields);
+        $this->assertSame('token', $credentialFields[0]->name);
+        $this->assertSame(ConfigurationFieldType::Password, $credentialFields[0]->type);
     }
 
     public function test_a_refused_connection_comes_back_as_a_result(): void
