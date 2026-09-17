@@ -5,8 +5,8 @@ namespace App\Providers;
 use App\Models\User;
 use App\Support\CurrentOrganization;
 use App\Support\DestinationProviderRegistry;
+use App\Support\ExecutingProjectRunner;
 use App\Support\ProjectRunner;
-use App\Support\RecordingProjectRunner;
 use App\Support\SourceProviderRegistry;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     public $bindings = [
-        ProjectRunner::class => RecordingProjectRunner::class,
+        ProjectRunner::class => ExecutingProjectRunner::class,
     ];
 
     /**

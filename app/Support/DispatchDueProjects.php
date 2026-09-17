@@ -34,14 +34,22 @@ class DispatchDueProjects
             $project->refresh();
             $project->loadMissing('organization');
 
+            $completed = true;
+
             try {
-                $this->runner->run($project);
+                $completed = $this->runner->run($project, $deadline);
             } catch (Throwable $e) {
                 report($e);
             }
 
             $project->claimed_at = null;
-            $project->refreshNextRunAt();
+
+            if ($completed) {
+                $project->refreshNextRunAt();
+            } else {
+                $project->next_run_at = now();
+            }
+
             $project->save();
         }
     }
