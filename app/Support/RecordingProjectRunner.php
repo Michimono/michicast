@@ -3,17 +3,21 @@
 namespace App\Support;
 
 use App\Models\Project;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
 
 class RecordingProjectRunner implements ProjectRunner
 {
     /**
-     * Placeholder until the execution engine runs real work. M5 replaces this.
+     * Placeholder kept for tests that want a no-op runner. Production binds
+     * ExecutingProjectRunner instead.
      */
-    public function run(Project $project): void
+    public function run(Project $project, ?CarbonInterface $deadline = null): bool
     {
         Log::info('Project dispatched.', [
             'project_id' => $project->getKey(),
         ]);
+
+        return true;
     }
 }

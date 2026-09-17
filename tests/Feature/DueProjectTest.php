@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
 use App\Support\ProjectRunner;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -199,8 +200,10 @@ class CountingProjectRunner implements ProjectRunner
 {
     public int $runs = 0;
 
-    public function run(Project $project): void
+    public function run(Project $project, ?CarbonInterface $deadline = null): bool
     {
         $this->runs++;
+
+        return true;
     }
 }

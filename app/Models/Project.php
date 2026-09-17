@@ -290,6 +290,14 @@ class Project extends Model
     }
 
     /**
+     * @return HasMany<ProjectRun, $this>
+     */
+    public function runs(): HasMany
+    {
+        return $this->hasMany(ProjectRun::class);
+    }
+
+    /**
      * Activation needs at least one enabled, unarchived broadcast.
      */
     protected function hasRequiredBroadcasts(): bool

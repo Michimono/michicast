@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Support\ProjectRunner;
+use Carbon\CarbonInterface;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -182,7 +183,7 @@ class FakeProjectRunner implements ProjectRunner
         private readonly ?Throwable $failure = null,
     ) {}
 
-    public function run(Project $project): void
+    public function run(Project $project, ?CarbonInterface $deadline = null): bool
     {
         $this->ran[] = (int) $project->getKey();
 
@@ -193,5 +194,7 @@ class FakeProjectRunner implements ProjectRunner
         if ($this->failure !== null) {
             throw $this->failure;
         }
+
+        return true;
     }
 }
