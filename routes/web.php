@@ -8,6 +8,8 @@ use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\ArchivedSourceController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BroadcastFilterController;
+use App\Http\Controllers\BroadcastTransformController;
+use App\Http\Controllers\BroadcastTransformPreviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
@@ -196,6 +198,16 @@ Route::middleware('auth')->group(function (): void {
                     'edit' => 'broadcast-filters.edit',
                     'update' => 'broadcast-filters.update',
                 ]);
+
+            Route::singleton('broadcasts.transform', BroadcastTransformController::class)
+                ->only(['edit', 'update'])
+                ->names([
+                    'edit' => 'broadcast-transforms.edit',
+                    'update' => 'broadcast-transforms.update',
+                ]);
+
+            Route::match(['POST', 'PATCH'], 'broadcasts/{broadcast}/transform-preview', [BroadcastTransformPreviewController::class, 'store'])
+                ->name('broadcast-transform-previews.store');
 
             Route::singleton('broadcasts.enabled-broadcast', EnabledBroadcastController::class)
                 ->creatable()

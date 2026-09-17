@@ -111,3 +111,94 @@ document.addEventListener('click', (event) => {
 
     document.querySelectorAll('[data-filter-rule]').forEach(syncRuleFields);
 })();
+
+/*
+ * Broadcast transform editor: add and remove formatting rules, showing only
+ * the fields each rule type needs.
+ */
+(function () {
+    const lengthTypes = new Set(['truncate']);
+    const valueTypes = new Set(['prepend', 'append']);
+    const patternTypes = new Set(['replace']);
+
+    function syncRuleFields(rule) {
+        const type = rule.querySelector('[data-transform-type]')?.value ?? '';
+        const lengthWrap = rule.querySelector('[data-transform-length-wrap]');
+        const valueWrap = rule.querySelector('[data-transform-value-wrap]');
+        const patternWrap = rule.querySelector('[data-transform-pattern-wrap]');
+        const replacementWrap = rule.querySelector('[data-transform-replacement-wrap]');
+
+        if (lengthWrap !== null) {
+            lengthWrap.hidden = !lengthTypes.has(type);
+        }
+
+        if (valueWrap !== null) {
+            valueWrap.hidden = !valueTypes.has(type);
+        }
+
+        if (patternWrap !== null) {
+            patternWrap.hidden = !patternTypes.has(type);
+        }
+
+        if (replacementWrap !== null) {
+            replacementWrap.hidden = !patternTypes.has(type);
+        }
+    }
+
+    function reindex(form) {
+        form.querySelectorAll('[data-transform-rule]').forEach((rule, index) => {
+            rule.querySelectorAll('[name]').forEach((input) => {
+                input.name = input.name.replace(/rules\[(?:\d+|__INDEX__)\]/, `rules[${index}]`);
+            });
+        });
+    }
+
+    document.addEventListener('change', (event) => {
+        const select = event.target.closest('[data-transform-type]');
+
+        if (select === null) {
+            return;
+        }
+
+        const rule = select.closest('[data-transform-rule]');
+
+        if (rule !== null) {
+            syncRuleFields(rule);
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        const add = event.target.closest('[data-transform-add]');
+
+        if (add !== null) {
+            const form = add.closest('[data-transform-form]');
+            const list = form?.querySelector('[data-transform-rules]');
+            const template = form?.querySelector('[data-transform-rule-template]');
+
+            if (form === null || list === null || template === null) {
+                return;
+            }
+
+            list.appendChild(template.content.cloneNode(true));
+            reindex(form);
+            syncRuleFields(list.lastElementChild);
+
+            return;
+        }
+
+        const remove = event.target.closest('[data-transform-remove]');
+
+        if (remove !== null) {
+            const form = remove.closest('[data-transform-form]');
+            const rule = remove.closest('[data-transform-rule]');
+
+            rule?.remove();
+
+            if (form !== null) {
+                reindex(form);
+            }
+        }
+    });
+
+    document.querySelectorAll('[data-transform-rule]').forEach(syncRuleFields);
+})();

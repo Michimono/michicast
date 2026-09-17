@@ -14,10 +14,11 @@ use Illuminate\Support\Carbon;
 
 /**
  * One route from a source to a destination inside a project. Filter JSON is
- * a list of closed rules evaluated with AND; transform JSON lands later.
+ * a list of closed rules evaluated with AND; transform JSON holds a template
+ * and optional formatting rules.
  *
  * @property array{rules?: list<array<string, mixed>>}|null $filter
- * @property array<string, mixed>|null $transform
+ * @property array{template?: string, rules?: list<array<string, mixed>>}|null $transform
  * @property bool $enabled
  * @property Carbon|null $archived_at
  */

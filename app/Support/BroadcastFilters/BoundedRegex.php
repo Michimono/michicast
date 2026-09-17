@@ -32,6 +32,15 @@ final class BoundedRegex
         });
     }
 
+    public static function replace(string $pattern, string $replacement, string $subject): string
+    {
+        return self::withLimits(function () use ($pattern, $replacement, $subject): string {
+            $result = @preg_replace(self::delimited($pattern), $replacement, $subject);
+
+            return is_string($result) ? $result : $subject;
+        });
+    }
+
     private static function delimited(string $pattern): string
     {
         $delimiter = "\x01";
