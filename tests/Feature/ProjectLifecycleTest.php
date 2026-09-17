@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ProjectStatus;
 use App\Enums\Role;
+use App\Models\Broadcast;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
@@ -33,6 +34,7 @@ class ProjectLifecycleTest extends TestCase
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
+        Broadcast::factory()->for($project)->create();
 
         $this->actingAs($user)
             ->post(route('active-projects.store', [$organization, $project]))
@@ -43,6 +45,18 @@ class ProjectLifecycleTest extends TestCase
 
         $this->assertSame(ProjectStatus::Active, $project->status);
         $this->assertTrue($project->isDispatchable());
+    }
+
+    public function test_a_draft_without_an_enabled_broadcast_cannot_be_activated(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $project = Project::factory()->for($organization)->create();
+
+        $this->actingAs($user)
+            ->post(route('active-projects.store', [$organization, $project]))
+            ->assertSessionHas('error', 'A project cannot be activated until it has at least one enabled broadcast.');
+
+        $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
     }
 
     public function test_an_editor_can_pause_an_active_project(): void
@@ -151,6 +165,7 @@ class ProjectLifecycleTest extends TestCase
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
+        Broadcast::factory()->for($project)->create();
 
         $this->actingAs($user)
             ->get(route('projects.show', [$organization, $project]))
