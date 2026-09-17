@@ -2,12 +2,15 @@
 
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
+use App\Http\Controllers\ArchivedBroadcastController;
 use App\Http\Controllers\ArchivedDestinationController;
 use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\ArchivedSourceController;
+use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
+use App\Http\Controllers\EnabledBroadcastController;
 use App\Http\Controllers\EnabledDestinationController;
 use App\Http\Controllers\EnabledSourceController;
 use App\Http\Controllers\HealthController;
@@ -21,6 +24,7 @@ use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\PausedProjectController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfilePasswordController;
+use App\Http\Controllers\ProjectBroadcastController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectDestinationController;
 use App\Http\Controllers\ProjectScheduleController;
@@ -173,6 +177,32 @@ Route::middleware('auth')->group(function (): void {
                 ->names([
                     'store' => 'archived-destinations.store',
                     'destroy' => 'archived-destinations.destroy',
+                ]);
+
+            Route::resource('projects.broadcasts', ProjectBroadcastController::class)
+                ->only(['index', 'create', 'store'])
+                ->names([
+                    'index' => 'project-broadcasts.index',
+                    'create' => 'project-broadcasts.create',
+                    'store' => 'project-broadcasts.store',
+                ]);
+
+            Route::resource('broadcasts', BroadcastController::class)->only(['edit', 'update']);
+
+            Route::singleton('broadcasts.enabled-broadcast', EnabledBroadcastController::class)
+                ->creatable()
+                ->only(['store', 'destroy'])
+                ->names([
+                    'store' => 'enabled-broadcasts.store',
+                    'destroy' => 'enabled-broadcasts.destroy',
+                ]);
+
+            Route::singleton('broadcasts.archived-broadcast', ArchivedBroadcastController::class)
+                ->creatable()
+                ->only(['store', 'destroy'])
+                ->names([
+                    'store' => 'archived-broadcasts.store',
+                    'destroy' => 'archived-broadcasts.destroy',
                 ]);
 
             Route::resource('members', MemberController::class)->only(['index', 'destroy']);

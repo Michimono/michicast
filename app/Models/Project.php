@@ -282,12 +282,19 @@ class Project extends Model
     }
 
     /**
-     * Broadcasts are not modeled yet (M5). Until they exist, activation does
-     * not require one.
+     * @return HasMany<Broadcast, $this>
+     */
+    public function broadcasts(): HasMany
+    {
+        return $this->hasMany(Broadcast::class);
+    }
+
+    /**
+     * Activation needs at least one enabled, unarchived broadcast.
      */
     protected function hasRequiredBroadcasts(): bool
     {
-        return true;
+        return $this->broadcasts()->runnable()->exists();
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Models\Broadcast;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
@@ -151,6 +152,7 @@ class ProjectScheduleTest extends TestCase
 
         [$user, $organization] = $this->memberHolding(Role::Editor, ['timezone' => 'UTC']);
         $project = Project::factory()->for($organization)->dailyAt('15:00')->create();
+        Broadcast::factory()->for($project)->create();
         $project->refreshNextRunAt();
         $project->save();
 
