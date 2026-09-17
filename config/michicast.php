@@ -2,6 +2,7 @@
 
 use App\Support\FakeSourceProvider;
 use App\Support\RecordingDestinationProvider;
+use App\Support\RssSourceProvider;
 
 return [
 
@@ -60,6 +61,7 @@ return [
 
     'sources' => [
         'fake' => FakeSourceProvider::class,
+        'rss' => RssSourceProvider::class,
     ],
 
     /*
