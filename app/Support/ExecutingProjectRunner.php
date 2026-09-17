@@ -15,11 +15,16 @@ use App\Models\Source;
 use App\Support\BroadcastFilters\BroadcastFilterEvaluator;
 use App\Support\BroadcastTransforms\BroadcastTransformer;
 use Carbon\CarbonInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Throwable;
 
 /**
  * Fetches, filters, transforms and publishes each enabled broadcast on a
  * project, writing project_runs, broadcast_runs and content_deliveries.
+ *
+ * Publish is claim-before-send: a pending delivery row is inserted first so a
+ * crash after the provider returns cannot cause a duplicate publish on the
+ * next tick. The unique route constraint is the source of truth for duplicates.
  */
 class ExecutingProjectRunner implements ProjectRunner
 {
@@ -131,7 +136,21 @@ class ExecutingProjectRunner implements ProjectRunner
                 $broadcastRun->items_new++;
             }
 
-            if ($this->alreadyDelivered($item, $broadcast, $destination->getKey())) {
+            if ($this->isBackfill($item, $broadcast)) {
+                $this->recordSkippedDelivery(
+                    $broadcastRun,
+                    $broadcast,
+                    $item,
+                    (int) $destination->getKey(),
+                    'Item was published before this broadcast existed.',
+                );
+                $this->advanceLifecycle($item, ContentItemLifecycle::Skipped);
+                $broadcastRun->items_skipped++;
+
+                continue;
+            }
+
+            if ($this->deliveryBlocksRepublish($item, $broadcast, (int) $destination->getKey())) {
                 $broadcastRun->items_skipped++;
 
                 continue;
@@ -171,23 +190,13 @@ class ExecutingProjectRunner implements ProjectRunner
     ): void {
         $this->advanceLifecycle($item, ContentItemLifecycle::Delivering);
 
-        $delivery = ContentDelivery::query()->firstOrNew([
-            'content_item_id' => $item->getKey(),
-            'broadcast_id' => $broadcast->getKey(),
-            'destination_id' => $destination->destinationId,
-        ]);
+        $delivery = $this->claimDelivery($broadcastRun, $broadcast, $item, $destination->destinationId);
 
-        $delivery->fill([
-            'broadcast_run_id' => $broadcastRun->getKey(),
-            'status' => DeliveryStatus::Pending,
-            'external_reference' => null,
-            'failure' => null,
-            'error_detail' => null,
-            'retry_after_seconds' => null,
-            'attempted_at' => now(),
-            'finished_at' => null,
-        ]);
-        $delivery->save();
+        if ($delivery === null) {
+            $broadcastRun->items_skipped++;
+
+            return;
+        }
 
         try {
             $result = $provider->publish($destination, $message);
@@ -222,6 +231,97 @@ class ExecutingProjectRunner implements ProjectRunner
         $delivery->save();
         $this->advanceLifecycle($item, ContentItemLifecycle::Failed);
         $broadcastRun->items_failed++;
+    }
+
+    /**
+     * Insert a pending delivery before calling the provider. A unique
+     * constraint hit means another claim already owns this route: skip rather
+     * than risk a second publish. Failed rows may be reclaimed for a later
+     * retry policy.
+     */
+    private function claimDelivery(
+        BroadcastRun $broadcastRun,
+        Broadcast $broadcast,
+        ContentItem $item,
+        int $destinationId,
+    ): ?ContentDelivery {
+        try {
+            return ContentDelivery::query()->create([
+                'content_item_id' => $item->getKey(),
+                'broadcast_id' => $broadcast->getKey(),
+                'destination_id' => $destinationId,
+                'broadcast_run_id' => $broadcastRun->getKey(),
+                'status' => DeliveryStatus::Pending,
+                'attempted_at' => now(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            $existing = ContentDelivery::query()
+                ->where('content_item_id', $item->getKey())
+                ->where('broadcast_id', $broadcast->getKey())
+                ->where('destination_id', $destinationId)
+                ->first();
+
+            if ($existing === null) {
+                return null;
+            }
+
+            if ($existing->status->blocksRepublish()) {
+                return null;
+            }
+
+            $existing->fill([
+                'broadcast_run_id' => $broadcastRun->getKey(),
+                'status' => DeliveryStatus::Pending,
+                'external_reference' => null,
+                'failure' => null,
+                'error_detail' => null,
+                'retry_after_seconds' => null,
+                'attempted_at' => now(),
+                'finished_at' => null,
+            ]);
+            $existing->save();
+
+            return $existing;
+        }
+    }
+
+    private function recordSkippedDelivery(
+        BroadcastRun $broadcastRun,
+        Broadcast $broadcast,
+        ContentItem $item,
+        int $destinationId,
+        string $reason,
+    ): void {
+        try {
+            ContentDelivery::query()->create([
+                'content_item_id' => $item->getKey(),
+                'broadcast_id' => $broadcast->getKey(),
+                'destination_id' => $destinationId,
+                'broadcast_run_id' => $broadcastRun->getKey(),
+                'status' => DeliveryStatus::Skipped,
+                'error_detail' => $reason,
+                'attempted_at' => now(),
+                'finished_at' => now(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Already recorded for this route; the run skip count is enough.
+        }
+    }
+
+    /**
+     * Prefer publishing nothing over flooding a new broadcast with the
+     * source's archive. Uses published_at when the item has one, otherwise
+     * discovered_at.
+     */
+    private function isBackfill(ContentItem $item, Broadcast $broadcast): bool
+    {
+        if ($broadcast->created_at === null) {
+            return false;
+        }
+
+        $itemTime = $item->published_at ?? $item->discovered_at;
+
+        return $itemTime->lt($broadcast->created_at);
     }
 
     /**
@@ -261,14 +361,15 @@ class ExecutingProjectRunner implements ProjectRunner
         return $this->fetchedBySource[$sourceId] = $entries;
     }
 
-    private function alreadyDelivered(ContentItem $item, Broadcast $broadcast, int $destinationId): bool
+    private function deliveryBlocksRepublish(ContentItem $item, Broadcast $broadcast, int $destinationId): bool
     {
-        return ContentDelivery::query()
+        $existing = ContentDelivery::query()
             ->where('content_item_id', $item->getKey())
             ->where('broadcast_id', $broadcast->getKey())
             ->where('destination_id', $destinationId)
-            ->where('status', DeliveryStatus::Delivered)
-            ->exists();
+            ->first();
+
+        return $existing !== null && $existing->status->blocksRepublish();
     }
 
     private function advanceLifecycle(ContentItem $item, ContentItemLifecycle $next): void

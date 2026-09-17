@@ -18,7 +18,8 @@ use Illuminate\Support\Carbon;
  * Identity is unique per source: external id when present, otherwise canonical URL.
  * A content-hash change updates the existing row for that identity; it does not
  * create a second row. A new row is only created when the source has never seen
- * that identity.
+ * that identity. Deliveries key off that stable identity, so a hash change is
+ * treated as an update to the same item rather than a new publish.
  *
  * @property ContentItemLifecycle $lifecycle
  * @property list<array{
