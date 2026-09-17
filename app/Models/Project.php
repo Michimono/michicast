@@ -24,6 +24,9 @@ use Illuminate\Support\Str;
  * @property string|null $timezone
  * @property Carbon|null $next_run_at
  * @property Carbon|null $claimed_at
+ * @property int $consecutive_failures
+ * @property Carbon|null $last_success_at
+ * @property Carbon|null $last_failure_at
  */
 #[Fillable(['name', 'slug', 'description'])]
 class Project extends Model
@@ -41,6 +44,7 @@ class Project extends Model
      */
     protected $attributes = [
         'status' => 'draft',
+        'consecutive_failures' => 0,
     ];
 
     /**
@@ -249,6 +253,20 @@ class Project extends Model
             ->update(['claimed_at' => $now]) === 1;
     }
 
+    public function recordSuccess(): void
+    {
+        $this->consecutive_failures = 0;
+        $this->last_success_at = now();
+        $this->save();
+    }
+
+    public function recordFailure(): void
+    {
+        $this->consecutive_failures++;
+        $this->last_failure_at = now();
+        $this->save();
+    }
+
     /**
      * @return BelongsTo<Organization, $this>
      */
@@ -336,6 +354,9 @@ class Project extends Model
             'schedule' => 'array',
             'next_run_at' => 'datetime',
             'claimed_at' => 'datetime',
+            'consecutive_failures' => 'integer',
+            'last_success_at' => 'datetime',
+            'last_failure_at' => 'datetime',
         ];
     }
 }

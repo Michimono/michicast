@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property array<string, mixed>|null $config
  * @property array<string, mixed>|null $credentials
  * @property bool $enabled
+ * @property int $consecutive_failures
  * @property Carbon|null $archived_at
  * @property Carbon|null $last_tested_at
  * @property bool|null $last_test_successful
@@ -37,6 +38,7 @@ class Destination extends Model
      */
     protected $attributes = [
         'enabled' => true,
+        'consecutive_failures' => 0,
     ];
 
     public function isArchived(): bool
@@ -120,6 +122,18 @@ class Destination extends Model
         );
     }
 
+    public function recordSuccess(): void
+    {
+        $this->consecutive_failures = 0;
+        $this->save();
+    }
+
+    public function recordFailure(): void
+    {
+        $this->consecutive_failures++;
+        $this->save();
+    }
+
     /**
      * @return BelongsTo<Project, $this>
      */
@@ -157,6 +171,7 @@ class Destination extends Model
             'config' => 'array',
             'credentials' => 'encrypted:array',
             'enabled' => 'boolean',
+            'consecutive_failures' => 'integer',
             'last_test_successful' => 'boolean',
             'last_tested_at' => 'datetime',
             'archived_at' => 'datetime',

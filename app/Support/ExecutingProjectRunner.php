@@ -3,12 +3,14 @@
 namespace App\Support;
 
 use App\Enums\ContentItemLifecycle;
+use App\Enums\DeliveryFailure;
 use App\Enums\DeliveryStatus;
 use App\Enums\RunStatus;
 use App\Models\Broadcast;
 use App\Models\BroadcastRun;
 use App\Models\ContentDelivery;
 use App\Models\ContentItem;
+use App\Models\Destination;
 use App\Models\Project;
 use App\Models\ProjectRun;
 use App\Models\Source;
@@ -25,6 +27,9 @@ use Throwable;
  * Publish is claim-before-send: a pending delivery row is inserted first so a
  * crash after the provider returns cannot cause a duplicate publish on the
  * next tick. The unique route constraint is the source of truth for duplicates.
+ *
+ * Transient destination failures are retried inline within the dispatch time
+ * budget; permanent failures are recorded once and never attempted again.
  */
 class ExecutingProjectRunner implements ProjectRunner
 {
@@ -42,6 +47,7 @@ class ExecutingProjectRunner implements ProjectRunner
         private DestinationProviderRegistry $destinations,
         private BroadcastFilterEvaluator $filters,
         private BroadcastTransformer $transformer,
+        private Clock $clock,
     ) {}
 
     public function run(Project $project, ?CarbonInterface $deadline = null): bool
@@ -72,7 +78,7 @@ class ExecutingProjectRunner implements ProjectRunner
                 continue;
             }
 
-            $finished = $this->runBroadcast($projectRun, $broadcast, $deadline);
+            $finished = $this->runBroadcast($project, $projectRun, $broadcast, $deadline);
 
             if (! $finished) {
                 $incomplete = true;
@@ -93,6 +99,7 @@ class ExecutingProjectRunner implements ProjectRunner
      * @return bool False when the time budget ran out mid-broadcast.
      */
     private function runBroadcast(
+        Project $project,
         ProjectRun $projectRun,
         Broadcast $broadcast,
         ?CarbonInterface $deadline,
@@ -106,8 +113,12 @@ class ExecutingProjectRunner implements ProjectRunner
 
         try {
             $entries = $this->itemsForSource($broadcast->source);
+            $broadcast->source->recordSuccess();
         } catch (Throwable $e) {
             report($e);
+            $broadcast->source->recordFailure();
+            $project->recordFailure();
+            $broadcast->recordFailure($e->getMessage());
             $broadcastRun->status = RunStatus::Failed;
             $broadcastRun->error_detail = $e->getMessage();
             $broadcastRun->finished_at = now();
@@ -127,6 +138,10 @@ class ExecutingProjectRunner implements ProjectRunner
                 $broadcastRun->save();
 
                 return false;
+            }
+
+            if (! $broadcast->fresh()->isRunnable()) {
+                break;
             }
 
             $item = $entry['item'];
@@ -170,7 +185,17 @@ class ExecutingProjectRunner implements ProjectRunner
             $message = $this->transformer->transform($item, $broadcast->transform, $sourceName);
             $this->advanceLifecycle($item, ContentItemLifecycle::Transformed);
 
-            $this->publish($broadcastRun, $broadcast, $item, $provider, $destination->toDefinition(), $message);
+            $this->publish(
+                $project,
+                $broadcastRun,
+                $broadcast,
+                $destination,
+                $item,
+                $provider,
+                $destination->toDefinition(),
+                $message,
+                $deadline,
+            );
         }
 
         $broadcastRun->status = RunStatus::Completed;
@@ -181,16 +206,19 @@ class ExecutingProjectRunner implements ProjectRunner
     }
 
     private function publish(
+        Project $project,
         BroadcastRun $broadcastRun,
         Broadcast $broadcast,
+        Destination $destination,
         ContentItem $item,
         DestinationProvider $provider,
-        DestinationDefinition $destination,
+        DestinationDefinition $definition,
         PreparedMessage $message,
+        ?CarbonInterface $deadline,
     ): void {
         $this->advanceLifecycle($item, ContentItemLifecycle::Delivering);
 
-        $delivery = $this->claimDelivery($broadcastRun, $broadcast, $item, $destination->destinationId);
+        $delivery = $this->claimDelivery($broadcastRun, $broadcast, $item, $definition->destinationId);
 
         if ($delivery === null) {
             $broadcastRun->items_skipped++;
@@ -198,46 +226,145 @@ class ExecutingProjectRunner implements ProjectRunner
             return;
         }
 
-        try {
-            $result = $provider->publish($destination, $message);
-        } catch (Throwable $e) {
-            report($e);
-            $delivery->status = DeliveryStatus::Failed;
-            $delivery->error_detail = $e->getMessage();
-            $delivery->finished_at = now();
-            $delivery->save();
-            $this->advanceLifecycle($item, ContentItemLifecycle::Failed);
-            $broadcastRun->items_failed++;
+        $maxAttempts = max(1, (int) config('michicast.retry.max_attempts'));
+        $defaultBackoff = max(0, (int) config('michicast.retry.backoff_seconds'));
 
-            return;
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            if ($this->pastDeadline($deadline)) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    DeliveryFailure::Transient,
+                    'The dispatch time budget ran out before the delivery could finish.',
+                    null,
+                );
+
+                return;
+            }
+
+            try {
+                $result = $provider->publish($definition, $message);
+            } catch (Throwable $e) {
+                report($e);
+                $result = DeliveryResult::transientFailure($e->getMessage());
+            }
+
+            if ($result->successful) {
+                $delivery->status = DeliveryStatus::Delivered;
+                $delivery->external_reference = $result->externalReference;
+                $delivery->failure = null;
+                $delivery->error_detail = null;
+                $delivery->retry_after_seconds = null;
+                $delivery->finished_at = now();
+                $delivery->save();
+                $this->advanceLifecycle($item, ContentItemLifecycle::Delivered);
+                $broadcastRun->items_delivered++;
+                $destination->recordSuccess();
+                $broadcast->recordSuccess();
+                $project->recordSuccess();
+
+                return;
+            }
+
+            if (! $result->isRetryable()) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    $result->failure ?? DeliveryFailure::Permanent,
+                    (string) $result->failureReason,
+                    $result->retryAfterSeconds,
+                );
+
+                return;
+            }
+
+            if ($attempt >= $maxAttempts) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    DeliveryFailure::Transient,
+                    (string) $result->failureReason,
+                    $result->retryAfterSeconds,
+                );
+
+                return;
+            }
+
+            $wait = $result->retryAfterSeconds ?? $defaultBackoff;
+
+            if (! $this->canWait($wait, $deadline)) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    DeliveryFailure::Transient,
+                    (string) $result->failureReason,
+                    $result->retryAfterSeconds,
+                );
+
+                return;
+            }
+
+            $this->clock->sleep($wait);
         }
+    }
 
-        if ($result->successful) {
-            $delivery->status = DeliveryStatus::Delivered;
-            $delivery->external_reference = $result->externalReference;
-            $delivery->finished_at = now();
-            $delivery->save();
-            $this->advanceLifecycle($item, ContentItemLifecycle::Delivered);
-            $broadcastRun->items_delivered++;
-
-            return;
-        }
-
+    private function markDeliveryFailed(
+        ContentDelivery $delivery,
+        ContentItem $item,
+        BroadcastRun $broadcastRun,
+        Project $project,
+        Broadcast $broadcast,
+        Destination $destination,
+        DeliveryFailure $failure,
+        string $reason,
+        ?int $retryAfterSeconds,
+    ): void {
         $delivery->status = DeliveryStatus::Failed;
-        $delivery->failure = $result->failure;
-        $delivery->error_detail = $result->failureReason;
-        $delivery->retry_after_seconds = $result->retryAfterSeconds;
+        $delivery->failure = $failure;
+        $delivery->error_detail = $reason;
+        $delivery->retry_after_seconds = $retryAfterSeconds;
         $delivery->finished_at = now();
         $delivery->save();
         $this->advanceLifecycle($item, ContentItemLifecycle::Failed);
         $broadcastRun->items_failed++;
+        $destination->recordFailure();
+        $project->recordFailure();
+        $broadcast->recordFailure($reason);
+    }
+
+    private function canWait(int $seconds, ?CarbonInterface $deadline): bool
+    {
+        if ($deadline === null) {
+            return true;
+        }
+
+        if ($seconds <= 0) {
+            return ! $this->pastDeadline($deadline);
+        }
+
+        return now()->addSeconds($seconds)->lt($deadline);
     }
 
     /**
      * Insert a pending delivery before calling the provider. A unique
      * constraint hit means another claim already owns this route: skip rather
-     * than risk a second publish. Failed rows may be reclaimed for a later
-     * retry policy.
+     * than risk a second publish. Transient failed rows may be reclaimed.
      */
     private function claimDelivery(
         BroadcastRun $broadcastRun,
@@ -261,11 +388,7 @@ class ExecutingProjectRunner implements ProjectRunner
                 ->where('destination_id', $destinationId)
                 ->first();
 
-            if ($existing === null) {
-                return null;
-            }
-
-            if ($existing->status->blocksRepublish()) {
+            if ($existing === null || $existing->blocksRepublish()) {
                 return null;
             }
 
@@ -369,7 +492,7 @@ class ExecutingProjectRunner implements ProjectRunner
             ->where('destination_id', $destinationId)
             ->first();
 
-        return $existing !== null && $existing->status->blocksRepublish();
+        return $existing !== null && $existing->blocksRepublish();
     }
 
     private function advanceLifecycle(ContentItem $item, ContentItemLifecycle $next): void

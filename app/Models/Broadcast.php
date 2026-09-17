@@ -20,6 +20,8 @@ use Illuminate\Support\Carbon;
  * @property array{rules?: list<array<string, mixed>>}|null $filter
  * @property array{template?: string, rules?: list<array<string, mixed>>}|null $transform
  * @property bool $enabled
+ * @property int $consecutive_failures
+ * @property string|null $failure_pause_reason
  * @property Carbon|null $archived_at
  */
 #[Fillable(['name', 'source_id', 'destination_id', 'filter', 'transform'])]
@@ -33,6 +35,7 @@ class Broadcast extends Model
      */
     protected $attributes = [
         'enabled' => true,
+        'consecutive_failures' => 0,
     ];
 
     public function isArchived(): bool
@@ -67,6 +70,8 @@ class Broadcast extends Model
         }
 
         $this->enabled = true;
+        $this->failure_pause_reason = null;
+        $this->consecutive_failures = 0;
         $this->save();
     }
 
@@ -80,6 +85,39 @@ class Broadcast extends Model
 
         $this->enabled = false;
         $this->save();
+    }
+
+    /**
+     * Disable after a streak of failures and keep the reason for the UI.
+     */
+    public function pauseForFailures(string $reason): void
+    {
+        if ($this->isArchived() || ! $this->enabled) {
+            return;
+        }
+
+        $this->enabled = false;
+        $this->failure_pause_reason = $reason;
+        $this->save();
+    }
+
+    public function recordSuccess(): void
+    {
+        $this->consecutive_failures = 0;
+        $this->failure_pause_reason = null;
+        $this->save();
+    }
+
+    public function recordFailure(string $reason): void
+    {
+        $this->consecutive_failures++;
+        $this->save();
+
+        $threshold = max(1, (int) config('michicast.failure.broadcast_pause_after'));
+
+        if ($this->consecutive_failures >= $threshold) {
+            $this->pauseForFailures($reason);
+        }
     }
 
     public function archive(): void
@@ -155,6 +193,7 @@ class Broadcast extends Model
             'filter' => 'array',
             'transform' => 'array',
             'enabled' => 'boolean',
+            'consecutive_failures' => 'integer',
             'archived_at' => 'datetime',
         ];
     }

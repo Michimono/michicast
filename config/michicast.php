@@ -51,6 +51,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Delivery Retry
+    |--------------------------------------------------------------------------
+    |
+    | Transient destination failures are retried inline within the dispatch
+    | time budget. Prefer the provider's retry-after hint when present; the
+    | backoff below is the fallback wait between attempts.
+    |
+    */
+
+    'retry' => [
+        'max_attempts' => (int) env('DELIVERY_RETRY_MAX_ATTEMPTS', 3),
+        'backoff_seconds' => (int) env('DELIVERY_RETRY_BACKOFF_SECONDS', 2),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Failure Auto-Pause
+    |--------------------------------------------------------------------------
+    |
+    | A broadcast that fails this many times in a row is disabled with a
+    | recorded reason. The default sits above a two-hour outage at one
+    | dispatch tick per minute so a temporary provider outage does not pause
+    | a healthy route.
+    |
+    */
+
+    'failure' => [
+        'broadcast_pause_after' => (int) env('BROADCAST_PAUSE_AFTER_FAILURES', 150),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Source Providers
     |--------------------------------------------------------------------------
     |
