@@ -20,10 +20,9 @@ enum DeliveryStatus: string
     }
 
     /**
-     * Statuses that mean this route must not be published again.
-     *
-     * Pending is included so a crash after claim (and possibly after send)
-     * never triggers a second publish. Failed stays retryable for #33.
+     * Statuses that mean this route must not be published again on their own.
+     * Failed is not included: permanent versus transient is decided on the
+     * delivery row via ContentDelivery::blocksRepublish().
      */
     public function blocksRepublish(): bool
     {

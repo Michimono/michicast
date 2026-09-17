@@ -18,7 +18,8 @@ use Illuminate\Support\Carbon;
  * create a second delivery row for the same route. A content-hash change on
  * the same identity updates the content item in place and does not create a
  * new delivery opportunity: an existing delivered (or pending/skipped) row
- * still blocks republish.
+ * still blocks republish. Permanent failures also block; transient failures
+ * remain reclaimable for a later run.
  *
  * @property DeliveryStatus $status
  * @property DeliveryFailure|null $failure
@@ -49,6 +50,21 @@ class ContentDelivery extends Model
     protected $attributes = [
         'status' => 'pending',
     ];
+
+    /**
+     * Whether another publish attempt is forbidden for this route.
+     *
+     * Pending, delivered and skipped always block. Permanent failures block.
+     * Transient failures stay reclaimable for a later run.
+     */
+    public function blocksRepublish(): bool
+    {
+        if ($this->status === DeliveryStatus::Failed) {
+            return $this->failure === DeliveryFailure::Permanent;
+        }
+
+        return $this->status->blocksRepublish();
+    }
 
     /**
      * @return BelongsTo<ContentItem, $this>
