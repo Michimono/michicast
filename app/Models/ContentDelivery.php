@@ -15,7 +15,10 @@ use Illuminate\Support\Carbon;
  * One publish attempt for a content item on a broadcast's destination.
  *
  * Unique per content item, broadcast and destination so a repeated run cannot
- * create a second delivery row for the same route.
+ * create a second delivery row for the same route. A content-hash change on
+ * the same identity updates the content item in place and does not create a
+ * new delivery opportunity: an existing delivered (or pending/skipped) row
+ * still blocks republish.
  *
  * @property DeliveryStatus $status
  * @property DeliveryFailure|null $failure

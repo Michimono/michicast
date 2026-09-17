@@ -54,4 +54,15 @@ class ContentDeliveryFactory extends Factory
             'finished_at' => now(),
         ]);
     }
+
+    public function skipped(string $detail = 'Duplicate delivery skipped.'): static
+    {
+        return $this->state(fn (): array => [
+            'status' => DeliveryStatus::Skipped,
+            'external_reference' => null,
+            'failure' => null,
+            'error_detail' => $detail,
+            'finished_at' => now(),
+        ]);
+    }
 }
