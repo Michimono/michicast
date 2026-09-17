@@ -17,6 +17,10 @@
             <x-button>Save broadcast</x-button>
         </form>
 
+        <p>
+            <x-button href="{{ route('broadcast-filters.edit', $broadcast) }}" variant="ghost" :paw="false">Filters</x-button>
+        </p>
+
         @can('changeStatus', $broadcast)
             <div class="flex flex-wrap items-center gap-2">
                 @if ($broadcast->canDisable())
