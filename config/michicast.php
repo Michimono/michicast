@@ -83,6 +83,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Broadcast Preview
+    |--------------------------------------------------------------------------
+    |
+    | Preview fetches live source items, applies filters and transforms, and
+    | shows the most recent few without publishing. Keep the window small so
+    | a preview request stays cheap.
+    |
+    */
+
+    'preview' => [
+        'item_limit' => (int) env('BROADCAST_PREVIEW_ITEM_LIMIT', 5),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Source Providers
     |--------------------------------------------------------------------------
     |

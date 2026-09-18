@@ -22,14 +22,21 @@
             </div>
             <div>
                 <dt class="text-xs font-medium tracking-wide text-muted uppercase">Status</dt>
-                <dd class="text-sm text-ink">{{ $run->status->label() }}</dd>
+                <dd class="text-sm text-ink">
+                    {{ $run->status->label() }}
+                    @if ($run->is_dry)
+                        <span class="font-mono text-xs text-muted">(dry run)</span>
+                    @endif
+                </dd>
             </div>
             <div>
                 <dt class="text-xs font-medium tracking-wide text-muted uppercase">Found / new</dt>
                 <dd class="font-mono text-sm text-ink">{{ $run->items_found }} / {{ $run->items_new }}</dd>
             </div>
             <div>
-                <dt class="text-xs font-medium tracking-wide text-muted uppercase">Skipped / delivered / failed</dt>
+                <dt class="text-xs font-medium tracking-wide text-muted uppercase">
+                    Skipped / {{ $run->is_dry ? 'would deliver' : 'delivered' }} / failed
+                </dt>
                 <dd class="font-mono text-sm text-ink">
                     <span class="text-state-skip">{{ $run->items_skipped }}</span>
                     /
@@ -56,7 +63,7 @@
                 · found {{ $broadcastRun->items_found }}
                 · new {{ $broadcastRun->items_new }}
                 · skipped {{ $broadcastRun->items_skipped }}
-                · delivered {{ $broadcastRun->items_delivered }}
+                · {{ $run->is_dry ? 'would deliver' : 'delivered' }} {{ $broadcastRun->items_delivered }}
                 · failed {{ $broadcastRun->items_failed }}
             </p>
 
@@ -83,6 +90,38 @@
                 </p>
             @endif
 
+            @if ($run->is_dry && is_array($broadcastRun->dry_report) && $broadcastRun->dry_report !== [])
+                <ul class="flex flex-col divide-y divide-line border-t border-line">
+                    @foreach ($broadcastRun->dry_report as $entry)
+                        <li class="flex flex-col gap-1 py-3">
+                            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                                <span class="text-sm text-ink">{{ $entry['title'] ?? 'Untitled item' }}</span>
+                                <span @class([
+                                    'font-mono text-xs',
+                                    'text-state-ok' => ($entry['outcome'] ?? '') === 'publish',
+                                    'text-state-skip' => ($entry['outcome'] ?? '') !== 'publish',
+                                ])>
+                                    {{ ($entry['outcome'] ?? '') === 'publish' ? 'Would publish' : 'Would skip' }}
+                                </span>
+                            </div>
+
+                            @if (! empty($entry['skip_reason']))
+                                <p class="text-sm text-muted">{{ $secrets->redact($entry['skip_reason']) }}</p>
+                            @endif
+
+                            @if (! empty($entry['rendered']))
+                                <p class="whitespace-pre-wrap text-sm text-ink">{{ $entry['rendered'] }}</p>
+                            @endif
+
+                            @if (! empty($entry['canonical_url']))
+                                <a class="text-xs text-accent hover:underline" href="{{ $entry['canonical_url'] }}" rel="noopener noreferrer" target="_blank">
+                                    Canonical URL
+                                </a>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @else
             @php
                 $outcomes = $broadcastRun->deliveries
                     ->map(fn ($delivery) => [
@@ -137,6 +176,7 @@
                         </li>
                     @endforeach
                 </ul>
+            @endif
             @endif
         </x-card>
     @empty

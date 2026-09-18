@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'project_id',
     'status',
+    'is_dry',
     'started_at',
     'finished_at',
     'items_found',
@@ -39,6 +40,7 @@ class ProjectRun extends Model
      */
     protected $attributes = [
         'status' => 'running',
+        'is_dry' => false,
         'items_found' => 0,
         'items_new' => 0,
         'items_skipped' => 0,
@@ -69,6 +71,7 @@ class ProjectRun extends Model
     {
         return [
             'status' => RunStatus::class,
+            'is_dry' => 'boolean',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
             'items_found' => 'integer',

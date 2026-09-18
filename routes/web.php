@@ -8,9 +8,11 @@ use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\ArchivedSourceController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BroadcastDeliveryController;
+use App\Http\Controllers\BroadcastDryRunController;
 use App\Http\Controllers\BroadcastFilterController;
 use App\Http\Controllers\BroadcastTransformController;
 use App\Http\Controllers\BroadcastTransformPreviewController;
+use App\Http\Controllers\ContentPreviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
@@ -102,6 +104,13 @@ Route::middleware('auth')->group(function (): void {
                     'index' => 'project-runs.index',
                     'show' => 'project-runs.show',
                 ]);
+
+            Route::resource('projects.broadcast-dry-runs', BroadcastDryRunController::class)
+                ->only(['store'])
+                ->names([
+                    'store' => 'broadcast-dry-runs.store',
+                ])
+                ->middlewareFor('store', 'throttle:broadcast-dry-run');
 
             Route::singleton('projects.schedule', ProjectScheduleController::class)
                 ->only(['edit', 'update'])
@@ -200,6 +209,13 @@ Route::middleware('auth')->group(function (): void {
                 ]);
 
             Route::resource('broadcasts', BroadcastController::class)->only(['edit', 'update']);
+
+            Route::resource('broadcasts.content-previews', ContentPreviewController::class)
+                ->only(['store'])
+                ->names([
+                    'store' => 'content-previews.store',
+                ])
+                ->middlewareFor('store', 'throttle:content-preview');
 
             Route::resource('broadcasts.deliveries', BroadcastDeliveryController::class)
                 ->only(['index'])

@@ -24,11 +24,14 @@
                                 <x-timestamp :value="$run->started_at" />
                             </a>
                             <p class="font-mono text-xs text-muted">
+                                @if ($run->is_dry)
+                                    Dry run ·
+                                @endif
                                 {{ $run->status->label() }}
                                 · found {{ $run->items_found }}
                                 · new {{ $run->items_new }}
                                 · skipped {{ $run->items_skipped }}
-                                · delivered {{ $run->items_delivered }}
+                                · {{ $run->is_dry ? 'would deliver' : 'delivered' }} {{ $run->items_delivered }}
                                 · failed {{ $run->items_failed }}
                                 @if ($run->started_at && $run->finished_at)
                                     · {{ $run->started_at->diffInSeconds($run->finished_at) }}s

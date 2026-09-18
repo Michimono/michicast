@@ -51,6 +51,13 @@
                 @endif
             @endcan
 
+            @can('dryRun', $project)
+                <form method="POST" action="{{ route('broadcast-dry-runs.store', $project) }}">
+                    @csrf
+                    <x-button variant="ghost" :paw="false">Dry run</x-button>
+                </form>
+            @endcan
+
             @can('changeStatus', $project)
                 @if ($project->canActivate())
                     <form method="POST" action="{{ route('active-projects.store', $project) }}">

@@ -43,4 +43,12 @@ class BroadcastPolicy
     {
         return $this->memberIsAtLeast($user, $broadcast->project->organization, Role::Editor);
     }
+
+    /**
+     * Editors and above may preview what a broadcast would publish.
+     */
+    public function preview(User $user, Broadcast $broadcast): bool
+    {
+        return $this->memberIsAtLeast($user, $broadcast->project->organization, Role::Editor);
+    }
 }

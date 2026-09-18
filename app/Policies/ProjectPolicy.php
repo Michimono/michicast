@@ -59,4 +59,12 @@ class ProjectPolicy
     {
         return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
     }
+
+    /**
+     * Editors and above may dry-run a project without publishing.
+     */
+    public function dryRun(User $user, Project $project): bool
+    {
+        return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
+    }
 }
