@@ -11,6 +11,7 @@ use App\Support\SourceProviderRegistry;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -66,6 +67,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by($this->emailAndIpKey($request)));
 
         RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(3)->by($this->emailAndIpKey($request)));
+
+        RateLimiter::for('content-preview', fn (Request $request) => Limit::perMinute(6)
+            ->by($this->userAndRouteKey($request, 'broadcast')));
+
+        RateLimiter::for('broadcast-dry-run', fn (Request $request) => Limit::perMinute(3)
+            ->by($this->userAndRouteKey($request, 'project')));
     }
 
     /**
@@ -75,5 +82,18 @@ class AppServiceProvider extends ServiceProvider
     private function emailAndIpKey(Request $request): string
     {
         return Str::transliterate($request->string('email')->lower()->toString().'|'.$request->ip());
+    }
+
+    /**
+     * Throttle a fetch-backed action per actor and per target, so previewing
+     * one broadcast does not spend another's allowance. The route parameter is
+     * already a model once bindings have been substituted.
+     */
+    private function userAndRouteKey(Request $request, string $parameter): string
+    {
+        $target = $request->route($parameter);
+
+        return ($request->user()?->getAuthIdentifier() ?? $request->ip())
+            .'|'.($target instanceof Model ? $target->getKey() : $target);
     }
 }

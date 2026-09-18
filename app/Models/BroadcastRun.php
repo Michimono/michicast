@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $started_at
  * @property Carbon|null $finished_at
  * @property string|null $error_detail
+ * @property list<array<string, mixed>>|null $dry_report
  */
 #[Fillable([
     'project_run_id',
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
     'items_delivered',
     'items_failed',
     'error_detail',
+    'dry_report',
 ])]
 class BroadcastRun extends Model
 {
@@ -95,6 +97,7 @@ class BroadcastRun extends Model
             'items_skipped' => 'integer',
             'items_delivered' => 'integer',
             'items_failed' => 'integer',
+            'dry_report' => 'array',
         ];
     }
 }

@@ -31,6 +31,10 @@ use Throwable;
  *
  * Transient destination failures are retried inline within the dispatch time
  * budget; permanent failures are recorded once and never attempted again.
+ *
+ * Preview and dry-run reuse the same filter and transform path with publishing
+ * disabled. Preview never persists items, deliveries or lifecycle; dry-run
+ * records a ProjectRun marked is_dry and a per-broadcast dry_report.
  */
 class ExecutingProjectRunner implements ProjectRunner
 {
@@ -43,6 +47,8 @@ class ExecutingProjectRunner implements ProjectRunner
      */
     private array $fetchedBySource = [];
 
+    private bool $dry = false;
+
     public function __construct(
         private SourceProviderRegistry $sources,
         private DestinationProviderRegistry $destinations,
@@ -53,11 +59,119 @@ class ExecutingProjectRunner implements ProjectRunner
 
     public function run(Project $project, ?CarbonInterface $deadline = null): bool
     {
+        $this->dry = false;
+        $run = $this->execute($project, $deadline);
+
+        return $run->status !== RunStatus::Incomplete;
+    }
+
+    /**
+     * Walk every enabled broadcast with publishing disabled and record the
+     * outcome as a dry project run.
+     */
+    public function dryRun(Project $project): ProjectRun
+    {
+        $this->dry = true;
+
+        return $this->execute($project, null);
+    }
+
+    /**
+     * Fetch from the broadcast's source, apply filters and transforms, and
+     * return what would publish — without writing items, deliveries or
+     * lifecycle changes.
+     */
+    public function preview(Broadcast $broadcast, ?int $limit = null): BroadcastPreviewResult
+    {
+        $limit ??= max(1, (int) config('michicast.preview.item_limit', 5));
+
+        $broadcast->loadMissing(['source', 'destination']);
+
+        $fetched = $this->sources->get($broadcast->source->type)->fetch($broadcast->source->toDefinition());
+
+        usort($fetched, function (ContentItem $a, ContentItem $b): int {
+            $aTime = $a->published_at ?? $a->discovered_at;
+            $bTime = $b->published_at ?? $b->discovered_at;
+
+            return $bTime <=> $aTime;
+        });
+
+        $fetched = array_slice($fetched, 0, $limit);
+        $sourceName = $broadcast->source->name;
+        $destinationId = (int) $broadcast->destination->getKey();
+        $items = [];
+        $wouldPublish = 0;
+        $wouldSkip = 0;
+
+        foreach ($fetched as $item) {
+            if ($this->isBackfill($item, $broadcast)) {
+                $items[] = new BroadcastPreviewItem(
+                    title: $this->itemLabel($item),
+                    body: $item->body,
+                    canonicalUrl: $item->canonical_url,
+                    outcome: 'skip',
+                    skipReason: 'Item was published before this broadcast existed.',
+                );
+                $wouldSkip++;
+
+                continue;
+            }
+
+            if ($this->previewDeliveryBlocksRepublish($item, $broadcast, $destinationId)) {
+                $items[] = new BroadcastPreviewItem(
+                    title: $this->itemLabel($item),
+                    body: $item->body,
+                    canonicalUrl: $item->canonical_url,
+                    outcome: 'skip',
+                    skipReason: 'Already delivered, pending, or skipped for this destination.',
+                );
+                $wouldSkip++;
+
+                continue;
+            }
+
+            $decision = $this->filters->evaluate($broadcast->filter, $item);
+
+            if (! $decision->passed) {
+                $items[] = new BroadcastPreviewItem(
+                    title: $this->itemLabel($item),
+                    body: $item->body,
+                    canonicalUrl: $item->canonical_url,
+                    outcome: 'skip',
+                    skipReason: $decision->skipReason ?? 'Filtered out by a broadcast rule.',
+                );
+                $wouldSkip++;
+
+                continue;
+            }
+
+            $message = $this->transformer->transform($item, $broadcast->transform, $sourceName);
+            $items[] = new BroadcastPreviewItem(
+                title: $this->itemLabel($item),
+                body: $item->body,
+                canonicalUrl: $item->canonical_url,
+                outcome: 'publish',
+                rendered: $message->body,
+            );
+            $wouldPublish++;
+        }
+
+        return new BroadcastPreviewResult(
+            items: $items,
+            found: count($items),
+            wouldPublish: $wouldPublish,
+            wouldSkip: $wouldSkip,
+        );
+    }
+
+    private function execute(Project $project, ?CarbonInterface $deadline): ProjectRun
+    {
         $this->fetchedBySource = [];
 
         $projectRun = ProjectRun::query()->create([
             'project_id' => $project->getKey(),
             'status' => RunStatus::Running,
+            'is_dry' => $this->dry,
             'started_at' => now(),
         ]);
 
@@ -93,7 +207,7 @@ class ExecutingProjectRunner implements ProjectRunner
         $projectRun->finished_at = now();
         $projectRun->save();
 
-        return ! $incomplete;
+        return $projectRun;
     }
 
     /**
@@ -110,16 +224,24 @@ class ExecutingProjectRunner implements ProjectRunner
             'broadcast_id' => $broadcast->getKey(),
             'status' => RunStatus::Running,
             'started_at' => now(),
+            'dry_report' => $this->dry ? [] : null,
         ]);
 
         try {
             $entries = $this->itemsForSource($broadcast->source);
-            $broadcast->source->recordSuccess();
+
+            if (! $this->dry) {
+                $broadcast->source->recordSuccess();
+            }
         } catch (Throwable $e) {
             report($e);
-            $broadcast->source->recordFailure();
-            $project->recordFailure();
-            $broadcast->recordFailure($e->getMessage());
+
+            if (! $this->dry) {
+                $broadcast->source->recordFailure();
+                $project->recordFailure();
+                $broadcast->recordFailure($e->getMessage());
+            }
+
             $broadcastRun->status = RunStatus::Failed;
             $broadcastRun->error_detail = $e->getMessage();
             $broadcastRun->finished_at = now();
@@ -153,12 +275,14 @@ class ExecutingProjectRunner implements ProjectRunner
             }
 
             if ($this->isBackfill($item, $broadcast)) {
-                $this->recordSkippedDelivery(
+                $this->recordOutcome(
                     $broadcastRun,
                     $broadcast,
                     $item,
                     (int) $destination->getKey(),
+                    'skip',
                     'Item was published before this broadcast existed.',
+                    createSkippedDelivery: true,
                 );
                 $this->advanceLifecycle($item, ContentItemLifecycle::Skipped);
                 $broadcastRun->items_skipped++;
@@ -167,10 +291,14 @@ class ExecutingProjectRunner implements ProjectRunner
             }
 
             if ($this->deliveryBlocksRepublish($item, $broadcast, (int) $destination->getKey())) {
-                $this->recordRunSkip(
+                $this->recordOutcome(
                     $broadcastRun,
+                    $broadcast,
                     $item,
+                    (int) $destination->getKey(),
+                    'skip',
                     'Already delivered, pending, or skipped for this destination.',
+                    createSkippedDelivery: false,
                 );
                 $broadcastRun->items_skipped++;
 
@@ -180,12 +308,15 @@ class ExecutingProjectRunner implements ProjectRunner
             $decision = $this->filters->evaluate($broadcast->filter, $item);
 
             if (! $decision->passed) {
-                $this->recordSkippedDelivery(
+                $reason = $decision->skipReason ?? 'Filtered out by a broadcast rule.';
+                $this->recordOutcome(
                     $broadcastRun,
                     $broadcast,
                     $item,
                     (int) $destination->getKey(),
-                    $decision->skipReason ?? 'Filtered out by a broadcast rule.',
+                    'skip',
+                    $reason,
+                    createSkippedDelivery: true,
                 );
                 $this->advanceLifecycle($item, ContentItemLifecycle::Skipped);
                 $broadcastRun->items_skipped++;
@@ -197,6 +328,13 @@ class ExecutingProjectRunner implements ProjectRunner
 
             $message = $this->transformer->transform($item, $broadcast->transform, $sourceName);
             $this->advanceLifecycle($item, ContentItemLifecycle::Transformed);
+
+            if ($this->dry) {
+                $this->appendDryReport($broadcastRun, $item, 'publish', rendered: $message->body);
+                $broadcastRun->items_delivered++;
+
+                continue;
+            }
 
             $this->publish(
                 $project,
@@ -426,6 +564,33 @@ class ExecutingProjectRunner implements ProjectRunner
         }
     }
 
+    /**
+     * @param  'publish'|'skip'  $outcome
+     */
+    private function recordOutcome(
+        BroadcastRun $broadcastRun,
+        Broadcast $broadcast,
+        ContentItem $item,
+        int $destinationId,
+        string $outcome,
+        string $reason,
+        bool $createSkippedDelivery,
+    ): void {
+        if ($this->dry) {
+            $this->appendDryReport($broadcastRun, $item, $outcome, skipReason: $reason);
+
+            return;
+        }
+
+        if ($createSkippedDelivery) {
+            $this->recordSkippedDelivery($broadcastRun, $broadcast, $item, $destinationId, $reason);
+
+            return;
+        }
+
+        $this->recordRunSkip($broadcastRun, $item, $reason);
+    }
+
     private function recordSkippedDelivery(
         BroadcastRun $broadcastRun,
         Broadcast $broadcast,
@@ -456,6 +621,27 @@ class ExecutingProjectRunner implements ProjectRunner
             'content_item_id' => $item->getKey(),
             'reason' => $reason,
         ]);
+    }
+
+    /**
+     * @param  'publish'|'skip'  $outcome
+     */
+    private function appendDryReport(
+        BroadcastRun $broadcastRun,
+        ContentItem $item,
+        string $outcome,
+        ?string $rendered = null,
+        ?string $skipReason = null,
+    ): void {
+        $report = $broadcastRun->dry_report ?? [];
+        $report[] = array_filter([
+            'title' => $this->itemLabel($item),
+            'canonical_url' => $item->canonical_url,
+            'outcome' => $outcome,
+            'rendered' => $rendered,
+            'skip_reason' => $skipReason,
+        ], fn (mixed $value): bool => $value !== null);
+        $broadcastRun->dry_report = $report;
     }
 
     /**
@@ -522,8 +708,30 @@ class ExecutingProjectRunner implements ProjectRunner
         return $existing !== null && $existing->blocksRepublish();
     }
 
+    /**
+     * Preview items are not persisted, so resolve any prior delivery through
+     * the item's identity on the source.
+     */
+    private function previewDeliveryBlocksRepublish(ContentItem $item, Broadcast $broadcast, int $destinationId): bool
+    {
+        $persisted = ContentItem::query()
+            ->where('source_id', $item->source_id)
+            ->where('identity_key', $item->identity_key)
+            ->first();
+
+        if ($persisted === null) {
+            return false;
+        }
+
+        return $this->deliveryBlocksRepublish($persisted, $broadcast, $destinationId);
+    }
+
     private function advanceLifecycle(ContentItem $item, ContentItemLifecycle $next): void
     {
+        if ($this->dry) {
+            return;
+        }
+
         if ($item->lifecycle === $next) {
             return;
         }
@@ -555,5 +763,10 @@ class ExecutingProjectRunner implements ProjectRunner
         $projectRun->items_skipped = (int) $projectRun->broadcastRuns()->sum('items_skipped');
         $projectRun->items_delivered = (int) $projectRun->broadcastRuns()->sum('items_delivered');
         $projectRun->items_failed = (int) $projectRun->broadcastRuns()->sum('items_failed');
+    }
+
+    private function itemLabel(ContentItem $item): string
+    {
+        return $item->title ?: ($item->canonical_url ?: 'Untitled item');
     }
 }
