@@ -6,9 +6,26 @@
         </div>
 
         @if ($source->last_tested_at)
-            <p class="text-sm text-muted">
+            <p @class([
+                'text-sm',
+                'text-state-ok' => $source->last_test_successful === true,
+                'text-state-fail' => $source->last_test_successful === false,
+                'text-muted' => $source->last_test_successful === null,
+            ])>
                 Last tested <x-timestamp :value="$source->last_tested_at" />.
                 {{ $source->last_test_message }}
+            </p>
+        @else
+            <p class="text-sm text-muted">This source has never been tested.</p>
+        @endif
+
+        @if ($testOutcome ?? null)
+            <p @class([
+                'rounded-md border border-line bg-paper px-3 py-2 text-sm',
+                'text-state-ok' => $testOutcome->successful,
+                'text-state-fail' => ! $testOutcome->successful,
+            ])>
+                {{ $testOutcome->message }}
             </p>
         @endif
 
@@ -17,11 +34,27 @@
                 @csrf
                 @method('PATCH')
 
-                <x-input name="name" label="Source name" :value="$source->name" required />
+                <x-input name="name" label="Source name" :value="$formName" required />
 
-                <x-provider-fields :fields="$fields" :values="$source->config ?? []" />
+                <x-provider-fields :fields="$fields" :values="$formConfig" />
 
-                <x-button>Save source</x-button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <x-button>Save source</x-button>
+
+                    @can('testConnection', $source)
+                        @if ($supportsConnectionTest)
+                            <x-button
+                                type="submit"
+                                formaction="{{ route('source-connection-tests.store', $source) }}"
+                                formmethod="POST"
+                                variant="ghost"
+                                :paw="false"
+                            >
+                                Test connection
+                            </x-button>
+                        @endif
+                    @endcan
+                </div>
             </form>
         @else
             <p class="text-sm text-state-fail">

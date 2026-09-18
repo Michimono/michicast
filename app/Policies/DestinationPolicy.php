@@ -43,4 +43,12 @@ class DestinationPolicy
     {
         return $this->memberIsAtLeast($user, $destination->project->organization, Role::Editor);
     }
+
+    /**
+     * Editors and above may send a destination connection test.
+     */
+    public function testConnection(User $user, Destination $destination): bool
+    {
+        return $this->memberIsAtLeast($user, $destination->project->organization, Role::Editor);
+    }
 }

@@ -6,9 +6,26 @@
         </div>
 
         @if ($destination->last_tested_at)
-            <p class="text-sm text-muted">
+            <p @class([
+                'text-sm',
+                'text-state-ok' => $destination->last_test_successful === true,
+                'text-state-fail' => $destination->last_test_successful === false,
+                'text-muted' => $destination->last_test_successful === null,
+            ])>
                 Last tested <x-timestamp :value="$destination->last_tested_at" />.
                 {{ $destination->last_test_message }}
+            </p>
+        @else
+            <p class="text-sm text-muted">This destination has never been tested.</p>
+        @endif
+
+        @if ($testOutcome ?? null)
+            <p @class([
+                'rounded-md border border-line bg-paper px-3 py-2 text-sm',
+                'text-state-ok' => $testOutcome->successful,
+                'text-state-fail' => ! $testOutcome->successful,
+            ])>
+                {{ $testOutcome->message }}
             </p>
         @endif
 
@@ -17,13 +34,29 @@
                 @csrf
                 @method('PATCH')
 
-                <x-input name="name" label="Destination name" :value="$destination->name" required />
+                <x-input name="name" label="Destination name" :value="$formName" required />
 
-                <x-provider-fields :fields="$fields" :values="$destination->config ?? []" />
+                <x-provider-fields :fields="$fields" :values="$formConfig" />
 
                 <x-credential-fields :fields="$credentialFields" preserving />
 
-                <x-button>Save destination</x-button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <x-button>Save destination</x-button>
+
+                    @can('testConnection', $destination)
+                        @if ($supportsConnectionTest)
+                            <x-button
+                                type="submit"
+                                formaction="{{ route('destination-connection-tests.store', $destination) }}"
+                                formmethod="POST"
+                                variant="ghost"
+                                :paw="false"
+                            >
+                                Send test
+                            </x-button>
+                        @endif
+                    @endcan
+                </div>
             </form>
         @else
             <p class="text-sm text-state-fail">

@@ -43,4 +43,12 @@ class SourcePolicy
     {
         return $this->memberIsAtLeast($user, $source->project->organization, Role::Editor);
     }
+
+    /**
+     * Editors and above may test a source against its provider.
+     */
+    public function testConnection(User $user, Source $source): bool
+    {
+        return $this->memberIsAtLeast($user, $source->project->organization, Role::Editor);
+    }
 }

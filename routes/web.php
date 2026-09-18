@@ -14,6 +14,7 @@ use App\Http\Controllers\BroadcastTransformController;
 use App\Http\Controllers\BroadcastTransformPreviewController;
 use App\Http\Controllers\ContentPreviewController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DestinationConnectionTestController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
 use App\Http\Controllers\EnabledBroadcastController;
@@ -38,6 +39,7 @@ use App\Http\Controllers\ProjectScheduleController;
 use App\Http\Controllers\ProjectSchedulePreviewController;
 use App\Http\Controllers\ProjectSourceController;
 use App\Http\Controllers\SessionController;
+use App\Http\Controllers\SourceConnectionTestController;
 use App\Http\Controllers\SourceController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\SetCurrentOrganization;
@@ -158,6 +160,10 @@ Route::middleware('auth')->group(function (): void {
 
             Route::resource('sources', SourceController::class)->only(['edit', 'update']);
 
+            Route::match(['POST', 'PATCH'], 'sources/{source}/connection-tests', [SourceConnectionTestController::class, 'store'])
+                ->name('source-connection-tests.store')
+                ->middleware('throttle:source-connection-test');
+
             Route::singleton('sources.enabled-source', EnabledSourceController::class)
                 ->creatable()
                 ->only(['store', 'destroy'])
@@ -183,6 +189,10 @@ Route::middleware('auth')->group(function (): void {
                 ]);
 
             Route::resource('destinations', DestinationController::class)->only(['edit', 'update']);
+
+            Route::match(['POST', 'PATCH'], 'destinations/{destination}/connection-tests', [DestinationConnectionTestController::class, 'store'])
+                ->name('destination-connection-tests.store')
+                ->middleware('throttle:destination-connection-test');
 
             Route::singleton('destinations.enabled-destination', EnabledDestinationController::class)
                 ->creatable()

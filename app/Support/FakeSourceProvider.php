@@ -61,7 +61,32 @@ class FakeSourceProvider implements SourceProvider
             return ConnectionTestResult::failure('The fake source has no feed URL to reach.');
         }
 
-        return ConnectionTestResult::success("Reached {$feedUrl}.");
+        if (str_contains($feedUrl, '/broken')) {
+            return ConnectionTestResult::failure('The fake source could not reach that feed URL.');
+        }
+
+        $items = $this->configuredItems($source);
+        $count = count($items);
+
+        if ($count === 0) {
+            return ConnectionTestResult::success("Reached {$feedUrl}. No sample items are configured.");
+        }
+
+        $titles = [];
+
+        foreach (array_slice($items, 0, 3) as $item) {
+            $title = $item['title'] ?? $item['canonical_url'] ?? $item['external_id'] ?? null;
+
+            if (is_string($title) && $title !== '') {
+                $titles[] = $title;
+            }
+        }
+
+        $sample = $titles === []
+            ? "Reached {$feedUrl} and found {$count} configured items."
+            : "Reached {$feedUrl} and found {$count} configured items. Sample: ".implode(', ', $titles).'.';
+
+        return ConnectionTestResult::success($sample);
     }
 
     /**
