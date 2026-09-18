@@ -74,6 +74,14 @@ class BroadcastRun extends Model
     }
 
     /**
+     * @return HasMany<BroadcastRunSkip, $this>
+     */
+    public function skips(): HasMany
+    {
+        return $this->hasMany(BroadcastRunSkip::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

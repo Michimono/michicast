@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -213,6 +214,22 @@ class ContentItem extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * @return BelongsTo<Source, $this>
+     */
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(Source::class);
+    }
+
+    /**
+     * @return HasMany<ContentDelivery, $this>
+     */
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(ContentDelivery::class);
     }
 
     /**

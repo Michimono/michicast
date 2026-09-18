@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -162,6 +163,14 @@ class Broadcast extends Model
     public function destination(): BelongsTo
     {
         return $this->belongsTo(Destination::class);
+    }
+
+    /**
+     * @return HasMany<ContentDelivery, $this>
+     */
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(ContentDelivery::class);
     }
 
     /**

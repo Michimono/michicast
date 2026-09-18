@@ -27,6 +27,10 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <x-broadcast-status :broadcast="$broadcast" />
 
+                            @can('view', $project)
+                                <x-button href="{{ route('broadcast-deliveries.index', $broadcast) }}" variant="ghost" :paw="false">Deliveries</x-button>
+                            @endcan
+
                             @can('update', $broadcast)
                                 <x-button href="{{ route('broadcasts.edit', $broadcast) }}" variant="ghost" :paw="false">Edit</x-button>
                             @endcan
