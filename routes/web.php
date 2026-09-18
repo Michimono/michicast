@@ -7,6 +7,7 @@ use App\Http\Controllers\ArchivedDestinationController;
 use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\ArchivedSourceController;
 use App\Http\Controllers\BroadcastController;
+use App\Http\Controllers\BroadcastDeliveryController;
 use App\Http\Controllers\BroadcastFilterController;
 use App\Http\Controllers\BroadcastTransformController;
 use App\Http\Controllers\BroadcastTransformPreviewController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\ProfilePasswordController;
 use App\Http\Controllers\ProjectBroadcastController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectDestinationController;
+use App\Http\Controllers\ProjectRunController;
 use App\Http\Controllers\ProjectScheduleController;
 use App\Http\Controllers\ProjectSchedulePreviewController;
 use App\Http\Controllers\ProjectSourceController;
@@ -93,6 +95,13 @@ Route::middleware('auth')->group(function (): void {
         ->group(function (): void {
             Route::resource('projects', ProjectController::class)
                 ->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+
+            Route::resource('projects.runs', ProjectRunController::class)
+                ->only(['index', 'show'])
+                ->names([
+                    'index' => 'project-runs.index',
+                    'show' => 'project-runs.show',
+                ]);
 
             Route::singleton('projects.schedule', ProjectScheduleController::class)
                 ->only(['edit', 'update'])
@@ -191,6 +200,12 @@ Route::middleware('auth')->group(function (): void {
                 ]);
 
             Route::resource('broadcasts', BroadcastController::class)->only(['edit', 'update']);
+
+            Route::resource('broadcasts.deliveries', BroadcastDeliveryController::class)
+                ->only(['index'])
+                ->names([
+                    'index' => 'broadcast-deliveries.index',
+                ]);
 
             Route::singleton('broadcasts.filter', BroadcastFilterController::class)
                 ->only(['edit', 'update'])

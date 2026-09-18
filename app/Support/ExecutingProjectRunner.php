@@ -8,6 +8,7 @@ use App\Enums\DeliveryStatus;
 use App\Enums\RunStatus;
 use App\Models\Broadcast;
 use App\Models\BroadcastRun;
+use App\Models\BroadcastRunSkip;
 use App\Models\ContentDelivery;
 use App\Models\ContentItem;
 use App\Models\Destination;
@@ -166,6 +167,11 @@ class ExecutingProjectRunner implements ProjectRunner
             }
 
             if ($this->deliveryBlocksRepublish($item, $broadcast, (int) $destination->getKey())) {
+                $this->recordRunSkip(
+                    $broadcastRun,
+                    $item,
+                    'Already delivered, pending, or skipped for this destination.',
+                );
                 $broadcastRun->items_skipped++;
 
                 continue;
@@ -174,6 +180,13 @@ class ExecutingProjectRunner implements ProjectRunner
             $decision = $this->filters->evaluate($broadcast->filter, $item);
 
             if (! $decision->passed) {
+                $this->recordSkippedDelivery(
+                    $broadcastRun,
+                    $broadcast,
+                    $item,
+                    (int) $destination->getKey(),
+                    $decision->skipReason ?? 'Filtered out by a broadcast rule.',
+                );
                 $this->advanceLifecycle($item, ContentItemLifecycle::Skipped);
                 $broadcastRun->items_skipped++;
 
@@ -221,6 +234,11 @@ class ExecutingProjectRunner implements ProjectRunner
         $delivery = $this->claimDelivery($broadcastRun, $broadcast, $item, $definition->destinationId);
 
         if ($delivery === null) {
+            $this->recordRunSkip(
+                $broadcastRun,
+                $item,
+                'Already delivered, pending, or skipped for this destination.',
+            );
             $broadcastRun->items_skipped++;
 
             return;
@@ -427,8 +445,17 @@ class ExecutingProjectRunner implements ProjectRunner
                 'finished_at' => now(),
             ]);
         } catch (UniqueConstraintViolationException) {
-            // Already recorded for this route; the run skip count is enough.
+            $this->recordRunSkip($broadcastRun, $item, $reason);
         }
+    }
+
+    private function recordRunSkip(BroadcastRun $broadcastRun, ContentItem $item, string $reason): void
+    {
+        BroadcastRunSkip::query()->create([
+            'broadcast_run_id' => $broadcastRun->getKey(),
+            'content_item_id' => $item->getKey(),
+            'reason' => $reason,
+        ]);
     }
 
     /**

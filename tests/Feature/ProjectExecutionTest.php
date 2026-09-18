@@ -93,11 +93,16 @@ class ProjectExecutionTest extends TestCase
         $this->assertSame(ContentItemLifecycle::Delivered, $kept->lifecycle);
         $this->assertSame(ContentItemLifecycle::Skipped, $skipped->lifecycle);
 
-        $delivery = ContentDelivery::query()->sole();
+        $delivery = ContentDelivery::query()->where('status', DeliveryStatus::Delivered)->sole();
         $this->assertSame(DeliveryStatus::Delivered, $delivery->status);
         $this->assertSame($kept->getKey(), $delivery->content_item_id);
         $this->assertSame($destination->getKey(), $delivery->destination_id);
         $this->assertNotNull($delivery->external_reference);
+
+        $skippedDelivery = ContentDelivery::query()->where('status', DeliveryStatus::Skipped)->sole();
+        $this->assertSame($skipped->getKey(), $skippedDelivery->content_item_id);
+        $this->assertNotNull($skippedDelivery->error_detail);
+        $this->assertStringContainsStringIgnoringCase('title', $skippedDelivery->error_detail);
 
         $recording = $this->app->make(DestinationProviderRegistry::class)->get('recording');
         $this->assertInstanceOf(RecordingDestinationProvider::class, $recording);

@@ -33,6 +33,10 @@
                 <x-button href="{{ route('project-broadcasts.index', $project) }}" variant="ghost" :paw="false">Broadcasts</x-button>
             @endcan
 
+            @can('view', $project)
+                <x-button href="{{ route('project-runs.index', $project) }}" variant="ghost" :paw="false">Run history</x-button>
+            @endcan
+
             @can('update', $project)
                 <x-button href="{{ route('projects.edit', $project) }}" variant="ghost" :paw="false">Edit project</x-button>
                 <x-button href="{{ route('project-schedules.edit', $project) }}" variant="ghost" :paw="false">Schedule</x-button>
