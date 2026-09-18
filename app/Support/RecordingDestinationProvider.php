@@ -95,7 +95,19 @@ class RecordingDestinationProvider implements DestinationProvider
             return ConnectionTestResult::failure('The recording destination has no token to authenticate with.');
         }
 
-        return ConnectionTestResult::success('Authenticated against the recording destination.');
+        $result = $this->publish($destination, new PreparedMessage(
+            '[Michicast test] Connection check — you can delete this message.',
+        ));
+
+        if ($result->successful) {
+            return ConnectionTestResult::success(
+                'Sent a test message to the recording destination (ref '.$result->externalReference.').',
+            );
+        }
+
+        return ConnectionTestResult::failure(
+            $result->failureReason ?? 'The recording destination connection test failed.',
+        );
     }
 
     public function publish(DestinationDefinition $destination, PreparedMessage $message): DeliveryResult

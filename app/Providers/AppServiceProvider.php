@@ -73,6 +73,12 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('broadcast-dry-run', fn (Request $request) => Limit::perMinute(3)
             ->by($this->userAndRouteKey($request, 'project')));
+
+        RateLimiter::for('source-connection-test', fn (Request $request) => Limit::perMinute(6)
+            ->by($this->userAndRouteKey($request, 'source')));
+
+        RateLimiter::for('destination-connection-test', fn (Request $request) => Limit::perMinute(6)
+            ->by($this->userAndRouteKey($request, 'destination')));
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateDestinationRequest;
 use App\Models\Destination;
 use App\Models\Organization;
+use App\Support\ConnectionTestOutcome;
 use App\Support\DestinationProviderRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -18,15 +19,7 @@ class DestinationController extends Controller
     {
         Gate::authorize('update', $destination);
 
-        $known = $this->providers->has($destination->type);
-
-        return view('destinations.edit', [
-            'destination' => $destination,
-            'known' => $known,
-            'typeLabel' => $known ? $this->providers->get($destination->type)->label() : $destination->type,
-            'fields' => $known ? $this->providers->configurationFields($destination->type) : [],
-            'credentialFields' => $known ? $this->providers->credentialFields($destination->type) : [],
-        ]);
+        return $this->form($destination);
     }
 
     public function update(UpdateDestinationRequest $request, Organization $organization, Destination $destination): RedirectResponse
@@ -40,5 +33,31 @@ class DestinationController extends Controller
         return redirect()
             ->route('destinations.edit', $destination)
             ->with('success', 'The destination has been updated.');
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $config
+     */
+    public function form(
+        Destination $destination,
+        ?string $name = null,
+        ?array $config = null,
+        ?bool $supportsConnectionTest = null,
+        ?ConnectionTestOutcome $testOutcome = null,
+    ): View {
+        $known = $this->providers->has($destination->type);
+        $supports = $supportsConnectionTest ?? ($known && $this->providers->capabilities($destination->type)->supportsConnectionTest);
+
+        return view('destinations.edit', [
+            'destination' => $destination,
+            'known' => $known,
+            'typeLabel' => $known ? $this->providers->get($destination->type)->label() : $destination->type,
+            'fields' => $known ? $this->providers->configurationFields($destination->type) : [],
+            'credentialFields' => $known ? $this->providers->credentialFields($destination->type) : [],
+            'formName' => $name ?? $destination->name,
+            'formConfig' => $config ?? ($destination->config ?? []),
+            'supportsConnectionTest' => $supports,
+            'testOutcome' => $testOutcome,
+        ]);
     }
 }
