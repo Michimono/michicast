@@ -16,12 +16,11 @@ class ProfilePasswordUpdateTest extends TestCase
         $this->get(route('profile.password.edit'))->assertRedirect(route('session.create'));
     }
 
-    public function test_the_password_screen_can_be_rendered(): void
+    public function test_the_password_editor_redirects_to_the_settings_password_section(): void
     {
         $this->actingAs(User::factory()->create())
             ->get(route('profile.password.edit'))
-            ->assertOk()
-            ->assertSee('Current password');
+            ->assertRedirect(route('profile.edit').'#password');
     }
 
     public function test_a_user_can_change_their_password_with_the_correct_current_password(): void
@@ -34,7 +33,7 @@ class ProfilePasswordUpdateTest extends TestCase
             'password_confirmation' => 'analytical-engine',
         ]);
 
-        $response->assertRedirect(route('profile.password.edit'));
+        $response->assertRedirect(route('profile.edit'));
         $response->assertSessionHas('success');
         $this->assertTrue(Hash::check('analytical-engine', $user->refresh()->password));
     }

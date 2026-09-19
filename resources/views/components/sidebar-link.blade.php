@@ -1,10 +1,10 @@
 @props(['href', 'active' => false])
 
 {{--
-    One row of the organization rail. The label is always in the document, so
-    the link keeps its accessible name at every width; between `lg` and `xl`
-    the rail is collapsed and the label is shown as a tooltip on hover or
-    keyboard focus instead of inline.
+    One row of a floating rail (organization or user settings). The label is
+    always in the document, so the link keeps its accessible name at every
+    width; between `lg` and `xl` the rail is collapsed and the label is shown
+    as a tooltip on hover or keyboard focus instead of inline.
 --}}
 <a
     href="{{ $href }}"

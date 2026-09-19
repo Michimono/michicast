@@ -47,11 +47,11 @@ class BrandIdentityTest extends TestCase
         $this->assertAnchorIsNotCurrent(route('profile.edit'), $response->getContent());
     }
 
-    public function test_the_navigation_marks_the_profile_while_any_profile_screen_is_open(): void
+    public function test_the_navigation_marks_settings_while_the_settings_screen_is_open(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('profile.password.edit'));
+        $response = $this->actingAs($user)->get(route('profile.edit'));
 
         $response->assertOk();
         $this->assertAnchorIsCurrent(route('profile.edit'), $response->getContent());

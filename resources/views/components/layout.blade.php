@@ -4,10 +4,12 @@
 
 @php
     $organization = $currentOrganization->isResolved() ? $currentOrganization->organization() : null;
+    $settings = request()->routeIs('profile.*');
+    $rail = $organization !== null || $settings;
 @endphp
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['scroll-smooth' => $settings])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -22,6 +24,8 @@
     <body class="bg-paper font-sans text-ink antialiased">
         @if ($organization)
             <x-organization-sidebar :organization="$organization" />
+        @elseif ($settings)
+            <x-settings-sidebar />
         @endif
 
         <div class="flex min-h-screen flex-col">
@@ -41,13 +45,27 @@
 
                                 <span class="sr-only">Organization menu</span>
                             </button>
-                        @else
+                        @elseif ($settings)
+                            <button
+                                class="rounded-md p-1.5 text-muted transition-colors hover:text-ink lg:hidden"
+                                type="button"
+                                data-sidebar-toggle
+                                aria-controls="settings-sidebar"
+                                aria-expanded="false"
+                            >
+                                <x-icons.menu />
+
+                                <span class="sr-only">Settings menu</span>
+                            </button>
+                        @endif
+
+                        @unless ($organization)
                             <a class="flex items-center gap-2.5" href="{{ route('home') }}">
                                 <x-brand.mark variant="face" class="h-6" />
 
                                 <span class="font-display text-xl tracking-tight">{{ config('app.name') }}</span>
                             </a>
-                        @endif
+                        @endunless
                     </div>
 
                     <nav class="flex items-center gap-1" aria-label="Account">
@@ -59,7 +77,7 @@
                                 :active="request()->routeIs('organizations.index', 'organizations.create')"
                             >Organizations</x-nav-link>
 
-                            <x-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">Profile</x-nav-link>
+                            <x-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">Settings</x-nav-link>
 
                             <form method="POST" action="{{ route('session.destroy') }}">
                                 @csrf
@@ -81,7 +99,7 @@
             </header>
 
             {{-- Only the page body yields to the rail; header and footer stay full-bleed. --}}
-            <div @class(['flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $organization !== null])>
+            <div @class(['flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $rail])>
                 <main @class([
                     'mx-auto flex w-full flex-1 flex-col px-6',
                     'max-w-lg justify-center gap-8 py-12' => $centered,
