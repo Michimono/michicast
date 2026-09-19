@@ -15,6 +15,31 @@ class LoginTest extends TestCase
         $this->get(route('session.create'))->assertOk();
     }
 
+    public function test_the_login_screen_renders_the_auth_shell(): void
+    {
+        $response = $this->get(route('session.create'));
+
+        $response->assertSee('<header', false);
+        $response->assertDontSee('<footer', false);
+
+        // The ears are the card's own 64x10 outline, so seeing it proves the eared variant rendered.
+        $response->assertSee('viewBox="0 0 64 10"', false);
+
+        // The gradient stops are far too light for the line-art cat on paper, so the flat mark renders here.
+        $response->assertSee('/images/brand/logo-day-full.svg', false);
+        $response->assertDontSee('house-mark', false);
+    }
+
+    public function test_the_login_screen_offers_recovery_registration_and_unavailable_social_sign_in(): void
+    {
+        $response = $this->get(route('session.create'));
+
+        $response->assertSee('Forgot your password?');
+        $response->assertSee(route('password-reset-links.create'), false);
+        $response->assertSee('Need an account?');
+        $response->assertSee('Google and GitHub sign-in are not available yet.');
+    }
+
     public function test_a_user_can_log_in_with_correct_credentials(): void
     {
         $user = User::factory()->create();

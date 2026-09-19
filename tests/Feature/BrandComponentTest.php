@@ -42,6 +42,19 @@ class BrandComponentTest extends TestCase
         $this->blade('<x-card heading="Plain">Body</x-card>')->assertDontSee('<svg', false);
     }
 
+    public function test_social_sign_in_renders_as_disabled_buttons_with_one_visible_reason(): void
+    {
+        $view = $this->blade('<x-social-auth />');
+
+        $view->assertSee('Google');
+        $view->assertSee('GitHub');
+        $view->assertSee('Google and GitHub sign-in are not available yet.');
+
+        // Providers must not be followable links while there is nothing to follow.
+        $view->assertDontSee('<a ', false);
+        $this->assertSame(2, preg_match_all('/<button[^>]*disabled/', (string) $view));
+    }
+
     public function test_the_mark_can_be_filled_with_the_house_gradient(): void
     {
         $this->blade('<x-brand.mark variant="cat" gradient class="h-16" />')

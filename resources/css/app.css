@@ -100,12 +100,6 @@
     background-clip: padding-box, border-box;
 }
 
-/* Marks the active item in a navigation list. */
-@utility house-underline {
-    border-bottom: 2px solid transparent;
-    border-image: var(--house-gradient) 1;
-}
-
 /*
  * Fills a logo silhouette with the gradient, for the moments the mark needs to
  * pop. The mask image itself is set inline on the mark so the SVG URL resolves
