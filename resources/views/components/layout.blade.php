@@ -1,4 +1,4 @@
-@props(['title' => null])
+@props(['title' => null, 'footer' => true, 'centered' => false])
 
 @inject('currentOrganization', App\Support\CurrentOrganization::class)
 
@@ -50,7 +50,7 @@
                         @endif
                     </div>
 
-                    <nav class="flex items-center gap-5" aria-label="Account">
+                    <nav class="flex items-center gap-1" aria-label="Account">
                         {{ $nav ?? '' }}
 
                         @auth
@@ -65,7 +65,10 @@
                                 @csrf
                                 @method('DELETE')
 
-                                <button class="text-sm text-muted transition-colors hover:text-ink" type="submit">
+                                <button
+                                    class="rounded-md px-2.5 py-1 text-sm text-muted transition-colors hover:bg-paper hover:text-ink"
+                                    type="submit"
+                                >
                                     Log out
                                 </button>
                             </form>
@@ -79,7 +82,11 @@
 
             {{-- Only the page body yields to the rail; header and footer stay full-bleed. --}}
             <div @class(['flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $organization !== null])>
-                <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
+                <main @class([
+                    'mx-auto flex w-full flex-1 flex-col px-6',
+                    'max-w-lg justify-center gap-8 py-12' => $centered,
+                    'max-w-5xl gap-6 py-10' => ! $centered,
+                ])>
                     @if (session('success'))
                         <p role="status" class="rounded-md border border-state-ok/30 bg-state-ok/5 px-4 py-3 text-sm text-state-ok">
                             {{ session('success') }}
@@ -96,15 +103,17 @@
                 </main>
             </div>
 
-            <footer class="border-t border-line bg-paper-raised">
-                <div class="mx-auto flex w-full max-w-7xl flex-col gap-1 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-                    <p>A {{ config('michicast.brand') }} product.</p>
+            @if ($footer)
+                <footer class="border-t border-line bg-paper-raised">
+                    <div class="mx-auto flex w-full max-w-7xl flex-col gap-1 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+                        <p>A {{ config('michicast.brand') }} product.</p>
 
-                    <a class="underline hover:no-underline" href="mailto:{{ config('michicast.support_email') }}">
-                        {{ config('michicast.support_email') }}
-                    </a>
-                </div>
-            </footer>
+                        <a class="underline hover:no-underline" href="mailto:{{ config('michicast.support_email') }}">
+                            {{ config('michicast.support_email') }}
+                        </a>
+                    </div>
+                </footer>
+            @endif
         </div>
     </body>
 </html>

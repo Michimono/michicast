@@ -26,6 +26,10 @@ The gradient is decoration and never carries body text — neither stop reaches 
 
 The header is a white bar with a hairline bottom border, the mark in its original black, and quiet grey navigation. Do not reintroduce dark chrome, an ink header band, or an inverted mark on light screens — it was tried and rejected. Darkness arrives only with the night theme, applied to whole surfaces rather than as a decorative band.
 
+The current navigation item is a flat `bg-paper` pill, in both the header and the organization rail, so the two agree. It was a gradient underline and that was rejected: an underline at body size puts the signature behind text it is too light to carry, and it disagreed with the rail. Do not bring the underline back; the pill is the whole treatment, and `aria-current="page"` is what actually announces the state.
+
+Auth screens (log in, register) render the header but no footer, centred in a single narrow column. Nothing on them should compete with the one form.
+
 ## Tokens, never raw values
 
 All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the generated utilities (`bg-paper`, `text-ink`, `border-line`, `text-accent`, `font-display`, `rounded-card`). Do not write `zinc-*`, `gray-*`, another Tailwind palette, a hex code, or an arbitrary colour in a view. If a needed value is missing, add a token rather than a one-off.
@@ -50,9 +54,8 @@ Theme hex values, CSS utilities, inline mask/style recipes, and visual contrast 
 
 The house gradient is a signature, not a surface treatment. It is allowed only in these places, via the `house-*` utilities:
 
-- `house-mark` — the logo filled with the gradient, and only where the mark needs to pop: empty states, auth screens, marketing. Chrome uses the flat mark. The mask image is set inline so the SVG URL resolves against the page.
-- `house-underline` — the active navigation item.
-- `house-fill` — the kicker rule beside a card heading, status rings, outlined pills, progress bars and sparklines.
+- `house-mark` — the logo filled with the gradient, and only where the mark needs to pop: empty states, marketing. Chrome uses the flat mark, and so do the auth screens. The artwork is thin line art, and on `paper` the fuchsia stop measures 2.04:1 and the blue stop 3.16:1, so a gradient cat reads as a smudge; a white plate does not rescue it at 2.25:1. Reserve the gradient mark for surfaces dark enough to give it something to clear — it needs navy, where the stops reach 5.86:1 and 3.78:1. The mask image is set inline so the SVG URL resolves against the page.
+- `house-fill` — the kicker rule beside a card heading, the short rule under an auth screen heading, status rings, outlined pills, progress bars and sparklines.
 - `house-text` — one hero figure per screen at most.
 - `house-edge` — the border of an empty state. Set `--house-edge-surface` when it sits on anything but `paper-raised`.
 
