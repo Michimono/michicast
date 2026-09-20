@@ -20,6 +20,28 @@ class BrandIdentityTest extends TestCase
         $response->assertSee('<link rel="icon" href="/images/brand/logo-day-mark.svg" type="image/svg+xml">', false);
     }
 
+    public function test_contextual_screens_keep_the_application_lockup_in_the_navbar(): void
+    {
+        config(['app.name' => 'Configured Product']);
+
+        $user = User::factory()->create();
+        $organization = Organization::factory()->ownedBy($user)->create(['name' => 'Michimono Labs']);
+
+        $this->actingAs($user)
+            ->get(route('organizations.show', $organization))
+            ->assertOk()
+            ->assertSee('/images/brand/logo-day-face.svg', false)
+            ->assertSee('Configured Product')
+            ->assertSee('Michimono Labs');
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('/images/brand/logo-day-face.svg', false)
+            ->assertSee('Configured Product')
+            ->assertSee('>Settings</a>', false);
+    }
+
     public function test_the_stock_laravel_favicon_is_no_longer_shipped(): void
     {
         $this->assertFileDoesNotExist(public_path('favicon.ico'));

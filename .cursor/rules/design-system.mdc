@@ -34,13 +34,13 @@ Auth screens (log in, register) and the signed-in app render the header but no f
 
 Navbar owns the **application**. Sidebar owns the **current context/resource**. Never put the same identity in both.
 
-- **General pages** (organizations index, create, home, auth): navbar shows `[App Logo] App Name`. No contextual sidebar.
-- **Contextual pages** (organization workspace, user settings, and later project): sidebar titles the resource (`Michimono Labs`, `Settings`) and holds its navigation. No application mark or app name in the rail.
-- **Navbar on contextual pages**: global account actions only on desktop. On mobile, the menu button plus the truncated context name orient the user; the drawer holds the full rail.
-- **Collapsed rail** (`lg`–`xl`): keep the context label (truncated), never substitute the app logo just to keep branding on screen.
-- **Settings** is a context of its own — titled `Settings` in the rail and in the mobile header, not the product name.
+- **Navbar**: always `[App Logo] App Name`, on every screen. Contextual pages add the mobile menu button beside the lockup; the drawer holds the rail.
+- **General pages** (organizations index, create, home, auth): no contextual sidebar.
+- **Contextual pages** (organization workspace, user settings, and later project): sidebar titles the resource (`Michimono Labs`, `Settings`) when the rail is wide, and holds its navigation. No application mark or app name in the rail.
+- **Collapsed rail** (`lg`–`xl`): substitute the context title with the information icon; hover or keyboard focus reveals the resource name as a tooltip. Do not put the app logo in the rail.
+- **Settings** is a context of its own — titled `Settings` in the rail, not the product name.
 
-Branding stays persistent through the shell, tokens, favicon, and menus. The app name does not need to appear on every screen.
+Branding stays persistent through the navbar lockup, tokens, favicon, and menus.
 
 ## Tokens, never raw values
 
@@ -95,11 +95,11 @@ Play is allowed in empty states, success notes, onboarding, loading and 404s —
 
 `public/images/brand/logo-day-{full,face,mark}.svg`, served directly and rendered through `<x-brand.mark>`:
 
-- `face` (2:1) — general-page header lockup (app identity).
+- `face` (2:1) — header lockup (app identity) on every screen.
 - `mark` (square) — favicon and small scales.
 - `cat` / `full` (tall) — empty states and hero moments.
 
-The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes. Contextual rails use `<x-sidebar-context>` for the resource name — not a brand mark.
+The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes. Contextual rails use `<x-sidebar-context>` for the resource name — not a brand mark. When the rail is collapsed, that component shows the information icon with the resource name as a tooltip.
 
 ## Dark theme
 

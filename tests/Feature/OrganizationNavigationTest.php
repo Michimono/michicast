@@ -41,11 +41,6 @@ class OrganizationNavigationTest extends TestCase
         $this->assertStringNotContainsString('<footer', $html);
         $this->assertStringContainsString('Michimono Labs', $html);
         $this->assertStringContainsString('id="organization-sidebar"', $html);
-        // Contextual shell: no application brand images in the org workspace.
-        $this->assertDoesNotMatchRegularExpression(
-            '/<img[^>]+logo-day-(?:mark|face)\.svg/',
-            $html,
-        );
     }
 
     public function test_a_viewer_does_not_see_organization_settings_in_the_rail(): void

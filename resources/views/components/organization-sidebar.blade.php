@@ -5,8 +5,9 @@
     the left and bottom. It is hidden behind the header's menu button below
     `lg`, a column of icons until `xl`, and icons with labels above it.
 
-    The rail names the current organization; application branding stays in the
-    general navbar, not here.
+    The rail names the current organization when it is wide, and the
+    information icon when it is collapsed; application branding stays in the
+    navbar, not here.
 
     `max-lg:hidden` is the class the menu button toggles, so the rail has one
     hidden state rather than one per breakpoint.

@@ -6,7 +6,6 @@
     $organization = $currentOrganization->isResolved() ? $currentOrganization->organization() : null;
     $settings = request()->routeIs('profile.*');
     $rail = $organization !== null || $settings;
-    $contextLabel = $organization?->name ?? ($settings ? 'Settings' : null);
 @endphp
 
 <!DOCTYPE html>
@@ -31,7 +30,7 @@
 
         <div class="flex min-h-screen flex-col">
             {{--
-                Navbar = application (or mobile context cue). Sidebar = current
+                Navbar = application lockup on every screen. Sidebar = current
                 resource. Never put the same identity in both.
             --}}
             <header class="border-b border-line bg-paper-raised">
@@ -63,16 +62,11 @@
                             </button>
                         @endif
 
-                        @if ($rail)
-                            {{-- Mobile orientation for the open resource; desktop leaves identity to the rail. --}}
-                            <p class="truncate font-display text-xl tracking-tight lg:hidden">{{ $contextLabel }}</p>
-                        @else
-                            <a class="flex items-center gap-2.5" href="{{ route('home') }}">
-                                <x-brand.mark variant="face" class="h-6" />
+                        <a class="flex min-w-0 items-center gap-2.5" href="{{ route('home') }}">
+                            <x-brand.mark variant="face" class="h-6 shrink-0" />
 
-                                <span class="font-display text-xl tracking-tight">{{ config('app.name') }}</span>
-                            </a>
-                        @endif
+                            <span class="truncate font-display text-xl tracking-tight">{{ config('app.name') }}</span>
+                        </a>
                     </div>
 
                     <nav class="flex shrink-0 items-center gap-1" aria-label="Account">

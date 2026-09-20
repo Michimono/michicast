@@ -33,12 +33,6 @@ class ProfileUpdateTest extends TestCase
             ->assertDontSee('id="organization-sidebar"', false)
             ->assertDontSee('<footer', false)
             ->assertSee('>Settings</a>', false);
-
-        // Favicon may reference the mark; the shell must not render brand images.
-        $this->assertDoesNotMatchRegularExpression(
-            '/<img[^>]+logo-day-(?:mark|face)\.svg/',
-            $response->getContent(),
-        );
     }
 
     public function test_the_profile_screen_shows_the_current_values_and_says_the_timezone_is_display_only(): void

@@ -3,9 +3,10 @@
     the left and bottom. It is hidden behind the header's menu button below
     `lg`, a column of icons until `xl`, and icons with labels above it.
 
-    Settings is its own context, so the rail is titled "Settings" rather than
-    repeating the application name. Links are in-page hashes; each target card
-    uses the same heading as the rail item.
+    Settings is its own context, so the rail is titled "Settings" when wide
+    (and the information icon when collapsed) rather than repeating the
+    application name. Links are in-page hashes; each target card uses the same
+    heading as the rail item.
 
     `max-lg:hidden` is the class the menu button toggles, so the rail has one
     hidden state rather than one per breakpoint.
