@@ -6,6 +6,7 @@
     $organization = $currentOrganization->isResolved() ? $currentOrganization->organization() : null;
     $settings = request()->routeIs('profile.*');
     $rail = $organization !== null || $settings;
+    $contextLabel = $organization?->name ?? ($settings ? 'Settings' : null);
 @endphp
 
 <!DOCTYPE html>
@@ -29,10 +30,13 @@
         @endif
 
         <div class="flex min-h-screen flex-col">
-            {{-- Account chrome. These links are the same whichever organization is open. --}}
+            {{--
+                Navbar = application (or mobile context cue). Sidebar = current
+                resource. Never put the same identity in both.
+            --}}
             <header class="border-b border-line bg-paper-raised">
                 <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-6 px-6 py-4">
-                    <div class="flex items-center gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
                         @if ($organization)
                             <button
                                 class="rounded-md p-1.5 text-muted transition-colors hover:text-ink lg:hidden"
@@ -59,16 +63,19 @@
                             </button>
                         @endif
 
-                        @unless ($organization)
+                        @if ($rail)
+                            {{-- Mobile orientation for the open resource; desktop leaves identity to the rail. --}}
+                            <p class="truncate font-display text-xl tracking-tight lg:hidden">{{ $contextLabel }}</p>
+                        @else
                             <a class="flex items-center gap-2.5" href="{{ route('home') }}">
                                 <x-brand.mark variant="face" class="h-6" />
 
                                 <span class="font-display text-xl tracking-tight">{{ config('app.name') }}</span>
                             </a>
-                        @endunless
+                        @endif
                     </div>
 
-                    <nav class="flex items-center gap-1" aria-label="Account">
+                    <nav class="flex shrink-0 items-center gap-1" aria-label="Account">
                         {{ $nav ?? '' }}
 
                         @auth

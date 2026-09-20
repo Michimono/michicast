@@ -3,17 +3,20 @@
     the left and bottom. It is hidden behind the header's menu button below
     `lg`, a column of icons until `xl`, and icons with labels above it.
 
+    Settings is its own context, so the rail is titled "Settings" rather than
+    repeating the application name. Links are in-page hashes; each target card
+    uses the same heading as the rail item.
+
     `max-lg:hidden` is the class the menu button toggles, so the rail has one
-    hidden state rather than one per breakpoint. Links are in-page hashes;
-    each target card uses the same heading as the rail item.
+    hidden state rather than one per breakpoint.
 --}}
 <aside
     id="settings-sidebar"
     class="fixed z-30 flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-3 lg:left-3 lg:w-16 xl:w-56"
 >
-    <x-sidebar-brand
+    <x-sidebar-context
         :href="route('profile.edit')"
-        :label="config('app.name')"
+        label="Settings"
     />
 
     <nav class="flex flex-col gap-1" aria-label="Settings sections">

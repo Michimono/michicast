@@ -30,6 +30,18 @@ The current navigation item is a flat `bg-paper` pill, in both the header and th
 
 Auth screens (log in, register) and the signed-in app render the header but no footer. Auth forms stay centred in a single narrow column; nothing on them should compete with the one form. The guest home page still shows the marketing footer.
 
+## Shell hierarchy: application, then context
+
+Navbar owns the **application**. Sidebar owns the **current context/resource**. Never put the same identity in both.
+
+- **General pages** (organizations index, create, home, auth): navbar shows `[App Logo] App Name`. No contextual sidebar.
+- **Contextual pages** (organization workspace, user settings, and later project): sidebar titles the resource (`Michimono Labs`, `Settings`) and holds its navigation. No application mark or app name in the rail.
+- **Navbar on contextual pages**: global account actions only on desktop. On mobile, the menu button plus the truncated context name orient the user; the drawer holds the full rail.
+- **Collapsed rail** (`lg`–`xl`): keep the context label (truncated), never substitute the app logo just to keep branding on screen.
+- **Settings** is a context of its own — titled `Settings` in the rail and in the mobile header, not the product name.
+
+Branding stays persistent through the shell, tokens, favicon, and menus. The app name does not need to appear on every screen.
+
 ## Tokens, never raw values
 
 All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the generated utilities (`bg-paper`, `text-ink`, `border-line`, `text-accent`, `font-display`, `rounded-card`). Do not write `zinc-*`, `gray-*`, another Tailwind palette, a hex code, or an arbitrary colour in a view. If a needed value is missing, add a token rather than a one-off.
@@ -83,11 +95,11 @@ Play is allowed in empty states, success notes, onboarding, loading and 404s —
 
 `public/images/brand/logo-day-{full,face,mark}.svg`, served directly and rendered through `<x-brand.mark>`:
 
-- `face` (2:1) — header lockup, and the expanded floating rail (labels visible).
-- `mark` (square) — favicon, small scales, and the icon-only floating rail.
+- `face` (2:1) — general-page header lockup (app identity).
+- `mark` (square) — favicon and small scales.
 - `cat` / `full` (tall) — empty states and hero moments.
 
-The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes. The floating rail swaps `mark` ↔ `face` via `<x-sidebar-brand>` so the lockup matches whether labels are showing.
+The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes. Contextual rails use `<x-sidebar-context>` for the resource name — not a brand mark.
 
 ## Dark theme
 

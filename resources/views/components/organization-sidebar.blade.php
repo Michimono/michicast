@@ -5,6 +5,9 @@
     the left and bottom. It is hidden behind the header's menu button below
     `lg`, a column of icons until `xl`, and icons with labels above it.
 
+    The rail names the current organization; application branding stays in the
+    general navbar, not here.
+
     `max-lg:hidden` is the class the menu button toggles, so the rail has one
     hidden state rather than one per breakpoint.
 --}}
@@ -12,7 +15,7 @@
     id="organization-sidebar"
     class="fixed z-30 flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-3 lg:left-3 lg:w-16 xl:w-56"
 >
-    <x-sidebar-brand
+    <x-sidebar-context
         :href="route('organizations.show', $organization)"
         :label="$organization->name"
     />

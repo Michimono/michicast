@@ -17,7 +17,7 @@ class ProfileUpdateTest extends TestCase
 
     public function test_the_settings_screen_has_a_section_rail_and_a_card_per_section(): void
     {
-        $this->actingAs(User::factory()->create())
+        $response = $this->actingAs(User::factory()->create())
             ->get(route('profile.edit'))
             ->assertOk()
             ->assertSee('id="settings-sidebar"', false)
@@ -32,8 +32,13 @@ class ProfileUpdateTest extends TestCase
             ->assertSee('Current password')
             ->assertDontSee('id="organization-sidebar"', false)
             ->assertDontSee('<footer', false)
-            ->assertSee('logo-day-mark.svg', false)
-            ->assertSee('logo-day-face.svg', false);
+            ->assertSee('>Settings</a>', false);
+
+        // Favicon may reference the mark; the shell must not render brand images.
+        $this->assertDoesNotMatchRegularExpression(
+            '/<img[^>]+logo-day-(?:mark|face)\.svg/',
+            $response->getContent(),
+        );
     }
 
     public function test_the_profile_screen_shows_the_current_values_and_says_the_timezone_is_display_only(): void
