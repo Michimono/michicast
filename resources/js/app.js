@@ -1,7 +1,15 @@
 /*
- * Reveals the organization rail on small screens. The rail is one element at
- * every width, so this only toggles the class that hides it below `lg`.
+ * Reveals a floating rail on small screens. Each rail is one element at every
+ * width, so this only toggles the class that hides it below `lg`.
  */
+function setSidebarHidden(sidebar, hidden) {
+    sidebar.classList.toggle('max-lg:hidden', hidden);
+
+    document.querySelectorAll(`[data-sidebar-toggle][aria-controls="${sidebar.id}"]`).forEach((toggle) => {
+        toggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+    });
+}
+
 document.addEventListener('click', (event) => {
     const toggle = event.target.closest('[data-sidebar-toggle]');
 
@@ -15,10 +23,57 @@ document.addEventListener('click', (event) => {
         return;
     }
 
-    const hidden = sidebar.classList.toggle('max-lg:hidden');
-
-    toggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+    setSidebarHidden(sidebar, sidebar.classList.contains('max-lg:hidden') === false);
 });
+
+/*
+ * User settings: mark the rail item for the section in view, and close the
+ * mobile drawer after choosing one so the card is not covered.
+ */
+(function () {
+    const sidebar = document.getElementById('settings-sidebar');
+
+    if (sidebar === null) {
+        return;
+    }
+
+    function currentHash() {
+        return window.location.hash || '#profile';
+    }
+
+    function syncSection() {
+        const hash = currentHash();
+
+        sidebar.querySelectorAll('a[href^="#"]').forEach((link) => {
+            const current = link.getAttribute('href') === hash;
+
+            link.classList.toggle('bg-paper', current);
+            link.classList.toggle('text-ink', current);
+            link.classList.toggle('text-muted', !current);
+
+            if (current) {
+                link.setAttribute('aria-current', 'true');
+            } else {
+                link.removeAttribute('aria-current');
+            }
+        });
+    }
+
+    sidebar.addEventListener('click', (event) => {
+        const link = event.target.closest('a[href^="#"]');
+
+        if (link === null) {
+            return;
+        }
+
+        if (window.matchMedia('(max-width: 1023px)').matches) {
+            setSidebarHidden(sidebar, true);
+        }
+    });
+
+    window.addEventListener('hashchange', syncSection);
+    syncSection();
+})();
 
 /*
  * Broadcast filter editor: add and remove rule rows, and show only the fields

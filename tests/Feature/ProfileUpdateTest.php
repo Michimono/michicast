@@ -15,6 +15,26 @@ class ProfileUpdateTest extends TestCase
         $this->get(route('profile.edit'))->assertRedirect(route('session.create'));
     }
 
+    public function test_the_settings_screen_has_a_section_rail_and_a_card_per_section(): void
+    {
+        $response = $this->actingAs(User::factory()->create())
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('id="settings-sidebar"', false)
+            ->assertSee('aria-label="Settings sections"', false)
+            ->assertSee('href="#profile"', false)
+            ->assertSee('href="#password"', false)
+            ->assertSee('id="profile"', false)
+            ->assertSee('id="password"', false)
+            ->assertSee('>Profile</h2>', false)
+            ->assertSee('>Password</h2>', false)
+            ->assertSee('Settings menu')
+            ->assertSee('Current password')
+            ->assertDontSee('id="organization-sidebar"', false)
+            ->assertDontSee('<footer', false)
+            ->assertSee('>Settings</a>', false);
+    }
+
     public function test_the_profile_screen_shows_the_current_values_and_says_the_timezone_is_display_only(): void
     {
         $user = User::factory()->create([

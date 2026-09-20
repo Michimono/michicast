@@ -1,22 +1,25 @@
 @props(['organization'])
 
 {{--
-    The organization rail: floating between the full-bleed header and footer,
-    inset from the left. It is hidden behind the header's menu button below
+    The organization rail: floating under the full-bleed header, inset from
+    the left and bottom. It is hidden behind the header's menu button below
     `lg`, a column of icons until `xl`, and icons with labels above it.
+
+    The rail names the current organization when it is wide, and the
+    information icon when it is collapsed; application branding stays in the
+    navbar, not here.
 
     `max-lg:hidden` is the class the menu button toggles, so the rail has one
     hidden state rather than one per breakpoint.
 --}}
 <aside
     id="organization-sidebar"
-    class="fixed z-30 flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-20 lg:left-3 lg:w-16 xl:w-56"
+    class="fixed z-30 flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-3 lg:left-3 lg:w-16 xl:w-56"
 >
-    <a class="flex justify-center py-1" href="{{ route('organizations.show', $organization) }}">
-        <x-brand.mark variant="mark" class="h-7" />
-
-        <span class="sr-only">{{ $organization->name }}</span>
-    </a>
+    <x-sidebar-context
+        :href="route('organizations.show', $organization)"
+        :label="$organization->name"
+    />
 
     <nav class="flex flex-col gap-1" aria-label="Organization">
         <x-sidebar-link

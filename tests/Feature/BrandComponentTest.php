@@ -55,6 +55,15 @@ class BrandComponentTest extends TestCase
         $this->assertSame(2, preg_match_all('/<button[^>]*disabled/', (string) $view));
     }
 
+    public function test_the_sidebar_context_keeps_the_resource_name_beside_an_information_icon(): void
+    {
+        $view = $this->blade('<x-sidebar-context href="/organizations/1" label="Michimono Labs" />');
+
+        $view->assertSee('Michimono Labs');
+        $view->assertSee('href="/organizations/1"', false);
+        $this->assertSame(1, substr_count((string) $view, '<svg'));
+    }
+
     public function test_the_mark_can_be_filled_with_the_house_gradient(): void
     {
         $this->blade('<x-brand.mark variant="cat" gradient class="h-16" />')

@@ -20,6 +20,28 @@ class BrandIdentityTest extends TestCase
         $response->assertSee('<link rel="icon" href="/images/brand/logo-day-mark.svg" type="image/svg+xml">', false);
     }
 
+    public function test_contextual_screens_keep_the_application_lockup_in_the_navbar(): void
+    {
+        config(['app.name' => 'Configured Product']);
+
+        $user = User::factory()->create();
+        $organization = Organization::factory()->ownedBy($user)->create(['name' => 'Michimono Labs']);
+
+        $this->actingAs($user)
+            ->get(route('organizations.show', $organization))
+            ->assertOk()
+            ->assertSee('/images/brand/logo-day-face.svg', false)
+            ->assertSee('Configured Product')
+            ->assertSee('Michimono Labs');
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('/images/brand/logo-day-face.svg', false)
+            ->assertSee('Configured Product')
+            ->assertSee('>Settings</a>', false);
+    }
+
     public function test_the_stock_laravel_favicon_is_no_longer_shipped(): void
     {
         $this->assertFileDoesNotExist(public_path('favicon.ico'));
@@ -47,11 +69,11 @@ class BrandIdentityTest extends TestCase
         $this->assertAnchorIsNotCurrent(route('profile.edit'), $response->getContent());
     }
 
-    public function test_the_navigation_marks_the_profile_while_any_profile_screen_is_open(): void
+    public function test_the_navigation_marks_settings_while_the_settings_screen_is_open(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('profile.password.edit'));
+        $response = $this->actingAs($user)->get(route('profile.edit'));
 
         $response->assertOk();
         $this->assertAnchorIsCurrent(route('profile.edit'), $response->getContent());

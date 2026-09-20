@@ -4,13 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateProfilePasswordRequest;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class ProfilePasswordController extends Controller
 {
-    public function edit(): View
+    public function edit(): RedirectResponse
     {
-        return view('profile.password.edit');
+        return redirect(route('profile.edit').'#password');
     }
 
     public function update(UpdateProfilePasswordRequest $request): RedirectResponse
@@ -20,7 +19,7 @@ class ProfilePasswordController extends Controller
         ]);
 
         return redirect()
-            ->route('profile.password.edit')
+            ->route('profile.edit')
             ->with('success', 'Your password has been updated.');
     }
 }

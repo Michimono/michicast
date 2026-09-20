@@ -4,10 +4,12 @@
 
 @php
     $organization = $currentOrganization->isResolved() ? $currentOrganization->organization() : null;
+    $settings = request()->routeIs('profile.*');
+    $rail = $organization !== null || $settings;
 @endphp
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['scroll-smooth' => $settings])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -22,13 +24,18 @@
     <body class="bg-paper font-sans text-ink antialiased">
         @if ($organization)
             <x-organization-sidebar :organization="$organization" />
+        @elseif ($settings)
+            <x-settings-sidebar />
         @endif
 
         <div class="flex min-h-screen flex-col">
-            {{-- Account chrome. These links are the same whichever organization is open. --}}
+            {{--
+                Navbar = application lockup on every screen. Sidebar = current
+                resource. Never put the same identity in both.
+            --}}
             <header class="border-b border-line bg-paper-raised">
                 <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-6 px-6 py-4">
-                    <div class="flex items-center gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
                         @if ($organization)
                             <button
                                 class="rounded-md p-1.5 text-muted transition-colors hover:text-ink lg:hidden"
@@ -41,16 +48,28 @@
 
                                 <span class="sr-only">Organization menu</span>
                             </button>
-                        @else
-                            <a class="flex items-center gap-2.5" href="{{ route('home') }}">
-                                <x-brand.mark variant="face" class="h-6" />
+                        @elseif ($settings)
+                            <button
+                                class="rounded-md p-1.5 text-muted transition-colors hover:text-ink lg:hidden"
+                                type="button"
+                                data-sidebar-toggle
+                                aria-controls="settings-sidebar"
+                                aria-expanded="false"
+                            >
+                                <x-icons.menu />
 
-                                <span class="font-display text-xl tracking-tight">{{ config('app.name') }}</span>
-                            </a>
+                                <span class="sr-only">Settings menu</span>
+                            </button>
                         @endif
+
+                        <a class="flex min-w-0 items-center gap-2.5" href="{{ route('home') }}">
+                            <x-brand.mark variant="face" class="h-6 shrink-0" />
+
+                            <span class="truncate font-display text-xl tracking-tight">{{ config('app.name') }}</span>
+                        </a>
                     </div>
 
-                    <nav class="flex items-center gap-1" aria-label="Account">
+                    <nav class="flex shrink-0 items-center gap-1" aria-label="Account">
                         {{ $nav ?? '' }}
 
                         @auth
@@ -59,7 +78,7 @@
                                 :active="request()->routeIs('organizations.index', 'organizations.create')"
                             >Organizations</x-nav-link>
 
-                            <x-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">Profile</x-nav-link>
+                            <x-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.*')">Settings</x-nav-link>
 
                             <form method="POST" action="{{ route('session.destroy') }}">
                                 @csrf
@@ -80,8 +99,8 @@
                 </div>
             </header>
 
-            {{-- Only the page body yields to the rail; header and footer stay full-bleed. --}}
-            <div @class(['flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $organization !== null])>
+            {{-- Only the page body yields to the rail; the header stays full-bleed. --}}
+            <div @class(['flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $rail])>
                 <main @class([
                     'mx-auto flex w-full flex-1 flex-col px-6',
                     'max-w-lg justify-center gap-8 py-12' => $centered,
@@ -103,7 +122,8 @@
                 </main>
             </div>
 
-            @if ($footer)
+            {{-- Guest marketing chrome only. Auth, register, and the signed-in app omit it. --}}
+            @if ($footer && auth()->guest())
                 <footer class="border-t border-line bg-paper-raised">
                     <div class="mx-auto flex w-full max-w-7xl flex-col gap-1 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
                         <p>A {{ config('michicast.brand') }} product.</p>

@@ -28,7 +28,19 @@ The header is a white bar with a hairline bottom border, the mark in its origina
 
 The current navigation item is a flat `bg-paper` pill, in both the header and the organization rail, so the two agree. It was a gradient underline and that was rejected: an underline at body size puts the signature behind text it is too light to carry, and it disagreed with the rail. Do not bring the underline back; the pill is the whole treatment, and `aria-current="page"` is what actually announces the state.
 
-Auth screens (log in, register) render the header but no footer, centred in a single narrow column. Nothing on them should compete with the one form.
+Auth screens (log in, register) and the signed-in app render the header but no footer. Auth forms stay centred in a single narrow column; nothing on them should compete with the one form. The guest home page still shows the marketing footer.
+
+## Shell hierarchy: application, then context
+
+Navbar owns the **application**. Sidebar owns the **current context/resource**. Never put the same identity in both.
+
+- **Navbar**: always `[App Logo] App Name`, on every screen. Contextual pages add the mobile menu button beside the lockup; the drawer holds the rail.
+- **General pages** (organizations index, create, home, auth): no contextual sidebar.
+- **Contextual pages** (organization workspace, user settings, and later project): sidebar titles the resource (`Michimono Labs`, `Settings`) when the rail is wide, and holds its navigation. No application mark or app name in the rail.
+- **Collapsed rail** (`lg`–`xl`): substitute the context title with the information icon; hover or keyboard focus reveals the resource name as a tooltip. Do not put the app logo in the rail.
+- **Settings** is a context of its own — titled `Settings` in the rail, not the product name.
+
+Branding stays persistent through the navbar lockup, tokens, favicon, and menus.
 
 ## Tokens, never raw values
 
@@ -83,11 +95,11 @@ Play is allowed in empty states, success notes, onboarding, loading and 404s —
 
 `public/images/brand/logo-day-{full,face,mark}.svg`, served directly and rendered through `<x-brand.mark>`:
 
-- `face` (2:1) — header lockup.
+- `face` (2:1) — header lockup (app identity) on every screen.
 - `mark` (square) — favicon and small scales.
 - `cat` / `full` (tall) — empty states and hero moments.
 
-The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes.
+The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes. Contextual rails use `<x-sidebar-context>` for the resource name — not a brand mark. When the rail is collapsed, that component shows the information icon with the resource name as a tooltip.
 
 ## Dark theme
 
