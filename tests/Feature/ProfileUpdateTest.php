@@ -30,7 +30,8 @@ class ProfileUpdateTest extends TestCase
             ->assertSee('>Password</h2>', false)
             ->assertSee('Settings menu')
             ->assertSee('Current password')
-            ->assertDontSee('id="organization-sidebar"', false);
+            ->assertDontSee('id="organization-sidebar"', false)
+            ->assertDontSee('<footer', false);
     }
 
     public function test_the_profile_screen_shows_the_current_values_and_says_the_timezone_is_display_only(): void

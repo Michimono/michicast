@@ -1,6 +1,6 @@
 {{--
-    The user-settings rail: floating between the full-bleed header and footer,
-    inset from the left. It is hidden behind the header's menu button below
+    The user-settings rail: floating under the full-bleed header, inset from
+    the left and bottom. It is hidden behind the header's menu button below
     `lg`, a column of icons until `xl`, and icons with labels above it.
 
     `max-lg:hidden` is the class the menu button toggles, so the rail has one
@@ -9,7 +9,7 @@
 --}}
 <aside
     id="settings-sidebar"
-    class="fixed z-30 flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-20 lg:left-3 lg:w-16 xl:w-56"
+    class="fixed z-30 flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-3 lg:left-3 lg:w-16 xl:w-56"
 >
     <nav class="flex flex-col gap-1" aria-label="Settings sections">
         <x-sidebar-link href="#profile">

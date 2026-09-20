@@ -98,7 +98,7 @@
                 </div>
             </header>
 
-            {{-- Only the page body yields to the rail; header and footer stay full-bleed. --}}
+            {{-- Only the page body yields to the rail; the header stays full-bleed. --}}
             <div @class(['flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $rail])>
                 <main @class([
                     'mx-auto flex w-full flex-1 flex-col px-6',
@@ -121,7 +121,8 @@
                 </main>
             </div>
 
-            @if ($footer)
+            {{-- Guest marketing chrome only. Auth, register, and the signed-in app omit it. --}}
+            @if ($footer && auth()->guest())
                 <footer class="border-t border-line bg-paper-raised">
                     <div class="mx-auto flex w-full max-w-7xl flex-col gap-1 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
                         <p>A {{ config('michicast.brand') }} product.</p>

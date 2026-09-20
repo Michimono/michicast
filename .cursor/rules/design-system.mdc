@@ -28,7 +28,7 @@ The header is a white bar with a hairline bottom border, the mark in its origina
 
 The current navigation item is a flat `bg-paper` pill, in both the header and the organization rail, so the two agree. It was a gradient underline and that was rejected: an underline at body size puts the signature behind text it is too light to carry, and it disagreed with the rail. Do not bring the underline back; the pill is the whole treatment, and `aria-current="page"` is what actually announces the state.
 
-Auth screens (log in, register) render the header but no footer, centred in a single narrow column. Nothing on them should compete with the one form.
+Auth screens (log in, register) and the signed-in app render the header but no footer. Auth forms stay centred in a single narrow column; nothing on them should compete with the one form. The guest home page still shows the marketing footer.
 
 ## Tokens, never raw values
 

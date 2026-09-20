@@ -38,6 +38,7 @@ class OrganizationNavigationTest extends TestCase
         $this->assertStringContainsString('Organization menu', $html);
         $this->assertStringContainsString('aria-label="Account"', $html);
         $this->assertStringContainsString('aria-label="Organization"', $html);
+        $this->assertStringNotContainsString('<footer', $html);
     }
 
     public function test_a_viewer_does_not_see_organization_settings_in_the_rail(): void
@@ -99,7 +100,8 @@ class OrganizationNavigationTest extends TestCase
             ->assertSee('Log out')
             ->assertDontSee('id="organization-sidebar"', false)
             ->assertSee('id="settings-sidebar"', false)
-            ->assertSee('Settings menu');
+            ->assertSee('Settings menu')
+            ->assertDontSee('<footer', false);
     }
 
     public function test_the_creation_screen_has_no_organization_rail_before_the_first_organization_exists(): void
