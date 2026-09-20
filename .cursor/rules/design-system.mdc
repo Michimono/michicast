@@ -83,11 +83,11 @@ Play is allowed in empty states, success notes, onboarding, loading and 404s —
 
 `public/images/brand/logo-day-{full,face,mark}.svg`, served directly and rendered through `<x-brand.mark>`:
 
-- `face` (2:1) — header lockup.
-- `mark` (square) — favicon and small scales.
+- `face` (2:1) — header lockup, and the expanded floating rail (labels visible).
+- `mark` (square) — favicon, small scales, and the icon-only floating rail.
 - `cat` / `full` (tall) — empty states and hero moments.
 
-The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes.
+The art is monochrome, so ink-on-paper needs no processing and cream-on-ink uses `invert`. When night variants arrive they land as `logo-night-*.svg` and only `<x-brand.mark>` changes. The floating rail swaps `mark` ↔ `face` via `<x-sidebar-brand>` so the lockup matches whether labels are showing.
 
 ## Dark theme
 

@@ -12,11 +12,10 @@
     id="organization-sidebar"
     class="fixed z-30 flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-3 lg:left-3 lg:w-16 xl:w-56"
 >
-    <a class="flex justify-center py-1" href="{{ route('organizations.show', $organization) }}">
-        <x-brand.mark variant="mark" class="h-7" />
-
-        <span class="sr-only">{{ $organization->name }}</span>
-    </a>
+    <x-sidebar-brand
+        :href="route('organizations.show', $organization)"
+        :label="$organization->name"
+    />
 
     <nav class="flex flex-col gap-1" aria-label="Organization">
         <x-sidebar-link

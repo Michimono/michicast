@@ -11,6 +11,11 @@
     id="settings-sidebar"
     class="fixed z-30 flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-3 lg:left-3 lg:w-16 xl:w-56"
 >
+    <x-sidebar-brand
+        :href="route('profile.edit')"
+        :label="config('app.name')"
+    />
+
     <nav class="flex flex-col gap-1" aria-label="Settings sections">
         <x-sidebar-link href="#profile">
             <x-slot:icon><x-icons.user class="size-5 shrink-0" /></x-slot:icon>
