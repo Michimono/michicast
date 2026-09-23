@@ -73,6 +73,7 @@ class ProjectDashboardTest extends TestCase
         $response->assertSee('Pokemon TCGP News');
         $response->assertSee('Active');
         $response->assertSee('Europe/Madrid');
+        $response->assertSee('project override');
         $response->assertSee('Failed');
         $response->assertSee($lastFinishedAt->diffForHumans());
         $response->assertSeeInOrder(['Sources', '2', 'Destinations', '1', 'Broadcasts', '1']);
@@ -110,6 +111,7 @@ class ProjectDashboardTest extends TestCase
             ->assertSee('Never run')
             ->assertSee('This project has never run.')
             ->assertSee('UTC')
+            ->assertSee('organization timezone')
             ->assertDontSee('Nothing to chase yet');
     }
 
@@ -124,8 +126,9 @@ class ProjectDashboardTest extends TestCase
             ->assertSee('Nothing to chase yet')
             ->assertSee('Add a source')
             ->assertSee(route('project-sources.create', [$organization, $project]), false)
-            ->assertDontSee('Recent runs')
-            ->assertDontSee('Never run');
+            ->assertSee(route('project-broadcasts.index', [$organization, $project]), false)
+            ->assertSee('This project has no schedule yet.')
+            ->assertSee('Never run');
     }
 
     public function test_a_viewer_sees_state_but_cannot_trigger_actions(): void
@@ -192,3 +195,4 @@ class ProjectDashboardTest extends TestCase
         return [$user, Organization::factory()->withMember($user, $role)->create()];
     }
 }
+
