@@ -195,4 +195,3 @@ class ProjectDashboardTest extends TestCase
         return [$user, Organization::factory()->withMember($user, $role)->create()];
     }
 }
-
