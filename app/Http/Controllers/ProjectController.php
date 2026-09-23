@@ -48,8 +48,32 @@ class ProjectController extends Controller
     {
         Gate::authorize('view', $project);
 
+        $project->setRelation('organization', $organization);
+
+        $project->loadCount([
+            'sources' => fn ($query) => $query->notArchived(),
+            'destinations' => fn ($query) => $query->notArchived(),
+            'broadcasts' => fn ($query) => $query->notArchived(),
+        ]);
+
+        $recentRuns = $project->runs()
+            ->latest('started_at')
+            ->latest('id')
+            ->limit(5)
+            ->get();
+
+        $autoPausedBroadcasts = $project->broadcasts()
+            ->notArchived()
+            ->whereNotNull('failure_pause_reason')
+            ->oldest('id')
+            ->get();
+
         return view('projects.show', [
             'project' => $project,
+            'recentRuns' => $recentRuns,
+            'lastRun' => $recentRuns->first(),
+            'autoPausedBroadcasts' => $autoPausedBroadcasts,
+            'isEmpty' => $project->sources_count === 0,
         ]);
     }
 
