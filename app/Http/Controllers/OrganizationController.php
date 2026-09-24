@@ -67,14 +67,28 @@ class OrganizationController extends Controller
     }
 
     /**
-     * The organization's own screen, and the first thing its sidebar links to.
+     * The organization's workspace home: a quiet grid of project cards.
      */
     public function show(Organization $organization): View
     {
         Gate::authorize('view', $organization);
 
+        $projects = $organization->projects()
+            ->notArchived()
+            ->withCount([
+                'sources' => fn ($query) => $query->notArchived(),
+                'destinations' => fn ($query) => $query->notArchived(),
+                'broadcasts' => fn ($query) => $query->notArchived(),
+            ])
+            ->with('latestRun')
+            ->oldest('id')
+            ->get();
+
+        $projects->each(fn ($project) => $project->setRelation('organization', $organization));
+
         return view('organizations.show', [
             'organization' => $organization,
+            'projects' => $projects,
         ]);
     }
 }
