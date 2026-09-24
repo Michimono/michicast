@@ -80,11 +80,6 @@ class BrandIdentityTest extends TestCase
         $this->assertAnchorIsNotCurrent(route('organizations.index'), $response->getContent());
     }
 
-    private function assertAnchorIsCurrent(string $url, string $html): void
-    {
-        $this->assertMatchesRegularExpression($this->currentAnchorPattern($url), $html);
-    }
-
     private function assertAnchorIsNotCurrent(string $url, string $html): void
     {
         $this->assertDoesNotMatchRegularExpression($this->currentAnchorPattern($url), $html);

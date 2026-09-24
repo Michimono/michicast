@@ -29,7 +29,8 @@ class BroadcastDryRunController extends Controller
         }
 
         return redirect()
-            ->route('project-runs.show', [$project, $run])
-            ->with('success', 'Dry run finished. Nothing was published.');
+            ->route('projects.show', $project)
+            ->with('success', 'Dry run finished. Nothing was published.')
+            ->with('last_run_id', $run->getKey());
     }
 }

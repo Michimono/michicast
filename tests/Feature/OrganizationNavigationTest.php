@@ -30,11 +30,11 @@ class OrganizationNavigationTest extends TestCase
         $this->assertStringContainsString(route('projects.index', $organization), $html);
         $this->assertStringContainsString(route('members.index', $organization), $html);
         $this->assertStringContainsString(route('organization-settings.edit', $organization), $html);
-        $this->assertStringContainsString('Dashboard', $html);
+        $this->assertStringNotContainsString('Dashboard', $html);
         $this->assertStringContainsString('Projects', $html);
         $this->assertStringContainsString('Members', $html);
         $this->assertStringContainsString('Settings', $html);
-        $this->assertStringContainsString('Switch organization', $html);
+        $this->assertStringContainsString('All organizations', $html);
         $this->assertStringContainsString('Organization menu', $html);
         $this->assertStringContainsString('aria-label="Account"', $html);
         $this->assertStringContainsString('aria-label="Organization"', $html);
@@ -113,13 +113,5 @@ class OrganizationNavigationTest extends TestCase
             ->assertOk()
             ->assertDontSee('id="organization-sidebar"', false)
             ->assertDontSee('Organization menu');
-    }
-
-    private function assertAnchorIsCurrent(string $url, string $html): void
-    {
-        $this->assertMatchesRegularExpression(
-            '/<a[^>]*href="'.preg_quote($url, '/').'"[^>]*aria-current="page"/s',
-            $html,
-        );
     }
 }

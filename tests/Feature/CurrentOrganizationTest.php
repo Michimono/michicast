@@ -52,7 +52,8 @@ class CurrentOrganizationTest extends TestCase
             ->get(route('organizations.show', $second))
             ->assertOk()
             ->assertSee('Second Studio')
-            ->assertDontSee('Michimono Labs');
+            ->assertSee('Michimono Labs')
+            ->assertSee('All organizations');
 
         $this->assertSame($second->getKey(), session(SetCurrentOrganization::SESSION_KEY));
 

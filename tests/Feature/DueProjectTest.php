@@ -101,7 +101,7 @@ class DueProjectTest extends TestCase
             ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Run now')
-            ->assertSee(route('due-projects.store', [$organization, $project]), false);
+            ->assertSee(route('immediate-project-runs.store', [$organization, $project]), false);
     }
 
     public function test_a_draft_project_does_not_show_run_now(): void
