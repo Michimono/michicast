@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Organization;
+use App\Models\Project;
+use App\Models\ProjectRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -22,11 +24,14 @@ class TimestampDisplayTest extends TestCase
     public function test_timestamps_render_in_the_timezone_the_user_chose(): void
     {
         $user = User::factory()->create(['timezone' => 'Asia/Tokyo']);
-
         $organization = Organization::factory()->ownedBy($user)->create();
+        $project = Project::factory()->for($organization)->create();
+        $run = ProjectRun::factory()->for($project)->create([
+            'started_at' => Carbon::parse('2026-01-02 23:30:00', 'UTC'),
+        ]);
 
         $this->actingAs($user)
-            ->get(route('organizations.show', $organization))
+            ->get(route('project-runs.show', [$organization, $project, $run]))
             ->assertOk()
             ->assertSee('Jan 3, 2026 8:30 AM JST');
     }
@@ -34,11 +39,14 @@ class TimestampDisplayTest extends TestCase
     public function test_the_same_moment_renders_differently_for_a_user_reading_times_in_utc(): void
     {
         $user = User::factory()->create(['timezone' => 'UTC']);
-
         $organization = Organization::factory()->ownedBy($user)->create();
+        $project = Project::factory()->for($organization)->create();
+        $run = ProjectRun::factory()->for($project)->create([
+            'started_at' => Carbon::parse('2026-01-02 23:30:00', 'UTC'),
+        ]);
 
         $this->actingAs($user)
-            ->get(route('organizations.show', $organization))
+            ->get(route('project-runs.show', [$organization, $project, $run]))
             ->assertOk()
             ->assertSee('Jan 2, 2026 11:30 PM UTC')
             ->assertSee('datetime="2026-01-02T23:30:00+00:00"', false);
