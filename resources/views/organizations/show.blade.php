@@ -16,6 +16,7 @@
 
         @if ($projects->isEmpty())
             <x-empty-state
+                eared
                 heading="Nothing to chase yet"
                 message="Create a project and this workspace becomes a row of cards you can scan and steer."
             >
@@ -28,6 +29,8 @@
                 @foreach ($projects as $project)
                     <li>
                         <article class="group relative flex h-full flex-col gap-4 rounded-card border border-line bg-paper-raised p-5 transition-colors hover:border-line-strong">
+                            <x-card-ears />
+
                             <a
                                 href="{{ route('projects.show', $project) }}"
                                 class="absolute inset-0 z-0 rounded-card"

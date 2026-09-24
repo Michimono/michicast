@@ -30,7 +30,9 @@ class OrganizationWorkspaceTest extends TestCase
             ->assertSee('Nothing to chase yet')
             ->assertSee('+ New project')
             ->assertSee(route('projects.create', $organization), false)
-            ->assertDontSee('Nothing to manage yet');
+            ->assertDontSee('Nothing to manage yet')
+            ->assertSee('viewBox="0 0 64 10"', false)
+            ->assertSee('M2 10 10 1 18 10', false);
     }
 
     public function test_a_configured_workspace_lists_project_cards_with_counts_and_runs(): void
@@ -87,6 +89,9 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertSee('Resume');
         $response->assertSee('Archive');
         $response->assertSee('Edit');
+        $response->assertSee('viewBox="0 0 64 10"', false);
+        $response->assertSee('M2 10 10 1 18 10', false);
+        $this->assertSame(2, substr_count($response->getContent(), 'viewBox="0 0 64 10"'));
         $this->assertLessThan(20, $queries);
     }
 
