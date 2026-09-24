@@ -1,9 +1,11 @@
 @props(['title' => null, 'footer' => true, 'centered' => false])
 
 @inject('currentOrganization', App\Support\CurrentOrganization::class)
+@inject('currentProject', App\Support\CurrentProject::class)
 
 @php
     $organization = $currentOrganization->isResolved() ? $currentOrganization->organization() : null;
+    $project = $organization ? $currentProject->project() : null;
     $settings = request()->routeIs('profile.*');
     $rail = $organization !== null || $settings;
 @endphp
@@ -23,7 +25,7 @@
     </head>
     <body class="bg-paper font-sans text-ink antialiased">
         @if ($organization)
-            <x-organization-sidebar :organization="$organization" />
+            <x-organization-sidebar :organization="$organization" :project="$project" />
         @elseif ($settings)
             <x-settings-sidebar />
         @endif

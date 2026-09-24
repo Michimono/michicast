@@ -21,6 +21,7 @@ use App\Http\Controllers\EnabledBroadcastController;
 use App\Http\Controllers\EnabledDestinationController;
 use App\Http\Controllers\EnabledSourceController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\ImmediateProjectRunController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MemberRoleController;
@@ -128,6 +129,12 @@ Route::middleware('auth')->group(function (): void {
                 ->creatable()
                 ->only(['store'])
                 ->names(['store' => 'due-projects.store']);
+
+            Route::singleton('projects.immediate-project-run', ImmediateProjectRunController::class)
+                ->creatable()
+                ->only(['store'])
+                ->names(['store' => 'immediate-project-runs.store'])
+                ->middlewareFor('store', 'throttle:broadcast-dry-run');
 
             Route::singleton('projects.active-project', ActiveProjectController::class)
                 ->creatable()

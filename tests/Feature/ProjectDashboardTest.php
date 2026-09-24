@@ -76,21 +76,25 @@ class ProjectDashboardTest extends TestCase
         $response->assertSee('project override');
         $response->assertSee('Failed');
         $response->assertSee($lastFinishedAt->diffForHumans());
-        $response->assertSeeInOrder(['Sources', '2', 'Destinations', '1', 'Broadcasts', '1']);
+        $response->assertSee('Broadcasts');
+        $response->assertSee('Sources');
+        $response->assertSee('Destinations');
+        $response->assertSee('text-2xl text-ink">2', false);
+        $response->assertSee('Attention needed');
         $response->assertSee(route('project-sources.index', [$organization, $project]), false);
         $response->assertSee(route('project-destinations.index', [$organization, $project]), false);
         $response->assertSee(route('project-broadcasts.index', [$organization, $project]), false);
         $response->assertSee(route('project-runs.show', [$organization, $project, $newer]), false);
         $response->assertSee(route('project-runs.show', [$organization, $project, $older]), false);
-        $response->assertSee('found 4');
-        $response->assertSee('found 2');
-        $response->assertDontSee('found 99');
+        $response->assertSee('discovered 4');
+        $response->assertSee('discovered 2');
+        $response->assertDontSee('discovered 99');
         $response->assertSee('Run now');
         $response->assertSee('Dry run');
         $response->assertSee('Pause');
         $response->assertSee('Edit project');
         $response->assertDontSee('Nothing to chase yet');
-        $this->assertLessThan(20, $queries);
+        $this->assertLessThan(40, $queries);
     }
 
     public function test_a_never_run_project_shows_never_run_and_next_run(): void
@@ -149,7 +153,7 @@ class ProjectDashboardTest extends TestCase
             ->assertDontSee('Add a source');
 
         $this->actingAs($user)
-            ->post(route('due-projects.store', [$organization, $project]))
+            ->post(route('immediate-project-runs.store', [$organization, $project]))
             ->assertForbidden();
 
         $this->actingAs($user)

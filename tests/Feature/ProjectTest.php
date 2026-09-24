@@ -312,7 +312,8 @@ class ProjectTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.show', $organization))
             ->assertOk()
-            ->assertSee(route('projects.index', $organization), false);
+            ->assertSee(route('organizations.show', $organization), false)
+            ->assertSee('Projects');
     }
 
     /**

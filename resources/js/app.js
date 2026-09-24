@@ -268,3 +268,61 @@ document.addEventListener('click', (event) => {
         }
     });
 });
+
+/*
+ * Project overview: show in-place progress while a run form posts.
+ */
+document.addEventListener('submit', (event) => {
+    const form = event.target.closest('[data-run-form]');
+
+    if (form === null) {
+        return;
+    }
+
+    const progress = document.querySelector('[data-run-progress]');
+
+    if (progress !== null) {
+        progress.hidden = false;
+    }
+
+    form.querySelectorAll('[data-run-submit]').forEach((button) => {
+        button.setAttribute('disabled', 'disabled');
+        button.setAttribute('aria-busy', 'true');
+    });
+});
+
+/*
+ * Native dialogs opened from overview actions (schedule drawer).
+ */
+document.addEventListener('click', (event) => {
+    const opener = event.target.closest('[data-open-dialog]');
+
+    if (opener !== null) {
+        const dialog = document.getElementById(opener.getAttribute('data-open-dialog'));
+
+        if (dialog instanceof HTMLDialogElement) {
+            dialog.showModal();
+        }
+
+        return;
+    }
+
+    if (event.target.closest('[data-close-dialog]')) {
+        const dialog = event.target.closest('dialog');
+
+        if (dialog instanceof HTMLDialogElement) {
+            dialog.close();
+        }
+    }
+});
+
+/*
+ * Sidebar org/project menus: one open at a time, close on outside click.
+ */
+document.addEventListener('click', (event) => {
+    document.querySelectorAll('details[data-sidebar-menu][open]').forEach((menu) => {
+        if (!menu.contains(event.target)) {
+            menu.removeAttribute('open');
+        }
+    });
+});
