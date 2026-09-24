@@ -27,26 +27,23 @@
         @else
             <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 @foreach ($projects as $project)
-                    <li>
+                    <li class="relative z-0 has-[details[open]]:z-30">
                         <article class="group relative flex h-full flex-col gap-4 rounded-card border border-line bg-paper-raised p-5 transition-colors hover:border-line-strong">
                             <x-card-ears />
 
-                            <a
-                                href="{{ route('projects.show', $project) }}"
-                                class="absolute inset-0 z-0 rounded-card"
-                                aria-label="Open {{ $project->name }}"
-                            ></a>
-
-                            <div class="relative z-10 flex items-start justify-between gap-3">
+                            <div class="relative flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex flex-col gap-2">
-                                    <h2 class="truncate font-display text-xl tracking-tight text-ink">
-                                        {{ $project->name }}
+                                    <h2 class="truncate font-display text-xl tracking-tight">
+                                        <a
+                                            href="{{ route('projects.show', $project) }}"
+                                            class="text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                                        >{{ $project->name }}</a>
                                     </h2>
                                     <x-project-status :status="$project->status" />
                                 </div>
 
                                 @can('changeStatus', $project)
-                                    <details class="relative z-20" data-project-menu>
+                                    <details class="relative shrink-0" data-project-menu>
                                         <summary
                                             class="flex size-9 cursor-pointer list-none items-center justify-center rounded-md text-muted transition-colors hover:bg-paper hover:text-ink [&::-webkit-details-marker]:hidden"
                                             aria-label="Actions for {{ $project->name }}"
@@ -54,7 +51,7 @@
                                             <x-icons.ellipsis class="size-5" />
                                         </summary>
 
-                                        <div class="absolute right-0 mt-1 w-44 overflow-hidden rounded-md border border-line bg-paper-raised py-1 shadow-sm">
+                                        <div class="absolute right-0 z-40 mt-1 w-44 overflow-hidden rounded-md border border-line bg-paper-raised py-1 shadow-md">
                                             @can('update', $project)
                                                 <a
                                                     href="{{ route('projects.edit', $project) }}"
@@ -97,7 +94,7 @@
                                 @endcan
                             </div>
 
-                            <dl class="relative z-10 grid grid-cols-3 gap-3">
+                            <dl class="grid grid-cols-3 gap-3">
                                 <div>
                                     <dt class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Sources</dt>
                                     <dd class="font-mono text-lg text-ink">{{ $project->sources_count }}</dd>
@@ -112,35 +109,43 @@
                                 </div>
                             </dl>
 
-                            <div class="relative z-10 mt-auto flex flex-col gap-2 border-t border-line pt-3">
-                                <div>
-                                    <p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Next run</p>
-                                    <p class="font-mono text-xs text-ink">
-                                        @if ($project->next_run_at)
-                                            {{ $project->next_run_at->timezone($project->effectiveTimezone())->format('M j, Y g:i A T') }}
-                                            <span class="text-muted">({{ $project->effectiveTimezone() }})</span>
-                                        @else
-                                            <span class="font-sans text-muted">No schedule yet</span>
-                                        @endif
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Last run</p>
-                                    <p class="text-sm text-ink">
-                                        @if ($project->latestRun)
-                                            {{ $project->latestRun->status->label() }}
-                                            @if ($project->latestRun->is_dry)
-                                                <span class="font-mono text-xs text-muted">(dry run)</span>
+                            <div class="mt-auto flex flex-col gap-3 border-t border-line pt-3">
+                                <div class="flex flex-col gap-2">
+                                    <div>
+                                        <p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Next run</p>
+                                        <p class="font-mono text-xs text-ink">
+                                            @if ($project->next_run_at)
+                                                {{ $project->next_run_at->timezone($project->effectiveTimezone())->format('M j, Y g:i A T') }}
+                                                <span class="text-muted">({{ $project->effectiveTimezone() }})</span>
+                                            @else
+                                                <span class="font-sans text-muted">No schedule yet</span>
                                             @endif
-                                            ·
-                                            <span class="font-mono text-xs text-muted">
-                                                {{ ($project->latestRun->finished_at ?? $project->latestRun->started_at)->diffForHumans() }}
-                                            </span>
-                                        @else
-                                            <span class="text-muted">Never run</span>
-                                        @endif
-                                    </p>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Last run</p>
+                                        <p class="text-sm text-ink">
+                                            @if ($project->latestRun)
+                                                {{ $project->latestRun->status->label() }}
+                                                @if ($project->latestRun->is_dry)
+                                                    <span class="font-mono text-xs text-muted">(dry run)</span>
+                                                @endif
+                                                ·
+                                                <span class="font-mono text-xs text-muted">
+                                                    {{ ($project->latestRun->finished_at ?? $project->latestRun->started_at)->diffForHumans() }}
+                                                </span>
+                                            @else
+                                                <span class="text-muted">Never run</span>
+                                            @endif
+                                        </p>
+                                    </div>
                                 </div>
+
+                                <x-button
+                                    variant="ghost"
+                                    href="{{ route('projects.show', $project) }}"
+                                    class="self-start"
+                                >View project</x-button>
                             </div>
                         </article>
                     </li>

@@ -83,7 +83,10 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertSee($finishedAt->diffForHumans());
         $response->assertSee('Never run');
         $response->assertSee(route('projects.show', [$organization, $active]), false);
-        $response->assertSee('aria-label="Open Pokemon TCGP News"', false);
+        $response->assertSee('View project');
+        $response->assertDontSee('aria-label="Open Pokemon TCGP News"', false);
+        $response->assertSee('has-[details[open]]:z-30', false);
+        $response->assertSee('bg-paper-raised py-1 shadow-md', false);
         $response->assertSee('+ New project');
         $response->assertSee('Pause');
         $response->assertSee('Resume');
@@ -92,6 +95,7 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertSee('viewBox="0 0 64 10"', false);
         $response->assertSee('M2 10 10 1 18 10', false);
         $this->assertSame(2, substr_count($response->getContent(), 'viewBox="0 0 64 10"'));
+        $this->assertSame(2, substr_count($response->getContent(), 'View project'));
         $this->assertLessThan(20, $queries);
     }
 
@@ -156,6 +160,7 @@ class OrganizationWorkspaceTest extends TestCase
             ->assertOk()
             ->assertSee('Read Only News')
             ->assertSee(route('projects.show', [$organization, $project]), false)
+            ->assertSee('View project')
             ->assertDontSee('+ New project')
             ->assertDontSee('Actions for Read Only News')
             ->assertDontSee('>Edit</a>', false)
