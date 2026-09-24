@@ -65,7 +65,13 @@ class SourceProviderRegistry
         $options = [];
 
         foreach ($this->types() as $type) {
-            $options[$type] = $this->get($type)->label();
+            $provider = $this->get($type);
+
+            if (! $provider->capabilities()->offeredInForms) {
+                continue;
+            }
+
+            $options[$type] = $provider->label();
         }
 
         return $options;
@@ -97,6 +103,6 @@ class SourceProviderRegistry
      */
     public function defaultType(): ?string
     {
-        return $this->types()[0] ?? null;
+        return array_key_first($this->options());
     }
 }

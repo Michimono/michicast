@@ -47,8 +47,9 @@ class SourceProviderRegistryTest extends TestCase
     {
         $options = $this->registry()->options();
 
-        $this->assertArrayHasKey('fake', $options);
-        $this->assertSame('Fake source', $options['fake']);
+        $this->assertArrayHasKey('rss', $options);
+        $this->assertSame('RSS / Atom feed', $options['rss']);
+        $this->assertArrayNotHasKey('fake', $options);
     }
 
     public function test_capabilities_are_queried_without_knowing_the_provider(): void

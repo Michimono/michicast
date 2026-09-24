@@ -1,6 +1,5 @@
 <?php
 
-use App\Support\FakeSourceProvider;
 use App\Support\RecordingDestinationProvider;
 use App\Support\RssSourceProvider;
 use App\Support\TelegramDestinationProvider;
@@ -103,12 +102,11 @@ return [
     |
     | Source types are resolved through the registry by the key used here, so
     | adding a provider is a line in this list rather than a change to domain
-    | code. The fake source stands in until the first real provider lands.
+    | code. Tests may register additional providers at runtime.
     |
     */
 
     'sources' => [
-        'fake' => FakeSourceProvider::class,
         'rss' => RssSourceProvider::class,
     ],
 

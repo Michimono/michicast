@@ -39,6 +39,7 @@ use App\Http\Controllers\ProjectRunController;
 use App\Http\Controllers\ProjectScheduleController;
 use App\Http\Controllers\ProjectSchedulePreviewController;
 use App\Http\Controllers\ProjectSourceController;
+use App\Http\Controllers\ProjectSourcePreviewController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SourceConnectionTestController;
 use App\Http\Controllers\SourceController;
@@ -164,6 +165,13 @@ Route::middleware('auth')->group(function (): void {
                     'create' => 'project-sources.create',
                     'store' => 'project-sources.store',
                 ]);
+
+            Route::resource('projects.source-previews', ProjectSourcePreviewController::class)
+                ->only(['store'])
+                ->names([
+                    'store' => 'project-source-previews.store',
+                ])
+                ->middlewareFor('store', 'throttle:source-preview');
 
             Route::resource('sources', SourceController::class)->only(['edit', 'update']);
 
