@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Support\ProjectHealthResolver;
 use App\Support\ProjectScheduleForm;
+use App\Support\ScheduleSummary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -51,24 +52,23 @@ class ProjectController extends Controller
         Project $project,
         ProjectHealthResolver $health,
         ProjectScheduleForm $scheduleForm,
+        ScheduleSummary $scheduleSummary,
     ): View {
         Gate::authorize('view', $project);
 
         $project->setRelation('organization', $organization);
+        $broadcast = $project->ensureDefaultBroadcast();
+        $broadcast?->load(['source', 'destination']);
 
-        $project->loadCount([
-            'sources' => fn ($query) => $query->notArchived(),
-            'destinations' => fn ($query) => $query->notArchived(),
-            'broadcasts' => fn ($query) => $query->notArchived(),
-        ]);
+        $source = $broadcast?->source;
+        if ($source === null || $source->isArchived()) {
+            $source = $project->sources()->notArchived()->oldest('id')->first();
+        }
 
-        $sources = $project->sources()->notArchived()->oldest('id')->get();
-        $destinations = $project->destinations()->notArchived()->oldest('id')->get();
-        $broadcasts = $project->broadcasts()
-            ->notArchived()
-            ->with(['source', 'destination'])
-            ->oldest('id')
-            ->get();
+        $destination = $broadcast?->destination;
+        if ($destination === null || $destination->isArchived()) {
+            $destination = $project->destinations()->notArchived()->oldest('id')->first();
+        }
 
         $recentRuns = $project->runs()
             ->latest('started_at')
@@ -82,22 +82,24 @@ class ProjectController extends Controller
             ->latest('id')
             ->first();
 
-        $autoPausedBroadcasts = $broadcasts
-            ->filter(fn ($broadcast) => $broadcast->failure_pause_reason !== null)
-            ->values();
+        $autoPausedBroadcasts = $project->broadcasts()
+            ->notArchived()
+            ->whereNotNull('failure_pause_reason')
+            ->oldest('id')
+            ->get();
 
         return view('projects.show', [
             'project' => $project,
-            'sources' => $sources,
-            'destinations' => $destinations,
-            'broadcasts' => $broadcasts,
+            'broadcast' => $broadcast,
+            'source' => $source,
+            'destination' => $destination,
             'recentRuns' => $recentRuns,
-            'lastRun' => $recentRuns->first(),
             'lastLiveRun' => $lastLiveRun,
             'health' => $health->resolve($project, $lastLiveRun, $autoPausedBroadcasts),
             'autoPausedBroadcasts' => $autoPausedBroadcasts,
-            'isEmpty' => $project->sources_count === 0,
+            'pipelineEmpty' => $source === null && $destination === null,
             'scheduleForm' => $scheduleForm->toArray($project),
+            'scheduleSummary' => $scheduleSummary->describe($project->schedule),
         ]);
     }
 

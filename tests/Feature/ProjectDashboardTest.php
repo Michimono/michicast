@@ -19,7 +19,7 @@ class ProjectDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_configured_project_shows_status_counts_and_recent_runs(): void
+    public function test_a_configured_project_shows_pipeline_and_activity(): void
     {
         $this->travelTo(Carbon::parse('2026-03-15 15:00:00', 'UTC'));
 
@@ -28,17 +28,18 @@ class ProjectDashboardTest extends TestCase
 
         $project = Project::factory()->for($organization)->active()->dailyAt('09:00', 'Europe/Madrid')->create([
             'name' => 'Pokemon TCGP News',
+            'description' => 'Pocket news.',
             'next_run_at' => Carbon::parse('2026-03-16 08:00:00', 'UTC'),
         ]);
 
-        Source::factory()->for($project)->create();
-        Source::factory()->for($project)->create();
-        Source::factory()->for($project)->create(['archived_at' => now()]);
-        Destination::factory()->for($project)->create();
+        $source = Source::factory()->for($project)->create(['name' => 'RSS Feed']);
+        Source::factory()->for($project)->create(['name' => 'Archived feed', 'archived_at' => now()]);
+        Destination::factory()->for($project)->create(['name' => 'Archived channel', 'archived_at' => now()]);
+        $destination = Destination::factory()->for($project)->create(['name' => 'Telegram']);
         Broadcast::factory()->create([
             'project_id' => $project->getKey(),
-            'source_id' => $project->sources()->notArchived()->value('id'),
-            'destination_id' => $project->destinations()->notArchived()->value('id'),
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
             'name' => 'News to Telegram',
         ]);
 
@@ -71,33 +72,45 @@ class ProjectDashboardTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Pokemon TCGP News');
+        $response->assertSee('Pocket news.');
         $response->assertSee('Active');
+        $response->assertSee('Attention needed');
+        $response->assertSee('Pipeline');
+        $response->assertSee('RSS Feed');
+        $response->assertSee('Telegram');
+        $response->assertDontSee('Archived feed');
+        $response->assertDontSee('Archived channel');
+        $response->assertSee('Next run');
         $response->assertSee('Europe/Madrid');
         $response->assertSee('project override');
         $response->assertSee('Failed');
         $response->assertSee($lastFinishedAt->diffForHumans());
-        $response->assertSee('Broadcasts');
-        $response->assertSee('Sources');
-        $response->assertSee('Destinations');
-        $response->assertSee('text-2xl text-ink">2', false);
-        $response->assertSee('Attention needed');
-        $response->assertSee(route('project-sources.index', [$organization, $project]), false);
-        $response->assertSee(route('project-destinations.index', [$organization, $project]), false);
-        $response->assertSee(route('project-broadcasts.index', [$organization, $project]), false);
+        $response->assertSee(route('sources.edit', [$organization, $source]), false);
+        $response->assertSee(route('destinations.edit', [$organization, $destination]), false);
         $response->assertSee(route('project-runs.show', [$organization, $project, $newer]), false);
         $response->assertSee(route('project-runs.show', [$organization, $project, $older]), false);
         $response->assertSee('discovered 4');
         $response->assertSee('discovered 2');
         $response->assertDontSee('discovered 99');
+        $response->assertSee('Daily at 9:00');
+        $response->assertSee('All activity');
+        $response->assertSee('Edit schedule');
         $response->assertSee('Run now');
         $response->assertSee('Dry run');
         $response->assertSee('Pause');
-        $response->assertSee('Edit project');
+        $response->assertSee(route('projects.edit', [$organization, $project]), false);
+        $response->assertDontSee('Save details');
+        $response->assertDontSee('name="name"', false);
+        $response->assertDontSee('Broadcasts');
+        $response->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
         $response->assertDontSee('Nothing to chase yet');
+        $response->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'RSS Feed', 'Manage', 'Telegram', 'Manage'], false);
+        $response->assertSee(route('project-sources.create', [$organization, $project]), false);
+        $response->assertSee(route('project-destinations.create', [$organization, $project]), false);
         $this->assertLessThan(40, $queries);
     }
 
-    public function test_a_never_run_project_shows_never_run_and_next_run(): void
+    public function test_a_never_run_project_lists_next_run_in_activity(): void
     {
         $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
 
@@ -113,13 +126,13 @@ class ProjectDashboardTest extends TestCase
             ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Never run')
-            ->assertSee('This project has never run.')
+            ->assertSee('Next run')
             ->assertSee('UTC')
             ->assertSee('organization timezone')
             ->assertDontSee('Nothing to chase yet');
     }
 
-    public function test_an_empty_project_guides_toward_the_first_source(): void
+    public function test_an_empty_project_guides_toward_the_pipeline(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create(['name' => 'Fresh pipeline']);
@@ -128,11 +141,73 @@ class ProjectDashboardTest extends TestCase
             ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Nothing to chase yet')
-            ->assertSee('Add a source')
+            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Nothing to chase yet'], false)
             ->assertSee(route('project-sources.create', [$organization, $project]), false)
-            ->assertSee(route('project-broadcasts.index', [$organization, $project]), false)
-            ->assertSee('This project has no schedule yet.')
-            ->assertSee('Never run');
+            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertSee('Pipeline')
+            ->assertSee('Never run')
+            ->assertSee('No schedule set')
+            ->assertSee('Set schedule')
+            ->assertSee('All activity')
+            ->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
+    }
+
+    public function test_pipeline_keeps_add_actions_outside_endpoint_cards(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $project = Project::factory()->for($organization)->create();
+        Source::factory()->for($project)->create(['name' => 'Only feed']);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', [$organization, $project]))
+            ->assertOk()
+            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Only feed', 'Manage'], false)
+            ->assertSee(route('project-sources.create', [$organization, $project]), false)
+            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertDontSee('Nothing feeding this project yet.');
+
+        Destination::factory()->for($project)->create(['name' => 'Only channel']);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', [$organization, $project]))
+            ->assertOk()
+            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Only feed', 'Manage', 'Only channel', 'Manage'], false)
+            ->assertSee(route('project-sources.create', [$organization, $project]), false)
+            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertDontSee('Nowhere to publish yet.');
+    }
+
+    public function test_archived_only_pipeline_endpoints_show_empty_cards_with_add_outside(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $project = Project::factory()->for($organization)->create();
+        $source = Source::factory()->for($project)->create([
+            'name' => 'Old feed',
+            'archived_at' => now(),
+        ]);
+        $destination = Destination::factory()->for($project)->create([
+            'name' => 'Old channel',
+            'archived_at' => now(),
+        ]);
+        Broadcast::factory()->create([
+            'project_id' => $project->getKey(),
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
+            'name' => 'Legacy route',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', [$organization, $project]))
+            ->assertOk()
+            ->assertDontSee('Old feed')
+            ->assertDontSee('Old channel')
+            ->assertSee('Nothing feeding this project yet.')
+            ->assertSee('Nowhere to publish yet.')
+            ->assertSee('Nothing to chase yet')
+            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination'], false)
+            ->assertSee(route('project-sources.create', [$organization, $project]), false)
+            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertDontSee('Manage');
     }
 
     public function test_a_viewer_sees_state_but_cannot_trigger_actions(): void
@@ -149,8 +224,11 @@ class ProjectDashboardTest extends TestCase
             ->assertDontSee('Dry run')
             ->assertDontSee('Pause')
             ->assertDontSee('Resume')
-            ->assertDontSee('Edit project')
-            ->assertDontSee('Add a source');
+            ->assertDontSee(route('projects.edit', [$organization, $project]), false)
+            ->assertDontSee('Set schedule')
+            ->assertDontSee('Edit schedule')
+            ->assertDontSee('Add a source')
+            ->assertDontSee('Add destination');
 
         $this->actingAs($user)
             ->post(route('immediate-project-runs.store', [$organization, $project]))

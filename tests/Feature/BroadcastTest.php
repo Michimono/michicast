@@ -61,8 +61,8 @@ class BroadcastTest extends TestCase
 
         $broadcast = $project->broadcasts()->sole();
 
-        $response->assertRedirect(route('project-broadcasts.index', [$organization, $project]));
-        $response->assertSessionHas('success', 'The broadcast has been added.');
+        $response->assertRedirect(route('projects.show', [$organization, $project]));
+        $response->assertSessionHas('success', 'The pipeline has been connected.');
 
         $this->assertSame('RSS to Telegram', $broadcast->name);
         $this->assertSame($source->id, $broadcast->source_id);
@@ -187,7 +187,7 @@ class BroadcastTest extends TestCase
         ])->assertNotFound();
     }
 
-    public function test_an_editor_is_offered_the_broadcasts_screen(): void
+    public function test_overview_does_not_link_to_the_broadcasts_index(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
@@ -195,7 +195,8 @@ class BroadcastTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee(route('project-broadcasts.index', [$organization, $project]), false);
+            ->assertSee('Pipeline')
+            ->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
     }
 
     public function test_the_create_screen_asks_for_sources_and_destinations_when_missing(): void

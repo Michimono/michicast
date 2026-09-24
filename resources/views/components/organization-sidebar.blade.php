@@ -9,7 +9,7 @@
 
 {{--
     Contextual two-level rail: organization (Projects / Members / Settings),
-    then project (Overview / Broadcasts / Sources / Destinations / Activity)
+    then project (Overview / Sources / Destinations / Activity)
     when a project is in scope. Mobile uses the same hierarchy via the header menu.
 --}}
 <aside
@@ -104,13 +104,6 @@
                     Overview
                 </x-sidebar-link>
 
-                <x-sidebar-link
-                    :href="route('project-broadcasts.index', $project)"
-                    :active="request()->routeIs('project-broadcasts.*', 'broadcasts.*', 'broadcast-filters.*', 'broadcast-transforms.*', 'broadcast-deliveries.*', 'content-previews.*')"
-                >
-                    <x-slot:icon><x-icons.broadcast class="size-5 shrink-0" /></x-slot:icon>
-                    Broadcasts
-                </x-sidebar-link>
 
                 <x-sidebar-link
                     :href="route('project-sources.index', $project)"
