@@ -31,8 +31,7 @@ class OrganizationWorkspaceTest extends TestCase
             ->assertSee('+ New project')
             ->assertSee(route('projects.create', $organization), false)
             ->assertDontSee('Nothing to manage yet')
-            ->assertSee('viewBox="0 0 64 10"', false)
-            ->assertSee('M2 10 10 1 18 10', false);
+            ->assertDontSee('viewBox="0 0 64 10"', false);
     }
 
     public function test_a_configured_workspace_lists_project_cards_with_counts_and_runs(): void

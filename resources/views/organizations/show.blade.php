@@ -16,7 +16,6 @@
 
         @if ($projects->isEmpty())
             <x-empty-state
-                eared
                 heading="Nothing to chase yet"
                 message="Create a project and this workspace becomes a row of cards you can scan and steer."
             >
@@ -130,7 +129,7 @@
                                                 @if ($project->latestRun->is_dry)
                                                     <span class="font-mono text-xs text-muted">(dry run)</span>
                                                 @endif
-                                                ·
+                                                Â·
                                                 <span class="font-mono text-xs text-muted">
                                                     {{ ($project->latestRun->finished_at ?? $project->latestRun->started_at)->diffForHumans() }}
                                                 </span>
