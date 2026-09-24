@@ -101,6 +101,11 @@ class ProjectDashboardTest extends TestCase
         $response->assertDontSee('Broadcasts');
         $response->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
         $response->assertDontSee('Nothing to chase yet');
+        $response->assertSee('Add a source');
+        $response->assertSee('Add destination');
+        $response->assertSee(route('project-sources.create', [$organization, $project]), false);
+        $response->assertSee(route('project-destinations.create', [$organization, $project]), false);
+        $response->assertSee('Manage');
         $this->assertLessThan(40, $queries);
     }
 
@@ -137,12 +142,45 @@ class ProjectDashboardTest extends TestCase
             ->assertSee('Nothing to chase yet')
             ->assertSee('Add a source')
             ->assertSee(route('project-sources.create', [$organization, $project]), false)
+            ->assertSee('Add destination')
+            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
             ->assertSee('Pipeline')
             ->assertSee('Never run')
             ->assertSee('No schedule set')
             ->assertSee('Set schedule')
             ->assertSee('All activity')
             ->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
+    }
+
+    public function test_pipeline_keeps_add_actions_when_a_source_or_destination_exists(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $project = Project::factory()->for($organization)->create();
+        Source::factory()->for($project)->create(['name' => 'Only feed']);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', [$organization, $project]))
+            ->assertOk()
+            ->assertSee('Only feed')
+            ->assertSee('Add a source')
+            ->assertSee(route('project-sources.create', [$organization, $project]), false)
+            ->assertSee('Add destination')
+            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertSee('Manage')
+            ->assertDontSee('Nothing feeding this project yet.');
+
+        Destination::factory()->for($project)->create(['name' => 'Only channel']);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', [$organization, $project]))
+            ->assertOk()
+            ->assertSee('Only feed')
+            ->assertSee('Only channel')
+            ->assertSee('Add a source')
+            ->assertSee('Add destination')
+            ->assertSee(route('project-sources.create', [$organization, $project]), false)
+            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertDontSee('Nowhere to publish yet.');
     }
 
     public function test_a_viewer_sees_state_but_cannot_trigger_actions(): void
@@ -162,7 +200,8 @@ class ProjectDashboardTest extends TestCase
             ->assertDontSee(route('projects.edit', [$organization, $project]), false)
             ->assertDontSee('Set schedule')
             ->assertDontSee('Edit schedule')
-            ->assertDontSee('Add a source');
+            ->assertDontSee('Add a source')
+            ->assertDontSee('Add destination');
 
         $this->actingAs($user)
             ->post(route('immediate-project-runs.store', [$organization, $project]))

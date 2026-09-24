@@ -128,11 +128,17 @@
                             {{ $source->name }}
                         </a>
                         <div class="mt-2"><x-source-status :source="$source" /></div>
-                        <div class="mt-3">
-                            <x-button href="{{ route('sources.edit', $source) }}" variant="ghost" :paw="false">Manage</x-button>
-                        </div>
                     @else
                         <p class="mt-2 text-sm text-muted">Nothing feeding this project yet.</p>
+                    @endif
+                    @if ($source)
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <x-button href="{{ route('sources.edit', $source) }}" variant="ghost" :paw="false">Manage</x-button>
+                            @can('create', [App\Models\Source::class, $project])
+                                <x-button href="{{ route('project-sources.create', $project) }}" variant="ghost" :paw="false">Add a source</x-button>
+                            @endcan
+                        </div>
+                    @else
                         @can('create', [App\Models\Source::class, $project])
                             <div class="mt-3">
                                 <x-button href="{{ route('project-sources.create', $project) }}">Add a source</x-button>
@@ -152,11 +158,17 @@
                             {{ $destination->name }}
                         </a>
                         <div class="mt-2"><x-destination-status :destination="$destination" /></div>
-                        <div class="mt-3">
-                            <x-button href="{{ route('destinations.edit', $destination) }}" variant="ghost" :paw="false">Manage</x-button>
-                        </div>
                     @else
                         <p class="mt-2 text-sm text-muted">Nowhere to publish yet.</p>
+                    @endif
+                    @if ($destination)
+                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            <x-button href="{{ route('destinations.edit', $destination) }}" variant="ghost" :paw="false">Manage</x-button>
+                            @can('create', [App\Models\Destination::class, $project])
+                                <x-button href="{{ route('project-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
+                            @endcan
+                        </div>
+                    @else
                         @can('create', [App\Models\Destination::class, $project])
                             <div class="mt-3">
                                 <x-button href="{{ route('project-destinations.create', $project) }}" :paw="false">Add destination</x-button>
