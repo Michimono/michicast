@@ -257,3 +257,14 @@ document.addEventListener('click', (event) => {
 
     document.querySelectorAll('[data-transform-rule]').forEach(syncRuleFields);
 })();
+
+/*
+ * Project card menus: only one open at a time, and close on outside click.
+ */
+document.addEventListener('click', (event) => {
+    document.querySelectorAll('details[data-project-menu][open]').forEach((menu) => {
+        if (!menu.contains(event.target)) {
+            menu.removeAttribute('open');
+        }
+    });
+});
