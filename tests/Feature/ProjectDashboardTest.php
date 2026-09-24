@@ -33,7 +33,8 @@ class ProjectDashboardTest extends TestCase
         ]);
 
         $source = Source::factory()->for($project)->create(['name' => 'RSS Feed']);
-        Source::factory()->for($project)->create(['archived_at' => now()]);
+        Source::factory()->for($project)->create(['name' => 'Archived feed', 'archived_at' => now()]);
+        Destination::factory()->for($project)->create(['name' => 'Archived channel', 'archived_at' => now()]);
         $destination = Destination::factory()->for($project)->create(['name' => 'Telegram']);
         Broadcast::factory()->create([
             'project_id' => $project->getKey(),
@@ -77,6 +78,8 @@ class ProjectDashboardTest extends TestCase
         $response->assertSee('Pipeline');
         $response->assertSee('RSS Feed');
         $response->assertSee('Telegram');
+        $response->assertDontSee('Archived feed');
+        $response->assertDontSee('Archived channel');
         $response->assertSee('Next run');
         $response->assertSee('Europe/Madrid');
         $response->assertSee('project override');
@@ -101,11 +104,9 @@ class ProjectDashboardTest extends TestCase
         $response->assertDontSee('Broadcasts');
         $response->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
         $response->assertDontSee('Nothing to chase yet');
-        $response->assertSee('Add a source');
-        $response->assertSee('Add destination');
+        $response->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'RSS Feed', 'Manage', 'Telegram', 'Manage'], false);
         $response->assertSee(route('project-sources.create', [$organization, $project]), false);
         $response->assertSee(route('project-destinations.create', [$organization, $project]), false);
-        $response->assertSee('Manage');
         $this->assertLessThan(40, $queries);
     }
 
@@ -140,9 +141,8 @@ class ProjectDashboardTest extends TestCase
             ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Nothing to chase yet')
-            ->assertSee('Add a source')
+            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Nothing to chase yet'], false)
             ->assertSee(route('project-sources.create', [$organization, $project]), false)
-            ->assertSee('Add destination')
             ->assertSee(route('project-destinations.create', [$organization, $project]), false)
             ->assertSee('Pipeline')
             ->assertSee('Never run')
@@ -152,7 +152,7 @@ class ProjectDashboardTest extends TestCase
             ->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
     }
 
-    public function test_pipeline_keeps_add_actions_when_a_source_or_destination_exists(): void
+    public function test_pipeline_keeps_add_actions_outside_endpoint_cards(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
@@ -161,12 +161,9 @@ class ProjectDashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee('Only feed')
-            ->assertSee('Add a source')
+            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Only feed', 'Manage'], false)
             ->assertSee(route('project-sources.create', [$organization, $project]), false)
-            ->assertSee('Add destination')
             ->assertSee(route('project-destinations.create', [$organization, $project]), false)
-            ->assertSee('Manage')
             ->assertDontSee('Nothing feeding this project yet.');
 
         Destination::factory()->for($project)->create(['name' => 'Only channel']);
@@ -174,13 +171,43 @@ class ProjectDashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee('Only feed')
-            ->assertSee('Only channel')
-            ->assertSee('Add a source')
-            ->assertSee('Add destination')
+            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Only feed', 'Manage', 'Only channel', 'Manage'], false)
             ->assertSee(route('project-sources.create', [$organization, $project]), false)
             ->assertSee(route('project-destinations.create', [$organization, $project]), false)
             ->assertDontSee('Nowhere to publish yet.');
+    }
+
+    public function test_archived_only_pipeline_endpoints_show_empty_cards_with_add_outside(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $project = Project::factory()->for($organization)->create();
+        $source = Source::factory()->for($project)->create([
+            'name' => 'Old feed',
+            'archived_at' => now(),
+        ]);
+        $destination = Destination::factory()->for($project)->create([
+            'name' => 'Old channel',
+            'archived_at' => now(),
+        ]);
+        Broadcast::factory()->create([
+            'project_id' => $project->getKey(),
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
+            'name' => 'Legacy route',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('projects.show', [$organization, $project]))
+            ->assertOk()
+            ->assertDontSee('Old feed')
+            ->assertDontSee('Old channel')
+            ->assertSee('Nothing feeding this project yet.')
+            ->assertSee('Nowhere to publish yet.')
+            ->assertSee('Nothing to chase yet')
+            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination'], false)
+            ->assertSee(route('project-sources.create', [$organization, $project]), false)
+            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertDontSee('Manage');
     }
 
     public function test_a_viewer_sees_state_but_cannot_trigger_actions(): void

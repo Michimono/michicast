@@ -60,12 +60,15 @@ class ProjectController extends Controller
         $broadcast = $project->ensureDefaultBroadcast();
         $broadcast?->load(['source', 'destination']);
 
-        $source = $broadcast !== null
-            ? $broadcast->source
-            : $project->sources()->notArchived()->oldest('id')->first();
-        $destination = $broadcast !== null
-            ? $broadcast->destination
-            : $project->destinations()->notArchived()->oldest('id')->first();
+        $source = $broadcast?->source;
+        if ($source === null || $source->isArchived()) {
+            $source = $project->sources()->notArchived()->oldest('id')->first();
+        }
+
+        $destination = $broadcast?->destination;
+        if ($destination === null || $destination->isArchived()) {
+            $destination = $project->destinations()->notArchived()->oldest('id')->first();
+        }
 
         $recentRuns = $project->runs()
             ->latest('started_at')

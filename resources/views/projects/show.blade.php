@@ -118,6 +118,15 @@
 
         {{-- 2. Pipeline centrepiece: Source → Destination --}}
         <x-card heading="Pipeline" kicker="Flow">
+            <x-slot:actions>
+                @can('create', [App\Models\Source::class, $project])
+                    <x-button href="{{ route('project-sources.create', $project) }}" variant="ghost" :paw="false">Add a source</x-button>
+                @endcan
+                @can('create', [App\Models\Destination::class, $project])
+                    <x-button href="{{ route('project-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
+                @endcan
+            </x-slot:actions>
+
             <p class="mb-4 text-sm text-muted">Source to destination. Transforms can join this path later.</p>
 
             <div class="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
@@ -128,22 +137,11 @@
                             {{ $source->name }}
                         </a>
                         <div class="mt-2"><x-source-status :source="$source" /></div>
-                    @else
-                        <p class="mt-2 text-sm text-muted">Nothing feeding this project yet.</p>
-                    @endif
-                    @if ($source)
-                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <div class="mt-3">
                             <x-button href="{{ route('sources.edit', $source) }}" variant="ghost" :paw="false">Manage</x-button>
-                            @can('create', [App\Models\Source::class, $project])
-                                <x-button href="{{ route('project-sources.create', $project) }}" variant="ghost" :paw="false">Add a source</x-button>
-                            @endcan
                         </div>
                     @else
-                        @can('create', [App\Models\Source::class, $project])
-                            <div class="mt-3">
-                                <x-button href="{{ route('project-sources.create', $project) }}">Add a source</x-button>
-                            </div>
-                        @endcan
+                        <p class="mt-2 text-sm text-muted">Nothing feeding this project yet.</p>
                     @endif
                 </div>
 
@@ -158,22 +156,11 @@
                             {{ $destination->name }}
                         </a>
                         <div class="mt-2"><x-destination-status :destination="$destination" /></div>
-                    @else
-                        <p class="mt-2 text-sm text-muted">Nowhere to publish yet.</p>
-                    @endif
-                    @if ($destination)
-                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <div class="mt-3">
                             <x-button href="{{ route('destinations.edit', $destination) }}" variant="ghost" :paw="false">Manage</x-button>
-                            @can('create', [App\Models\Destination::class, $project])
-                                <x-button href="{{ route('project-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
-                            @endcan
                         </div>
                     @else
-                        @can('create', [App\Models\Destination::class, $project])
-                            <div class="mt-3">
-                                <x-button href="{{ route('project-destinations.create', $project) }}" :paw="false">Add destination</x-button>
-                            </div>
-                        @endcan
+                        <p class="mt-2 text-sm text-muted">Nowhere to publish yet.</p>
                     @endif
                 </div>
             </div>
@@ -183,11 +170,7 @@
                     <x-empty-state
                         heading="Nothing to chase yet"
                         message="Add a source and a destination. Michicast connects them into one quiet pipeline."
-                    >
-                        @can('create', [App\Models\Source::class, $project])
-                            <x-button href="{{ route('project-sources.create', $project) }}">Add a source</x-button>
-                        @endcan
-                    </x-empty-state>
+                    />
                 </div>
             @endif
         </x-card>
