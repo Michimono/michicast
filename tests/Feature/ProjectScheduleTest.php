@@ -246,7 +246,7 @@ class ProjectScheduleTest extends TestCase
             ->get(route('projects.show', [$organization, $project]))
             ->assertOk()
             ->assertSee(route('project-schedules.edit', [$organization, $project]), false)
-            ->assertSee('This project has no schedule yet.');
+            ->assertSee('Set schedule');
     }
 
     /**

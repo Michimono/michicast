@@ -52,6 +52,8 @@ class ProjectSourceController extends Controller
             'config' => $request->configuration(),
         ]);
 
+        $project->ensureDefaultBroadcast();
+
         return redirect()
             ->route('project-sources.index', $project)
             ->with('success', 'The source has been added.');

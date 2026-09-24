@@ -51,7 +51,7 @@ class ContextualSidebarTest extends TestCase
         $this->assertStringContainsString('aria-label="Organization"', $html);
         $this->assertStringContainsString('aria-label="Project"', $html);
         $this->assertStringContainsString('>Overview</span>', $html);
-        $this->assertStringContainsString('>Broadcasts</span>', $html);
+        $this->assertStringNotContainsString('>Broadcasts</span>', $html);
         $this->assertStringContainsString('>Sources</span>', $html);
         $this->assertStringContainsString('>Destinations</span>', $html);
         $this->assertStringContainsString('>Activity</span>', $html);

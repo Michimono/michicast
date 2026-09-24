@@ -309,6 +309,42 @@ class Project extends Model
     }
 
     /**
+     * The project's product pipeline: the oldest non-archived broadcast.
+     * UX assumes one; additional broadcasts may exist for legacy data.
+     */
+    public function primaryBroadcast(): ?Broadcast
+    {
+        return $this->broadcasts()->notArchived()->oldest('id')->first();
+    }
+
+    /**
+     * Soft single-broadcast product rule: when a source and destination exist
+     * and there is not yet a pipeline broadcast, create one named for the project.
+     */
+    public function ensureDefaultBroadcast(): ?Broadcast
+    {
+        $existing = $this->primaryBroadcast();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $source = $this->sources()->notArchived()->oldest('id')->first();
+        $destination = $this->destinations()->notArchived()->oldest('id')->first();
+
+        if ($source === null || $destination === null) {
+            return null;
+        }
+
+        return $this->broadcasts()->create([
+            'name' => $this->name,
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
+            'enabled' => true,
+        ]);
+    }
+
+    /**
      * Most recent run by start time, for workspace cards and dashboards.
      *
      * @return HasOne<ProjectRun, $this>

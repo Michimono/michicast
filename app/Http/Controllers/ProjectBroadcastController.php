@@ -31,9 +31,15 @@ class ProjectBroadcastController extends Controller
         ]);
     }
 
-    public function create(Organization $organization, Project $project): View
+    public function create(Organization $organization, Project $project): View|RedirectResponse
     {
         Gate::authorize('create', [Broadcast::class, $project]);
+
+        if ($project->primaryBroadcast() !== null) {
+            return redirect()
+                ->route('projects.show', $project)
+                ->with('error', 'This project already has a pipeline. Manage the source and destination from Overview.');
+        }
 
         return view('project-broadcasts.create', [
             'project' => $project,
@@ -44,6 +50,12 @@ class ProjectBroadcastController extends Controller
 
     public function store(StoreBroadcastRequest $request, Organization $organization, Project $project): RedirectResponse
     {
+        if ($project->primaryBroadcast() !== null) {
+            return redirect()
+                ->route('projects.show', $project)
+                ->with('error', 'This project already has a pipeline. Manage the source and destination from Overview.');
+        }
+
         $project->broadcasts()->create([
             'name' => $request->name(),
             'source_id' => $request->sourceId(),
@@ -51,8 +63,8 @@ class ProjectBroadcastController extends Controller
         ]);
 
         return redirect()
-            ->route('project-broadcasts.index', $project)
-            ->with('success', 'The broadcast has been added.');
+            ->route('projects.show', $project)
+            ->with('success', 'The pipeline has been connected.');
     }
 
     /**

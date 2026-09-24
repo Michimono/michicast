@@ -54,6 +54,8 @@ class ProjectDestinationController extends Controller
             'credentials' => $request->credentials(),
         ]);
 
+        $project->ensureDefaultBroadcast();
+
         return redirect()
             ->route('project-destinations.index', $project)
             ->with('success', 'The destination has been added.');
