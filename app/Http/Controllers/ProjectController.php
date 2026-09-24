@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Support\ProjectHealthResolver;
 use App\Support\ProjectScheduleForm;
+use App\Support\ScheduleSummary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -51,6 +52,7 @@ class ProjectController extends Controller
         Project $project,
         ProjectHealthResolver $health,
         ProjectScheduleForm $scheduleForm,
+        ScheduleSummary $scheduleSummary,
     ): View {
         Gate::authorize('view', $project);
 
@@ -94,6 +96,7 @@ class ProjectController extends Controller
             'autoPausedBroadcasts' => $autoPausedBroadcasts,
             'pipelineEmpty' => $source === null && $destination === null,
             'scheduleForm' => $scheduleForm->toArray($project),
+            'scheduleSummary' => $scheduleSummary->describe($project->schedule),
         ]);
     }
 

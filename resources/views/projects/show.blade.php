@@ -13,11 +13,15 @@
                             <x-project-status :status="$project->status" />
                             <x-project-health :health="$health" />
                         </div>
+                        <p class="text-sm text-muted">{{ $scheduleSummary }}</p>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
                         @can('update', $project)
                             <x-button href="{{ route('projects.edit', $project) }}" variant="ghost" :paw="false">Edit</x-button>
+                            <x-button type="button" variant="ghost" :paw="false" data-open-dialog="schedule-drawer">
+                                {{ $project->schedule ? 'Edit schedule' : 'Set schedule' }}
+                            </x-button>
                         @endcan
 
                         @can('markDue', $project)
@@ -178,6 +182,10 @@
 
         {{-- 3. Recent activity: next run first, then executions --}}
         <x-card heading="Recent activity" :kicker="$project->name">
+            <x-slot:actions>
+                <x-button href="{{ route('project-runs.index', $project) }}" variant="ghost" :paw="false">All activity</x-button>
+            </x-slot:actions>
+
             <ul class="flex flex-col divide-y divide-line border-t border-line">
                 @if ($project->next_run_at)
                     <li class="flex flex-wrap items-center justify-between gap-4 py-4">
@@ -191,9 +199,6 @@
                                 Shown in {{ $project->effectiveTimezone() }}, the {{ $project->hasTimezoneOverride() ? 'project override' : 'organization timezone' }}.
                             </p>
                         </div>
-                        @can('update', $project)
-                            <x-button type="button" variant="ghost" :paw="false" data-open-dialog="schedule-drawer">Edit schedule</x-button>
-                        @endcan
                     </li>
                 @endif
 
@@ -229,18 +234,6 @@
                     @endunless
                 @endforelse
             </ul>
-
-            @can('update', $project)
-                @unless ($project->next_run_at)
-                    <div class="mt-3">
-                        <x-button type="button" variant="ghost" :paw="false" data-open-dialog="schedule-drawer">Set schedule</x-button>
-                    </div>
-                @endunless
-            @endcan
-
-            <p class="mt-3">
-                <x-button href="{{ route('project-runs.index', $project) }}" variant="ghost" :paw="false">All activity</x-button>
-            </p>
         </x-card>
 
         @can('update', $project)

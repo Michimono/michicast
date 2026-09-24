@@ -89,6 +89,9 @@ class ProjectDashboardTest extends TestCase
         $response->assertSee('discovered 4');
         $response->assertSee('discovered 2');
         $response->assertDontSee('discovered 99');
+        $response->assertSee('Daily at 9:00');
+        $response->assertSee('All activity');
+        $response->assertSee('Edit schedule');
         $response->assertSee('Run now');
         $response->assertSee('Dry run');
         $response->assertSee('Pause');
@@ -136,6 +139,9 @@ class ProjectDashboardTest extends TestCase
             ->assertSee(route('project-sources.create', [$organization, $project]), false)
             ->assertSee('Pipeline')
             ->assertSee('Never run')
+            ->assertSee('No schedule set')
+            ->assertSee('Set schedule')
+            ->assertSee('All activity')
             ->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
     }
 
@@ -154,6 +160,8 @@ class ProjectDashboardTest extends TestCase
             ->assertDontSee('Pause')
             ->assertDontSee('Resume')
             ->assertDontSee(route('projects.edit', [$organization, $project]), false)
+            ->assertDontSee('Set schedule')
+            ->assertDontSee('Edit schedule')
             ->assertDontSee('Add a source');
 
         $this->actingAs($user)

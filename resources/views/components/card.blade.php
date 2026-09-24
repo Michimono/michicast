@@ -13,8 +13,20 @@
         </p>
     @endif
 
-    @if ($heading)
-        <h2 class="font-display text-xl tracking-tight">{{ $heading }}</h2>
+    @if ($heading || isset($actions))
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            @if ($heading)
+                <h2 class="font-display text-xl tracking-tight">{{ $heading }}</h2>
+            @else
+                <span></span>
+            @endif
+
+            @isset($actions)
+                <div class="flex flex-wrap items-center gap-2">
+                    {{ $actions }}
+                </div>
+            @endisset
+        </div>
     @endif
 
     {{ $slot }}
