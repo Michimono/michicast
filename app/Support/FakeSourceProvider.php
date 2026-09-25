@@ -6,9 +6,9 @@ use App\Enums\ConfigurationFieldType;
 use App\Models\ContentItem;
 
 /**
- * A source that returns the items written into its own configuration. It keeps
- * the registry and the source screens buildable until the first real provider
- * lands, and gives tests a provider they can steer.
+ * A source that returns the items written into its own configuration. It is
+ * registered in tests so suites can steer fetch and connection behaviour
+ * without hitting the network, and is hidden from source forms.
  */
 class FakeSourceProvider implements SourceProvider
 {
@@ -50,7 +50,10 @@ class FakeSourceProvider implements SourceProvider
 
     public function capabilities(): SourceProviderCapabilities
     {
-        return new SourceProviderCapabilities(supportsConnectionTest: true);
+        return new SourceProviderCapabilities(
+            supportsConnectionTest: true,
+            offeredInForms: false,
+        );
     }
 
     public function testConnection(SourceDefinition $source): ConnectionTestResult

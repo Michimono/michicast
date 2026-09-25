@@ -41,6 +41,7 @@ class ProjectSourceController extends Controller
             'types' => $this->providers->options(),
             'type' => $type,
             'fields' => $this->providers->configurationFields($type),
+            'supportsPreview' => $this->providers->capabilities($type)->supportsConnectionTest,
         ]);
     }
 

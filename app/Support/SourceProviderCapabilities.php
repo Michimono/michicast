@@ -10,5 +10,6 @@ readonly class SourceProviderCapabilities
 {
     public function __construct(
         public bool $supportsConnectionTest = false,
+        public bool $offeredInForms = true,
     ) {}
 }

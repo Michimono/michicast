@@ -50,11 +50,14 @@ class SourceTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('project-sources.create', [$organization, $project, 'type' => 'fake']))
+            ->get(route('project-sources.create', [$organization, $project, 'type' => 'rss']))
             ->assertOk()
-            ->assertSee('Fake source')
+            ->assertSee('RSS / Atom feed')
+            ->assertDontSee('Fake source')
             ->assertSee('Feed URL')
-            ->assertSee('config[feed_url]', false);
+            ->assertSee('config[feed_url]', false)
+            ->assertSee('Enter a feed URL and press Test to see the latest entry here.')
+            ->assertDontSee('Show settings');
     }
 
     public function test_an_editor_can_add_a_source(): void

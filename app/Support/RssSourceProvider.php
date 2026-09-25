@@ -28,6 +28,8 @@ class RssSourceProvider implements SourceProvider
 
     private const MAX_ITEM_LIMIT = 100;
 
+    private const USER_AGENT = 'Michicast/1.0 (+https://github.com/Michimono/michicast)';
+
     public function __construct(private RssFeedParser $parser = new RssFeedParser) {}
 
     public function type(): string
@@ -148,27 +150,55 @@ class RssSourceProvider implements SourceProvider
             $response = Http::timeout(self::TIMEOUT_SECONDS)
                 ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
                 ->retry(self::RETRY_TIMES, self::RETRY_SLEEP_MS, throw: false)
+                ->withUserAgent(self::USER_AGENT)
                 ->withHeaders([
                     'Accept' => 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
                 ])
                 ->get($feedUrl);
-        } catch (ConnectionException) {
-            throw new SourceFetchFailedException('The feed could not be reached.');
-        } catch (RequestException) {
-            throw new SourceFetchFailedException('The feed could not be reached.');
+        } catch (ConnectionException $exception) {
+            throw new SourceFetchFailedException(
+                $this->connectionFailureMessage($exception),
+                previous: $exception,
+            );
+        } catch (RequestException $exception) {
+            throw new SourceFetchFailedException('The feed could not be reached.', previous: $exception);
         } catch (Throwable $exception) {
             throw new SourceFetchFailedException('The feed could not be reached.', previous: $exception);
         }
 
         if ($response->failed()) {
             throw new SourceFetchFailedException(
-                'The feed returned HTTP '.$response->status().'.',
+                $this->httpFailureMessage($response->status()),
             );
         }
 
         $entries = $this->parser->parse($response->body());
 
         return array_slice($entries, 0, $this->itemLimit($source));
+    }
+
+    private function connectionFailureMessage(ConnectionException $exception): string
+    {
+        $detail = strtolower($exception->getMessage());
+
+        if (str_contains($detail, 'ssl') || str_contains($detail, 'certificate')) {
+            return 'The feed could not be reached because of an SSL certificate problem on this machine.';
+        }
+
+        if (str_contains($detail, 'timed out') || str_contains($detail, 'timeout')) {
+            return 'The feed timed out before it could be reached.';
+        }
+
+        return 'The feed could not be reached.';
+    }
+
+    private function httpFailureMessage(int $status): string
+    {
+        return match ($status) {
+            403 => 'The feed refused access (HTTP 403). Some hosts block unidentified clients; check the URL or try again later.',
+            429 => 'The feed rate-limited the request (HTTP 429). Wait a moment and try again.',
+            default => 'The feed returned HTTP '.$status.'.',
+        };
     }
 
     private function itemLimit(SourceDefinition $source): int

@@ -326,3 +326,30 @@ document.addEventListener('click', (event) => {
         }
     });
 });
+
+/*
+ * Source create: enable Test once a feed URL is present.
+ */
+(function () {
+    const root = document.querySelector('[data-source-create]');
+
+    if (root === null) {
+        return;
+    }
+
+    const form = root.querySelector('[data-source-create-form]');
+    const testButton = root.querySelector('[data-source-test]');
+    const feedInput = form?.querySelector('[name="config[feed_url]"]');
+
+    if (form === null || testButton === null || feedInput === null) {
+        return;
+    }
+
+    function syncTestButton() {
+        testButton.disabled = feedInput.value.trim() === '';
+    }
+
+    form.addEventListener('input', syncTestButton);
+    form.addEventListener('change', syncTestButton);
+    syncTestButton();
+})();

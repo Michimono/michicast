@@ -132,7 +132,7 @@ class RssSourceProviderTest extends TestCase
     {
         Http::fake([
             'https://example.com/feed.xml' => function () {
-                throw new ConnectionException('Connection timed out');
+                throw new ConnectionException('Could not resolve host');
             },
         ]);
 
@@ -140,6 +140,82 @@ class RssSourceProviderTest extends TestCase
 
         $this->assertFalse($result->successful);
         $this->assertSame('The feed could not be reached.', $result->message);
+    }
+
+    public function test_a_timed_out_feed_is_an_actionable_connection_failure(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => function () {
+                throw new ConnectionException('Connection timed out');
+            },
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition());
+
+        $this->assertFalse($result->successful);
+        $this->assertSame('The feed timed out before it could be reached.', $result->message);
+    }
+
+    public function test_an_ssl_certificate_failure_is_an_actionable_connection_failure(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => function () {
+                throw new ConnectionException(
+                    'cURL error 60: SSL certificate problem: unable to get local issuer certificate',
+                );
+            },
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition());
+
+        $this->assertFalse($result->successful);
+        $this->assertSame(
+            'The feed could not be reached because of an SSL certificate problem on this machine.',
+            $result->message,
+        );
+    }
+
+    public function test_fetch_sends_an_identifying_user_agent(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => Http::response($this->fixture('sample.rss.xml'), 200),
+        ]);
+
+        $this->provider()->fetch($this->definition());
+
+        Http::assertSent(function ($request) {
+            return $request->hasHeader('User-Agent', 'Michicast/1.0 (+https://github.com/Michimono/michicast)');
+        });
+    }
+
+    public function test_a_forbidden_response_is_an_actionable_failure(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => Http::response('Nope', 403),
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition());
+
+        $this->assertFalse($result->successful);
+        $this->assertSame(
+            'The feed refused access (HTTP 403). Some hosts block unidentified clients; check the URL or try again later.',
+            $result->message,
+        );
+    }
+
+    public function test_a_rate_limited_response_is_an_actionable_failure(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => Http::response('Slow down', 429),
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition());
+
+        $this->assertFalse($result->successful);
+        $this->assertSame(
+            'The feed rate-limited the request (HTTP 429). Wait a moment and try again.',
+            $result->message,
+        );
     }
 
     public function test_a_non_200_response_is_a_structured_failure(): void
