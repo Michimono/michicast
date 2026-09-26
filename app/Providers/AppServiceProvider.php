@@ -8,11 +8,13 @@ use App\Support\DestinationProviderRegistry;
 use App\Support\ExecutingProjectRunner;
 use App\Support\ProjectRunner;
 use App\Support\SourceProviderRegistry;
+use Composer\CaBundle\CaBundle;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -59,6 +61,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Windows PHP builds often ship with empty curl.cainfo / openssl.cafile.
+        // Point every Http client at a usable CA store (system when present, else Mozilla).
+        Http::globalOptions([
+            'verify' => CaBundle::getSystemCaRootBundlePath(),
+        ]);
+
         ResetPassword::createUrlUsing(fn (User $user, string $token): string => route('passwords.edit', [
             'token' => $token,
             'email' => $user->getEmailForPasswordReset(),
