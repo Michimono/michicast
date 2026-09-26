@@ -4,7 +4,7 @@
             <x-broadcast-status :broadcast="$broadcast" />
         </div>
 
-        <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcasts.update', $broadcast) }}">
+        <form class="flex flex-col gap-4" method="POST" action="{{ route('flows.update', $broadcast) }}">
             @csrf
             @method('PATCH')
 
@@ -32,7 +32,7 @@
         @can('changeStatus', $broadcast)
             <div class="flex flex-wrap items-center gap-2">
                 @if ($broadcast->canDisable())
-                    <form method="POST" action="{{ route('enabled-broadcasts.destroy', $broadcast) }}">
+                    <form method="POST" action="{{ route('enabled-flows.destroy', $broadcast) }}">
                         @csrf
                         @method('DELETE')
 
@@ -41,7 +41,7 @@
                 @endif
 
                 @if ($broadcast->canEnable())
-                    <form method="POST" action="{{ route('enabled-broadcasts.store', $broadcast) }}">
+                    <form method="POST" action="{{ route('enabled-flows.store', $broadcast) }}">
                         @csrf
 
                         <x-button>Enable</x-button>
@@ -49,14 +49,14 @@
                 @endif
 
                 @if ($broadcast->isArchived())
-                    <form method="POST" action="{{ route('archived-broadcasts.destroy', $broadcast) }}">
+                    <form method="POST" action="{{ route('archived-flows.destroy', $broadcast) }}">
                         @csrf
                         @method('DELETE')
 
                         <x-button>Restore</x-button>
                     </form>
                 @else
-                    <form method="POST" action="{{ route('archived-broadcasts.store', $broadcast) }}">
+                    <form method="POST" action="{{ route('archived-flows.store', $broadcast) }}">
                         @csrf
 
                         <x-button variant="ghost" :paw="false">Archive</x-button>

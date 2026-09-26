@@ -31,7 +31,7 @@ class TimestampDisplayTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('project-runs.show', [$organization, $project, $run]))
+            ->get(route('broadcast-runs.show', [$organization, $project, $run]))
             ->assertOk()
             ->assertSee('Jan 3, 2026 8:30 AM JST');
     }
@@ -46,7 +46,7 @@ class TimestampDisplayTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('project-runs.show', [$organization, $project, $run]))
+            ->get(route('broadcast-runs.show', [$organization, $project, $run]))
             ->assertOk()
             ->assertSee('Jan 2, 2026 11:30 PM UTC')
             ->assertSee('datetime="2026-01-02T23:30:00+00:00"', false);

@@ -22,11 +22,11 @@ class BroadcastTest extends TestCase
         $project = $broadcast->project;
         $organization = $project->organization;
 
-        $this->get(route('project-broadcasts.index', [$organization, $project]))->assertRedirect(route('session.create'));
-        $this->get(route('project-broadcasts.create', [$organization, $project]))->assertRedirect(route('session.create'));
-        $this->post(route('project-broadcasts.store', [$organization, $project]), [])->assertRedirect(route('session.create'));
-        $this->get(route('broadcasts.edit', [$organization, $broadcast]))->assertRedirect(route('session.create'));
-        $this->patch(route('broadcasts.update', [$organization, $broadcast]), [])->assertRedirect(route('session.create'));
+        $this->get(route('broadcast-pipelines.index', [$organization, $project]))->assertRedirect(route('session.create'));
+        $this->get(route('broadcast-pipelines.create', [$organization, $project]))->assertRedirect(route('session.create'));
+        $this->post(route('broadcast-pipelines.store', [$organization, $project]), [])->assertRedirect(route('session.create'));
+        $this->get(route('flows.edit', [$organization, $broadcast]))->assertRedirect(route('session.create'));
+        $this->patch(route('flows.update', [$organization, $broadcast]), [])->assertRedirect(route('session.create'));
     }
 
     public function test_the_index_lists_the_broadcasts_of_this_project_only(): void
@@ -38,7 +38,7 @@ class BroadcastTest extends TestCase
         Broadcast::factory()->create(['name' => 'Someone else route']);
 
         $this->actingAs($user)
-            ->get(route('project-broadcasts.index', [$organization, $project]))
+            ->get(route('broadcast-pipelines.index', [$organization, $project]))
             ->assertOk()
             ->assertSee('RSS to Telegram')
             ->assertDontSee('Other project route')
@@ -53,7 +53,7 @@ class BroadcastTest extends TestCase
         $source = Source::factory()->for($project)->create(['name' => 'Pocket feed']);
         $destination = Destination::factory()->for($project)->create(['name' => 'News channel']);
 
-        $response = $this->actingAs($user)->post(route('project-broadcasts.store', [$organization, $project]), [
+        $response = $this->actingAs($user)->post(route('broadcast-pipelines.store', [$organization, $project]), [
             'name' => 'RSS to Telegram',
             'source_id' => $source->id,
             'destination_id' => $destination->id,
@@ -61,7 +61,7 @@ class BroadcastTest extends TestCase
 
         $broadcast = $project->broadcasts()->sole();
 
-        $response->assertRedirect(route('projects.show', [$organization, $project]));
+        $response->assertRedirect(route('broadcasts.show', [$organization, $project]));
         $response->assertSessionHas('success', 'The pipeline has been connected.');
 
         $this->assertSame('RSS to Telegram', $broadcast->name);
@@ -81,7 +81,7 @@ class BroadcastTest extends TestCase
         $foreignSource = Source::factory()->for(Project::factory()->for($organization))->create();
 
         $this->actingAs($user)
-            ->post(route('project-broadcasts.store', [$organization, $project]), [
+            ->post(route('broadcast-pipelines.store', [$organization, $project]), [
                 'name' => 'Cross project',
                 'source_id' => $foreignSource->id,
                 'destination_id' => $destination->id,
@@ -99,7 +99,7 @@ class BroadcastTest extends TestCase
         $foreignDestination = Destination::factory()->for(Project::factory()->for($organization))->create();
 
         $this->actingAs($user)
-            ->post(route('project-broadcasts.store', [$organization, $project]), [
+            ->post(route('broadcast-pipelines.store', [$organization, $project]), [
                 'name' => 'Cross project',
                 'source_id' => $source->id,
                 'destination_id' => $foreignDestination->id,
@@ -117,7 +117,7 @@ class BroadcastTest extends TestCase
         $destination = Destination::factory()->for($project)->create();
 
         $this->actingAs($user)
-            ->post(route('project-broadcasts.store', [$organization, $project]), [
+            ->post(route('broadcast-pipelines.store', [$organization, $project]), [
                 'name' => 'Retired feed',
                 'source_id' => $source->id,
                 'destination_id' => $destination->id,
@@ -134,17 +134,17 @@ class BroadcastTest extends TestCase
         $otherDestination = Destination::factory()->for($project)->create(['name' => 'Alerts']);
 
         $this->actingAs($user)
-            ->get(route('broadcasts.edit', [$organization, $broadcast]))
+            ->get(route('flows.edit', [$organization, $broadcast]))
             ->assertOk()
             ->assertSee('RSS to Telegram');
 
         $this->actingAs($user)
-            ->patch(route('broadcasts.update', [$organization, $broadcast]), [
+            ->patch(route('flows.update', [$organization, $broadcast]), [
                 'name' => 'Site to Alerts',
                 'source_id' => $otherSource->id,
                 'destination_id' => $otherDestination->id,
             ])
-            ->assertRedirect(route('broadcasts.edit', [$organization, $broadcast]))
+            ->assertRedirect(route('flows.edit', [$organization, $broadcast]))
             ->assertSessionHas('success', 'The broadcast has been updated.');
 
         $broadcast->refresh();
@@ -160,14 +160,14 @@ class BroadcastTest extends TestCase
         $broadcast = $this->broadcastIn($organization);
         $project = $broadcast->project;
 
-        $this->actingAs($user)->get(route('project-broadcasts.create', [$organization, $project]))->assertForbidden();
-        $this->actingAs($user)->post(route('project-broadcasts.store', [$organization, $project]), [
+        $this->actingAs($user)->get(route('broadcast-pipelines.create', [$organization, $project]))->assertForbidden();
+        $this->actingAs($user)->post(route('broadcast-pipelines.store', [$organization, $project]), [
             'name' => 'RSS to Telegram',
             'source_id' => $broadcast->source_id,
             'destination_id' => $broadcast->destination_id,
         ])->assertForbidden();
-        $this->actingAs($user)->get(route('broadcasts.edit', [$organization, $broadcast]))->assertForbidden();
-        $this->actingAs($user)->patch(route('broadcasts.update', [$organization, $broadcast]), [
+        $this->actingAs($user)->get(route('flows.edit', [$organization, $broadcast]))->assertForbidden();
+        $this->actingAs($user)->patch(route('flows.update', [$organization, $broadcast]), [
             'name' => 'Renamed',
             'source_id' => $broadcast->source_id,
             'destination_id' => $broadcast->destination_id,
@@ -179,8 +179,8 @@ class BroadcastTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $elsewhere = Broadcast::factory()->create(['name' => 'Someone else route']);
 
-        $this->actingAs($user)->get(route('broadcasts.edit', [$organization, $elsewhere]))->assertNotFound();
-        $this->actingAs($user)->patch(route('broadcasts.update', [$organization, $elsewhere]), [
+        $this->actingAs($user)->get(route('flows.edit', [$organization, $elsewhere]))->assertNotFound();
+        $this->actingAs($user)->patch(route('flows.update', [$organization, $elsewhere]), [
             'name' => 'Hijacked',
             'source_id' => $elsewhere->source_id,
             'destination_id' => $elsewhere->destination_id,
@@ -193,10 +193,10 @@ class BroadcastTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Pipeline')
-            ->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
+            ->assertDontSee(route('broadcast-pipelines.index', [$organization, $project]), false);
     }
 
     public function test_the_create_screen_asks_for_sources_and_destinations_when_missing(): void
@@ -205,7 +205,7 @@ class BroadcastTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('project-broadcasts.create', [$organization, $project]))
+            ->get(route('broadcast-pipelines.create', [$organization, $project]))
             ->assertOk()
             ->assertSee('Need both ends first');
     }

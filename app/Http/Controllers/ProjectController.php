@@ -43,8 +43,8 @@ class ProjectController extends Controller
         ]);
 
         return redirect()
-            ->route('projects.show', $project)
-            ->with('success', 'The project has been created.');
+            ->route('broadcasts.show', $project)
+            ->with('success', 'The broadcast has been created.');
     }
 
     public function show(
@@ -120,7 +120,7 @@ class ProjectController extends Controller
         ]);
 
         return redirect()
-            ->route('projects.show', $project)
-            ->with('success', 'The project has been updated.');
+            ->route('broadcasts.show', $project)
+            ->with('success', 'The broadcast has been updated.');
     }
 }

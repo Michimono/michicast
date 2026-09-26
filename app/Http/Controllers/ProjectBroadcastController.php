@@ -37,8 +37,8 @@ class ProjectBroadcastController extends Controller
 
         if ($project->primaryBroadcast() !== null) {
             return redirect()
-                ->route('projects.show', $project)
-                ->with('error', 'This project already has a pipeline. Manage the source and destination from Overview.');
+                ->route('broadcasts.show', $project)
+                ->with('error', 'This broadcast already has a pipeline. Manage the source and destination from Overview.');
         }
 
         return view('project-broadcasts.create', [
@@ -52,8 +52,8 @@ class ProjectBroadcastController extends Controller
     {
         if ($project->primaryBroadcast() !== null) {
             return redirect()
-                ->route('projects.show', $project)
-                ->with('error', 'This project already has a pipeline. Manage the source and destination from Overview.');
+                ->route('broadcasts.show', $project)
+                ->with('error', 'This broadcast already has a pipeline. Manage the source and destination from Overview.');
         }
 
         $project->broadcasts()->create([
@@ -63,7 +63,7 @@ class ProjectBroadcastController extends Controller
         ]);
 
         return redirect()
-            ->route('projects.show', $project)
+            ->route('broadcasts.show', $project)
             ->with('success', 'The pipeline has been connected.');
     }
 

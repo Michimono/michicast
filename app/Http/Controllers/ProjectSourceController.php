@@ -28,9 +28,15 @@ class ProjectSourceController extends Controller
         ]);
     }
 
-    public function create(Request $request, Organization $organization, Project $project): View
+    public function create(Request $request, Organization $organization, Project $project): View|RedirectResponse
     {
         Gate::authorize('create', [Source::class, $project]);
+
+        if ($project->sources()->notArchived()->exists()) {
+            return redirect()
+                ->route('broadcasts.show', $project)
+                ->with('error', 'This broadcast already has a source. Manage it from Overview.');
+        }
 
         $type = $this->chosenType($request);
 
@@ -47,6 +53,12 @@ class ProjectSourceController extends Controller
 
     public function store(StoreSourceRequest $request, Organization $organization, Project $project): RedirectResponse
     {
+        if ($project->sources()->notArchived()->exists()) {
+            return redirect()
+                ->route('broadcasts.show', $project)
+                ->with('error', 'This broadcast already has a source. Manage it from Overview.');
+        }
+
         $project->sources()->create([
             'name' => $request->name(),
             'type' => $request->type(),
@@ -56,7 +68,7 @@ class ProjectSourceController extends Controller
         $project->ensureDefaultBroadcast();
 
         return redirect()
-            ->route('project-sources.index', $project)
+            ->route('broadcasts.show', $project)
             ->with('success', 'The source has been added.');
     }
 

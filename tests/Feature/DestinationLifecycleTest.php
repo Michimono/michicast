@@ -43,7 +43,7 @@ class DestinationLifecycleTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('archived-destinations.store', [$organization, $destination]))
-            ->assertRedirect(route('project-destinations.index', [$organization, $project]))
+            ->assertRedirect(route('broadcast-destinations.index', [$organization, $project]))
             ->assertSessionHas('success', 'The destination has been archived.');
 
         $this->assertTrue($destination->refresh()->isArchived());
@@ -51,7 +51,7 @@ class DestinationLifecycleTest extends TestCase
 
         $this->actingAs($user)
             ->delete(route('archived-destinations.destroy', [$organization, $destination]))
-            ->assertRedirect(route('project-destinations.index', [$organization, $project]))
+            ->assertRedirect(route('broadcast-destinations.index', [$organization, $project]))
             ->assertSessionHas('success', 'The destination has been restored.');
 
         $this->assertFalse($destination->refresh()->isArchived());

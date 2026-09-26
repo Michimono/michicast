@@ -20,9 +20,9 @@ class DestinationTest extends TestCase
         $project = $destination->project;
         $organization = $project->organization;
 
-        $this->get(route('project-destinations.index', [$organization, $project]))->assertRedirect(route('session.create'));
-        $this->get(route('project-destinations.create', [$organization, $project]))->assertRedirect(route('session.create'));
-        $this->post(route('project-destinations.store', [$organization, $project]), [])->assertRedirect(route('session.create'));
+        $this->get(route('broadcasts.show', [$organization, $project]))->assertRedirect(route('session.create'));
+        $this->get(route('broadcast-destinations.create', [$organization, $project]))->assertRedirect(route('session.create'));
+        $this->post(route('broadcast-destinations.store', [$organization, $project]), [])->assertRedirect(route('session.create'));
         $this->get(route('destinations.edit', [$organization, $destination]))->assertRedirect(route('session.create'));
         $this->patch(route('destinations.update', [$organization, $destination]), [])->assertRedirect(route('session.create'));
     }
@@ -36,7 +36,7 @@ class DestinationTest extends TestCase
         Destination::factory()->create(['name' => 'Someone else channel']);
 
         $this->actingAs($user)
-            ->get(route('project-destinations.index', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Updates channel')
             ->assertDontSee('Another project channel')
@@ -50,7 +50,7 @@ class DestinationTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('project-destinations.create', [$organization, $project, 'type' => 'recording']))
+            ->get(route('broadcast-destinations.create', [$organization, $project, 'type' => 'recording']))
             ->assertOk()
             ->assertSee('Recording destination')
             ->assertSee('Channel')
@@ -64,7 +64,7 @@ class DestinationTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
 
-        $response = $this->actingAs($user)->post(route('project-destinations.store', [$organization, $project]), [
+        $response = $this->actingAs($user)->post(route('broadcast-destinations.store', [$organization, $project]), [
             'name' => 'Updates channel',
             'type' => 'recording',
             'config' => ['channel' => 'updates'],
@@ -73,7 +73,7 @@ class DestinationTest extends TestCase
 
         $destination = $project->destinations()->sole();
 
-        $response->assertRedirect(route('project-destinations.index', [$organization, $project]));
+        $response->assertRedirect(route('broadcasts.show', [$organization, $project]));
         $response->assertSessionHas('success', 'The destination has been added.');
 
         $this->assertSame('Updates channel', $destination->name);
@@ -90,7 +90,7 @@ class DestinationTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('project-destinations.store', [$organization, $project]), [
+            ->post(route('broadcast-destinations.store', [$organization, $project]), [
                 'name' => 'Updates channel',
                 'type' => 'recording',
                 'config' => ['channel' => ''],
@@ -106,7 +106,7 @@ class DestinationTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
 
-        $this->actingAs($user)->post(route('project-destinations.store', [$organization, $project]), [
+        $this->actingAs($user)->post(route('broadcast-destinations.store', [$organization, $project]), [
             'name' => 'Updates channel',
             'type' => 'recording',
             'config' => [
@@ -159,8 +159,8 @@ class DestinationTest extends TestCase
         $destination = $this->destinationIn($organization);
         $project = $destination->project;
 
-        $this->actingAs($user)->get(route('project-destinations.create', [$organization, $project]))->assertForbidden();
-        $this->actingAs($user)->post(route('project-destinations.store', [$organization, $project]), [
+        $this->actingAs($user)->get(route('broadcast-destinations.create', [$organization, $project]))->assertForbidden();
+        $this->actingAs($user)->post(route('broadcast-destinations.store', [$organization, $project]), [
             'name' => 'Updates channel',
             'type' => 'recording',
             'config' => ['channel' => 'updates'],

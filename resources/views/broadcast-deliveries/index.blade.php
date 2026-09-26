@@ -20,8 +20,8 @@
         </form>
 
         <p class="flex flex-wrap gap-2">
-            <x-button href="{{ route('project-broadcasts.index', $project) }}" variant="ghost" :paw="false">Broadcasts</x-button>
-            <x-button href="{{ route('projects.show', $project) }}" variant="ghost" :paw="false">Project</x-button>
+            <x-button href="{{ route('broadcast-pipelines.index', $project) }}" variant="ghost" :paw="false">Broadcasts</x-button>
+            <x-button href="{{ route('broadcasts.show', $project) }}" variant="ghost" :paw="false">Project</x-button>
         </p>
 
         @if ($deliveries->isEmpty())

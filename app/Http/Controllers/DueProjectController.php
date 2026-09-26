@@ -16,7 +16,7 @@ class DueProjectController extends Controller
         $project->markDue();
 
         return redirect()
-            ->route('projects.show', $project)
+            ->route('broadcasts.show', $project)
             ->with('success', 'The run is queued for the next scheduler tick, within about a minute.');
     }
 }

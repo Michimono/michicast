@@ -43,7 +43,7 @@ class SourceLifecycleTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('archived-sources.store', [$organization, $source]))
-            ->assertRedirect(route('project-sources.index', [$organization, $project]))
+            ->assertRedirect(route('broadcast-sources.index', [$organization, $project]))
             ->assertSessionHas('success', 'The source has been archived.');
 
         $this->assertTrue($source->refresh()->isArchived());
@@ -51,7 +51,7 @@ class SourceLifecycleTest extends TestCase
 
         $this->actingAs($user)
             ->delete(route('archived-sources.destroy', [$organization, $source]))
-            ->assertRedirect(route('project-sources.index', [$organization, $project]))
+            ->assertRedirect(route('broadcast-sources.index', [$organization, $project]))
             ->assertSessionHas('success', 'The source has been restored.');
 
         $this->assertFalse($source->refresh()->isArchived());
@@ -81,7 +81,7 @@ class SourceLifecycleTest extends TestCase
         Source::factory()->for($source->project)->archived()->create(['name' => 'Retired feed']);
 
         $this->actingAs($user)
-            ->get(route('project-sources.index', [$organization, $source->project]))
+            ->get(route('broadcast-sources.index', [$organization, $source->project]))
             ->assertOk()
             ->assertSee('Live feed')
             ->assertSee('Retired feed')

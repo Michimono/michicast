@@ -16,7 +16,7 @@ class ActiveProjectController extends Controller
         $project->activate();
 
         return redirect()
-            ->route('projects.show', $project)
-            ->with('success', 'The project has been activated.');
+            ->route('broadcasts.show', $project)
+            ->with('success', 'The broadcast has been activated.');
     }
 }

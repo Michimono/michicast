@@ -67,7 +67,7 @@ class OrganizationController extends Controller
     }
 
     /**
-     * The organization's workspace home: a quiet grid of project cards.
+     * The organization's workspace home: a quiet grid of broadcast cards.
      */
     public function show(Organization $organization): View
     {

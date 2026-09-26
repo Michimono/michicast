@@ -4,13 +4,13 @@
     $organizations ??= auth()->user()?->organizations()->orderBy('name')->get() ?? collect();
     $projects ??= $organization->projects()->notArchived()->orderBy('name')->get();
     $inProject = $project instanceof \App\Models\Project;
-    $projectsActive = ! $inProject && request()->routeIs('organizations.show', 'projects.index', 'projects.create');
+    $broadcastsActive = ! $inProject && request()->routeIs('organizations.show', 'broadcasts.index', 'broadcasts.create');
 @endphp
 
 {{--
-    Contextual two-level rail: organization (Projects / Members / Settings),
-    then project (Overview / Sources / Destinations / Activity)
-    when a project is in scope. Mobile uses the same hierarchy via the header menu.
+    Contextual two-level rail: organization (Broadcasts / Members / Settings),
+    then broadcast (Overview / Sources / Destinations / Activity)
+    when a broadcast is in scope. Mobile uses the same hierarchy via the header menu.
 --}}
 <aside
     id="organization-sidebar"
@@ -45,10 +45,10 @@
     <nav class="flex flex-col gap-1" aria-label="Organization">
         <x-sidebar-link
             :href="route('organizations.show', $organization)"
-            :active="$projectsActive"
+            :active="$broadcastsActive"
         >
-            <x-slot:icon><x-icons.stack class="size-5 shrink-0" /></x-slot:icon>
-            Projects
+            <x-slot:icon><x-icons.antenna class="size-5 shrink-0" /></x-slot:icon>
+            Broadcasts
         </x-sidebar-link>
 
         <x-sidebar-link
@@ -76,12 +76,12 @@
                 <summary class="flex cursor-pointer list-none items-center gap-2 rounded-md px-1 py-2 text-left max-lg:px-2 lg:justify-center xl:justify-start xl:px-2 [&::-webkit-details-marker]:hidden">
                     <x-icons.info class="hidden shrink-0 lg:block xl:hidden" />
                     <span class="min-w-0 flex-1 truncate font-display text-base tracking-tight max-lg:block lg:hidden xl:block">{{ $project->name }}</span>
-                    <span class="font-mono text-[0.625rem] tracking-wide text-muted uppercase max-lg:inline lg:hidden xl:inline">Project</span>
+                    <span class="font-mono text-[0.625rem] tracking-wide text-muted uppercase max-lg:inline lg:hidden xl:inline">Broadcast</span>
                 </summary>
                 <div class="absolute left-0 right-0 z-40 mt-1 max-h-64 overflow-y-auto rounded-md border border-line bg-paper-raised py-1 shadow-md">
                     @forelse ($projects as $candidate)
                         <a
-                            href="{{ route('projects.show', $candidate) }}"
+                            href="{{ route('broadcasts.show', $candidate) }}"
                             @class([
                                 'block truncate px-3 py-2 text-sm hover:bg-paper',
                                 'bg-paper font-medium text-ink' => $candidate->is($project),
@@ -90,15 +90,15 @@
                             @if ($candidate->is($project)) aria-current="true" @endif
                         >{{ $candidate->name }}</a>
                     @empty
-                        <p class="px-3 py-2 text-sm text-muted">No projects yet.</p>
+                        <p class="px-3 py-2 text-sm text-muted">No broadcasts yet.</p>
                     @endforelse
                 </div>
             </details>
 
-            <nav class="flex flex-col gap-1" aria-label="Project">
+            <nav class="flex flex-col gap-1" aria-label="Broadcast">
                 <x-sidebar-link
-                    :href="route('projects.show', $project)"
-                    :active="request()->routeIs('projects.show')"
+                    :href="route('broadcasts.show', $project)"
+                    :active="request()->routeIs('broadcasts.show')"
                 >
                     <x-slot:icon><x-icons.overview class="size-5 shrink-0" /></x-slot:icon>
                     Overview
@@ -106,24 +106,24 @@
 
 
                 <x-sidebar-link
-                    :href="route('project-sources.index', $project)"
-                    :active="request()->routeIs('project-sources.*', 'sources.*', 'source-connection-tests.*', 'enabled-sources.*', 'archived-sources.*')"
+                    :href="route('broadcast-sources.index', $project)"
+                    :active="request()->routeIs('broadcast-sources.*', 'sources.*', 'source-connection-tests.*', 'enabled-sources.*', 'archived-sources.*')"
                 >
                     <x-slot:icon><x-icons.source class="size-5 shrink-0" /></x-slot:icon>
                     Sources
                 </x-sidebar-link>
 
                 <x-sidebar-link
-                    :href="route('project-destinations.index', $project)"
-                    :active="request()->routeIs('project-destinations.*', 'destinations.*', 'destination-connection-tests.*', 'enabled-destinations.*', 'archived-destinations.*')"
+                    :href="route('broadcast-destinations.index', $project)"
+                    :active="request()->routeIs('broadcast-destinations.*', 'destinations.*', 'destination-connection-tests.*', 'enabled-destinations.*', 'archived-destinations.*')"
                 >
                     <x-slot:icon><x-icons.destination class="size-5 shrink-0" /></x-slot:icon>
                     Destinations
                 </x-sidebar-link>
 
                 <x-sidebar-link
-                    :href="route('project-runs.index', $project)"
-                    :active="request()->routeIs('project-runs.*')"
+                    :href="route('broadcast-runs.index', $project)"
+                    :active="request()->routeIs('broadcast-runs.*')"
                 >
                     <x-slot:icon><x-icons.activity class="size-5 shrink-0" /></x-slot:icon>
                     Activity

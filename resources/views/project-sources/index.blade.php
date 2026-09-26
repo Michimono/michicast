@@ -4,7 +4,7 @@
 
         @can('create', [App\Models\Source::class, $project])
             <p>
-                <x-button href="{{ route('project-sources.create', $project) }}">New source</x-button>
+                <x-button href="{{ route('broadcast-sources.create', $project) }}">New source</x-button>
             </p>
         @endcan
 

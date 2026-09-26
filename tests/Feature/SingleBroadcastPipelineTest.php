@@ -49,17 +49,17 @@ class SingleBroadcastPipelineTest extends TestCase
         $extraDestination = Destination::factory()->for($project)->create();
 
         $this->actingAs($user)
-            ->get(route('project-broadcasts.create', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]))
+            ->get(route('broadcast-pipelines.create', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
             ->assertSessionHas('error');
 
         $this->actingAs($user)
-            ->post(route('project-broadcasts.store', [$organization, $project]), [
+            ->post(route('broadcast-pipelines.store', [$organization, $project]), [
                 'name' => 'Second route',
                 'source_id' => $extraSource->getKey(),
                 'destination_id' => $extraDestination->getKey(),
             ])
-            ->assertRedirect(route('projects.show', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
             ->assertSessionHas('error');
 
         $this->assertSame(1, $project->broadcasts()->notArchived()->count());

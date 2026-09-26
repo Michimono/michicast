@@ -4,7 +4,7 @@
             Choose what kind of destination this is, then fill in the settings and credentials it asks for.
         </p>
 
-        <form class="flex flex-col gap-4" method="GET" action="{{ route('project-destinations.create', $project) }}">
+        <form class="flex flex-col gap-4" method="GET" action="{{ route('broadcast-destinations.create', $project) }}">
             <x-select
                 name="type"
                 label="Destination type"
@@ -18,7 +18,7 @@
 
         <x-whisker-divider />
 
-        <form class="flex flex-col gap-4" method="POST" action="{{ route('project-destinations.store', $project) }}">
+        <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcast-destinations.store', $project) }}">
             @csrf
 
             <input type="hidden" name="type" value="{{ $type }}">

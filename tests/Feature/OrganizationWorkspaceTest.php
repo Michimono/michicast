@@ -28,8 +28,8 @@ class OrganizationWorkspaceTest extends TestCase
             ->get(route('organizations.show', $organization))
             ->assertOk()
             ->assertSee('Nothing to chase yet')
-            ->assertSee('+ New project')
-            ->assertSee(route('projects.create', $organization), false)
+            ->assertSee('+ New broadcast')
+            ->assertSee(route('broadcasts.create', $organization), false)
             ->assertDontSee('Nothing to manage yet')
             ->assertDontSee('viewBox="0 0 64 10"', false);
     }
@@ -76,17 +76,17 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertDontSee('Old Archive');
         $response->assertSee('Active');
         $response->assertSee('Paused');
-        $response->assertSeeInOrder(['Sources', '2', 'Destinations', '1', 'Broadcasts', '1']);
+        $response->assertSeeInOrder(['Source', '2', 'Destination', '1']);
         $response->assertSee('Europe/Madrid');
         $response->assertSee('Failed');
         $response->assertSee($finishedAt->diffForHumans());
         $response->assertSee('Never run');
-        $response->assertSee(route('projects.show', [$organization, $active]), false);
-        $response->assertSee('View project');
+        $response->assertSee(route('broadcasts.show', [$organization, $active]), false);
+        $response->assertSee('View broadcast');
         $response->assertDontSee('aria-label="Open Pokemon TCGP News"', false);
         $response->assertSee('has-[details[open]]:z-30', false);
         $response->assertSee('bg-paper-raised py-1 shadow-md', false);
-        $response->assertSee('+ New project');
+        $response->assertSee('+ New broadcast');
         $response->assertSee('Pause');
         $response->assertSee('Resume');
         $response->assertSee('Archive');
@@ -94,7 +94,7 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertSee('viewBox="0 0 64 10"', false);
         $response->assertSee('M2 10 10 1 18 10', false);
         $this->assertSame(2, substr_count($response->getContent(), 'viewBox="0 0 64 10"'));
-        $this->assertSame(2, substr_count($response->getContent(), 'View project'));
+        $this->assertSame(2, substr_count($response->getContent(), 'View broadcast'));
         $this->assertLessThan(20, $queries);
     }
 
@@ -105,11 +105,11 @@ class OrganizationWorkspaceTest extends TestCase
 
         $this->actingAs($user)
             ->from(route('organizations.show', $organization))
-            ->post(route('paused-projects.store', [$organization, $project]), [
+            ->post(route('paused-broadcasts.store', [$organization, $project]), [
                 'return' => 'organization',
             ])
             ->assertRedirect(route('organizations.show', $organization))
-            ->assertSessionHas('success', 'The project has been paused.');
+            ->assertSessionHas('success', 'The broadcast has been paused.');
 
         $this->assertSame(ProjectStatus::Paused, $project->refresh()->status);
 
@@ -127,7 +127,7 @@ class OrganizationWorkspaceTest extends TestCase
         $active = Project::factory()->for($organization)->active()->create(['name' => 'Running']);
 
         $this->actingAs($user)
-            ->delete(route('paused-projects.destroy', [$organization, $paused]), [
+            ->delete(route('paused-broadcasts.destroy', [$organization, $paused]), [
                 'return' => 'organization',
             ])
             ->assertRedirect(route('organizations.show', $organization));
@@ -135,7 +135,7 @@ class OrganizationWorkspaceTest extends TestCase
         $this->assertSame(ProjectStatus::Active, $paused->refresh()->status);
 
         $this->actingAs($user)
-            ->post(route('archived-projects.store', [$organization, $active]), [
+            ->post(route('archived-broadcasts.store', [$organization, $active]), [
                 'return' => 'organization',
             ])
             ->assertRedirect(route('organizations.show', $organization));
@@ -158,16 +158,16 @@ class OrganizationWorkspaceTest extends TestCase
             ->get(route('organizations.show', $organization))
             ->assertOk()
             ->assertSee('Read Only News')
-            ->assertSee(route('projects.show', [$organization, $project]), false)
-            ->assertSee('View project')
-            ->assertDontSee('+ New project')
+            ->assertSee(route('broadcasts.show', [$organization, $project]), false)
+            ->assertSee('View broadcast')
+            ->assertDontSee('+ New broadcast')
             ->assertDontSee('Actions for Read Only News')
             ->assertDontSee('>Edit</a>', false)
             ->assertDontSee('>Pause</button>', false)
             ->assertDontSee('>Archive</button>', false);
 
         $this->actingAs($user)
-            ->post(route('paused-projects.store', [$organization, $project]), [
+            ->post(route('paused-broadcasts.store', [$organization, $project]), [
                 'return' => 'organization',
             ])
             ->assertForbidden();
@@ -181,8 +181,8 @@ class OrganizationWorkspaceTest extends TestCase
         $project = Project::factory()->for($organization)->active()->create();
 
         $this->actingAs($user)
-            ->post(route('paused-projects.store', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]));
+            ->post(route('paused-broadcasts.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]));
     }
 
     /**

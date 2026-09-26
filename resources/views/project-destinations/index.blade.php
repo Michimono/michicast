@@ -4,7 +4,7 @@
 
         @can('create', [App\Models\Destination::class, $project])
             <p>
-                <x-button href="{{ route('project-destinations.create', $project) }}">New destination</x-button>
+                <x-button href="{{ route('broadcast-destinations.create', $project) }}">New destination</x-button>
             </p>
         @endcan
 

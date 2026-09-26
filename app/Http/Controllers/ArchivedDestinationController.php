@@ -16,7 +16,7 @@ class ArchivedDestinationController extends Controller
         $destination->archive();
 
         return redirect()
-            ->route('project-destinations.index', $destination->project)
+            ->route('broadcast-destinations.index', $destination->project)
             ->with('success', 'The destination has been archived.');
     }
 
@@ -27,7 +27,7 @@ class ArchivedDestinationController extends Controller
         $destination->restore();
 
         return redirect()
-            ->route('project-destinations.index', $destination->project)
+            ->route('broadcast-destinations.index', $destination->project)
             ->with('success', 'The destination has been restored.');
     }
 }

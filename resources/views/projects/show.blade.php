@@ -18,7 +18,7 @@
 
                     <div class="flex flex-wrap items-center gap-2">
                         @can('update', $project)
-                            <x-button href="{{ route('projects.edit', $project) }}" variant="ghost" :paw="false">Edit</x-button>
+                            <x-button href="{{ route('broadcasts.edit', $project) }}" variant="ghost" :paw="false">Edit</x-button>
                             <x-button type="button" variant="ghost" :paw="false" data-open-dialog="schedule-drawer">
                                 {{ $project->schedule ? 'Edit schedule' : 'Set schedule' }}
                             </x-button>
@@ -26,7 +26,7 @@
 
                         @can('markDue', $project)
                             @if ($project->canMarkDue())
-                                <form method="POST" action="{{ route('immediate-project-runs.store', $project) }}" data-run-form>
+                                <form method="POST" action="{{ route('immediate-broadcast-runs.store', $project) }}" data-run-form>
                                     @csrf
                                     <x-button data-run-submit>Run now</x-button>
                                 </form>
@@ -42,21 +42,21 @@
 
                         @can('changeStatus', $project)
                             @if ($project->canActivate())
-                                <form method="POST" action="{{ route('active-projects.store', $project) }}">
+                                <form method="POST" action="{{ route('active-broadcasts.store', $project) }}">
                                     @csrf
                                     <x-button>Activate</x-button>
                                 </form>
                             @endif
 
                             @if ($project->canPause())
-                                <form method="POST" action="{{ route('paused-projects.store', $project) }}">
+                                <form method="POST" action="{{ route('paused-broadcasts.store', $project) }}">
                                     @csrf
                                     <x-button variant="ghost" :paw="false">Pause</x-button>
                                 </form>
                             @endif
 
                             @if ($project->canResume())
-                                <form method="POST" action="{{ route('paused-projects.destroy', $project) }}">
+                                <form method="POST" action="{{ route('paused-broadcasts.destroy', $project) }}">
                                     @csrf
                                     @method('DELETE')
                                     <x-button>Resume</x-button>
@@ -66,8 +66,8 @@
                             @if ($project->canArchive())
                                 <form
                                     method="POST"
-                                    action="{{ route('archived-projects.store', $project) }}"
-                                    onsubmit="return confirm('Archive this project? Historical activity is kept.')"
+                                    action="{{ route('archived-broadcasts.store', $project) }}"
+                                    onsubmit="return confirm('Archive this broadcast? Historical activity is kept.')"
                                 >
                                     @csrf
                                     <x-button variant="ghost" :paw="false">Archive</x-button>
@@ -75,7 +75,7 @@
                             @endif
 
                             @if ($project->canRestore())
-                                <form method="POST" action="{{ route('archived-projects.destroy', $project) }}">
+                                <form method="POST" action="{{ route('archived-broadcasts.destroy', $project) }}">
                                     @csrf
                                     @method('DELETE')
                                     <x-button>Restore</x-button>
@@ -102,7 +102,7 @@
                         <ul class="mt-2 flex flex-col gap-1">
                             @foreach ($autoPausedBroadcasts as $paused)
                                 <li>
-                                    <a class="text-accent underline hover:no-underline" href="{{ route('broadcasts.edit', $paused) }}">
+                                    <a class="text-accent underline hover:no-underline" href="{{ route('flows.edit', $paused) }}">
                                         {{ $paused->name }}
                                     </a>
                                     @if ($paused->failure_pause_reason)
@@ -120,10 +120,10 @@
         <x-card heading="Pipeline" kicker="Flow">
             <x-slot:actions>
                 @can('create', [App\Models\Source::class, $project])
-                    <x-button href="{{ route('project-sources.create', $project) }}" variant="ghost" :paw="false">Add a source</x-button>
+                    <x-button href="{{ route('broadcast-sources.create', $project) }}" variant="ghost" :paw="false">Add a source</x-button>
                 @endcan
                 @can('create', [App\Models\Destination::class, $project])
-                    <x-button href="{{ route('project-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
+                    <x-button href="{{ route('broadcast-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
                 @endcan
             </x-slot:actions>
 
@@ -141,7 +141,7 @@
                             <x-button href="{{ route('sources.edit', $source) }}" variant="ghost" :paw="false">Manage</x-button>
                         </div>
                     @else
-                        <p class="mt-2 text-sm text-muted">Nothing feeding this project yet.</p>
+                        <p class="mt-2 text-sm text-muted">Nothing feeding this broadcast yet.</p>
                     @endif
                 </div>
 
@@ -178,7 +178,7 @@
         {{-- 3. Recent activity: next run first, then executions --}}
         <x-card heading="Recent activity" :kicker="$project->name">
             <x-slot:actions>
-                <x-button href="{{ route('project-runs.index', $project) }}" variant="ghost" :paw="false">All activity</x-button>
+                <x-button href="{{ route('broadcast-runs.index', $project) }}" variant="ghost" :paw="false">All activity</x-button>
             </x-slot:actions>
 
             <ul class="flex flex-col divide-y divide-line border-t border-line">
@@ -191,7 +191,7 @@
                                 ({{ $project->effectiveTimezone() }})
                             </p>
                             <p class="text-sm text-muted">
-                                Shown in {{ $project->effectiveTimezone() }}, the {{ $project->hasTimezoneOverride() ? 'project override' : 'organization timezone' }}.
+                                Shown in {{ $project->effectiveTimezone() }}, the {{ $project->hasTimezoneOverride() ? 'broadcast override' : 'organization timezone' }}.
                             </p>
                         </div>
                     </li>
@@ -203,7 +203,7 @@
                         'bg-paper' => session('last_run_id') == $run->getKey(),
                     ])>
                         <div class="flex flex-col gap-1">
-                            <a class="text-sm font-medium text-ink hover:text-accent" href="{{ route('project-runs.show', [$project, $run]) }}">
+                            <a class="text-sm font-medium text-ink hover:text-accent" href="{{ route('broadcast-runs.show', [$project, $run]) }}">
                                 <x-timestamp :value="$run->started_at" />
                             </a>
                             <p class="font-mono text-xs text-muted">
@@ -221,11 +221,11 @@
                                 · {{ ($run->finished_at ?? $run->started_at)->diffForHumans() }}
                             </p>
                         </div>
-                        <x-button href="{{ route('project-runs.show', [$project, $run]) }}" variant="ghost" :paw="false">Open</x-button>
+                        <x-button href="{{ route('broadcast-runs.show', [$project, $run]) }}" variant="ghost" :paw="false">Open</x-button>
                     </li>
                 @empty
                     @unless ($project->next_run_at)
-                        <li class="py-4 text-sm text-muted">This project has never run.</li>
+                        <li class="py-4 text-sm text-muted">This broadcast has never run.</li>
                     @endunless
                 @endforelse
             </ul>
@@ -241,7 +241,7 @@
                     <p class="text-sm text-ink">
                         Runs are calculated in {{ $scheduleForm['timezoneName'] }}, the {{ $scheduleForm['timezoneSource'] }}.
                     </p>
-                    <form class="flex flex-col gap-4" method="POST" action="{{ route('project-schedules.update', $project) }}">
+                    <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcast-schedules.update', $project) }}">
                         @csrf
                         @method('PATCH')
                         <x-select name="frequency" label="Frequency" :value="old('frequency', $scheduleForm['schedule']['frequency'] ?? 'daily')" :options="$scheduleForm['frequencies']" />
@@ -269,11 +269,11 @@
                             label="Timezone"
                             :value="old('timezone', $scheduleForm['selectedTimezone'])"
                             :options="$scheduleForm['timezones']"
-                            hint="Leave this on the organization timezone unless this project should run on a different clock."
+                            hint="Leave this on the organization timezone unless this broadcast should run on a different clock."
                         />
                         <div class="flex flex-wrap gap-2">
                             <x-button>Save schedule</x-button>
-                            <x-button href="{{ route('project-schedules.edit', $project) }}" variant="ghost" :paw="false">Open full editor</x-button>
+                            <x-button href="{{ route('broadcast-schedules.edit', $project) }}" variant="ghost" :paw="false">Open full editor</x-button>
                         </div>
                     </form>
                 </div>

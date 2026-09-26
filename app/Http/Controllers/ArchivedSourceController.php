@@ -16,7 +16,7 @@ class ArchivedSourceController extends Controller
         $source->archive();
 
         return redirect()
-            ->route('project-sources.index', $source->project)
+            ->route('broadcast-sources.index', $source->project)
             ->with('success', 'The source has been archived.');
     }
 
@@ -27,7 +27,7 @@ class ArchivedSourceController extends Controller
         $source->restore();
 
         return redirect()
-            ->route('project-sources.index', $source->project)
+            ->route('broadcast-sources.index', $source->project)
             ->with('success', 'The source has been restored.');
     }
 }

@@ -29,7 +29,7 @@ class BroadcastController extends Controller
         ]);
 
         return redirect()
-            ->route('broadcasts.edit', $broadcast)
+            ->route('flows.edit', $broadcast)
             ->with('success', 'The broadcast has been updated.');
     }
 

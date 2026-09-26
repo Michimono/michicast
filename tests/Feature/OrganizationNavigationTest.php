@@ -27,11 +27,11 @@ class OrganizationNavigationTest extends TestCase
         $this->assertStringContainsString(route('organizations.index'), $html);
         $this->assertStringContainsString(route('profile.edit'), $html);
         $this->assertStringContainsString(route('session.destroy'), $html);
-        $this->assertStringContainsString(route('projects.index', $organization), $html);
+        $this->assertStringContainsString(route('broadcasts.index', $organization), $html);
         $this->assertStringContainsString(route('members.index', $organization), $html);
         $this->assertStringContainsString(route('organization-settings.edit', $organization), $html);
         $this->assertStringNotContainsString('Dashboard', $html);
-        $this->assertStringContainsString('Projects', $html);
+        $this->assertStringContainsString('Broadcasts', $html);
         $this->assertStringContainsString('Members', $html);
         $this->assertStringContainsString('Settings', $html);
         $this->assertStringContainsString('All organizations', $html);
@@ -81,7 +81,7 @@ class OrganizationNavigationTest extends TestCase
             ->assertNotFound();
 
         $this->actingAs($user)
-            ->get(route('projects.index', $foreign))
+            ->get(route('broadcasts.index', $foreign))
             ->assertNotFound();
 
         $this->actingAs($user)

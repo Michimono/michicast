@@ -46,7 +46,7 @@ class ProjectRunHistoryTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)
-            ->get(route('project-runs.index', [$organization, $project]));
+            ->get(route('broadcast-runs.index', [$organization, $project]));
 
         $response->assertOk();
         $response->assertSeeInOrder([
@@ -54,7 +54,7 @@ class ProjectRunHistoryTest extends TestCase
             (string) $older->items_found,
         ]);
         $response->assertDontSee('found 99');
-        $response->assertSee(route('project-runs.show', [$organization, $project, $newer]), false);
+        $response->assertSee(route('broadcast-runs.show', [$organization, $project, $newer]), false);
     }
 
     public function test_run_detail_names_skip_reasons_and_redacts_secrets(): void
@@ -139,7 +139,7 @@ class ProjectRunHistoryTest extends TestCase
         });
 
         $response = $this->actingAs($user)
-            ->get(route('project-runs.show', [$organization, $project, $run]));
+            ->get(route('broadcast-runs.show', [$organization, $project, $run]));
 
         $response->assertOk();
         $response->assertSee('Kept post');
@@ -164,7 +164,7 @@ class ProjectRunHistoryTest extends TestCase
         $foreign = ProjectRun::factory()->create();
 
         $this->actingAs($user)
-            ->get(route('project-runs.show', [$organization, $project, $foreign]))
+            ->get(route('broadcast-runs.show', [$organization, $project, $foreign]))
             ->assertNotFound();
     }
 
@@ -217,10 +217,10 @@ class ProjectRunHistoryTest extends TestCase
         $project = Project::factory()->create();
         $run = ProjectRun::factory()->for($project)->create();
 
-        $this->get(route('project-runs.index', [$project->organization, $project]))
+        $this->get(route('broadcast-runs.index', [$project->organization, $project]))
             ->assertRedirect(route('session.create'));
 
-        $this->get(route('project-runs.show', [$project->organization, $project, $run]))
+        $this->get(route('broadcast-runs.show', [$project->organization, $project, $run]))
             ->assertRedirect(route('session.create'));
     }
 
