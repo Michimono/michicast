@@ -34,7 +34,7 @@ class OrganizationWorkspaceTest extends TestCase
             ->assertDontSee('viewBox="0 0 64 10"', false);
     }
 
-    public function test_a_configured_workspace_lists_project_cards_with_counts_and_runs(): void
+    public function test_a_configured_workspace_lists_broadcast_cards_without_pipeline_counts(): void
     {
         $this->travelTo(Carbon::parse('2026-03-15 15:00:00', 'UTC'));
 
@@ -45,13 +45,12 @@ class OrganizationWorkspaceTest extends TestCase
             'name' => 'Pokemon TCGP News',
             'next_run_at' => Carbon::parse('2026-03-16 08:00:00', 'UTC'),
         ]);
-        Source::factory()->for($active)->count(2)->create();
-        Source::factory()->for($active)->create(['archived_at' => now()]);
-        Destination::factory()->for($active)->create();
+        $source = Source::factory()->for($active)->create();
+        $destination = Destination::factory()->for($active)->create();
         Broadcast::factory()->create([
             'project_id' => $active->getKey(),
-            'source_id' => $active->sources()->notArchived()->value('id'),
-            'destination_id' => $active->destinations()->notArchived()->value('id'),
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
         ]);
         $finishedAt = now()->subHour();
         ProjectRun::factory()->for($active)->failed()->create([
@@ -76,7 +75,9 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertDontSee('Old Archive');
         $response->assertSee('Active');
         $response->assertSee('Paused');
-        $response->assertSeeInOrder(['Source', '2', 'Destination', '1']);
+        $response->assertDontSee('>Sources</dt>', false);
+        $response->assertDontSee('>Destinations</dt>', false);
+        $response->assertDontSee('>Broadcasts</dt>', false);
         $response->assertSee('Europe/Madrid');
         $response->assertSee('Failed');
         $response->assertSee($finishedAt->diffForHumans());
@@ -95,6 +96,7 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertSee('M2 10 10 1 18 10', false);
         $this->assertSame(2, substr_count($response->getContent(), 'viewBox="0 0 64 10"'));
         $this->assertSame(2, substr_count($response->getContent(), 'View broadcast'));
+        $this->assertGreaterThanOrEqual(1, substr_count($response->getContent(), 'M12 21v-8'));
         $this->assertLessThan(20, $queries);
     }
 

@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateDestinationRequest;
+use App\Models\Broadcast;
 use App\Models\Destination;
 use App\Models\Organization;
 use App\Support\ConnectionTestOutcome;
 use App\Support\DestinationProviderRegistry;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -33,6 +35,22 @@ class DestinationController extends Controller
         return redirect()
             ->route('destinations.edit', $destination)
             ->with('success', 'The destination has been updated.');
+    }
+
+    public function destroy(Organization $organization, Destination $destination): RedirectResponse
+    {
+        Gate::authorize('delete', $destination);
+
+        $project = $destination->project;
+
+        DB::transaction(function () use ($destination): void {
+            Broadcast::query()->where('destination_id', $destination->getKey())->delete();
+            $destination->delete();
+        });
+
+        return redirect()
+            ->route('broadcasts.show', $project)
+            ->with('success', 'The destination has been deleted.');
     }
 
     /**

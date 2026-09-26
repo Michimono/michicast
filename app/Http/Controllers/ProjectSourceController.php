@@ -16,18 +16,6 @@ class ProjectSourceController extends Controller
 {
     public function __construct(private SourceProviderRegistry $providers) {}
 
-    public function index(Organization $organization, Project $project): View
-    {
-        Gate::authorize('viewAny', [Source::class, $project]);
-
-        return view('project-sources.index', [
-            'project' => $project,
-            'sources' => $project->sources()->notArchived()->oldest('id')->get(),
-            'archived' => $project->sources()->whereNotNull('archived_at')->oldest('id')->get(),
-            'types' => $this->providers->options(),
-        ]);
-    }
-
     public function create(Request $request, Organization $organization, Project $project): View|RedirectResponse
     {
         Gate::authorize('create', [Source::class, $project]);

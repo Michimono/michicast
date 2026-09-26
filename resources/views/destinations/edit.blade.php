@@ -1,5 +1,5 @@
 <x-layout :title="$destination->name">
-    <x-card :heading="$destination->name" kicker="Destinations" eared class="max-w-md">
+    <x-card :heading="$destination->name" kicker="Destination" eared class="max-w-md">
         <div class="flex flex-wrap items-center gap-3">
             <p class="font-mono text-xs text-muted">{{ $typeLabel }}</p>
             <x-destination-status :destination="$destination" />
@@ -64,40 +64,17 @@
             </p>
         @endif
 
-        @can('changeStatus', $destination)
-            <div class="flex flex-wrap items-center gap-2">
-                @if ($destination->canDisable())
-                    <form method="POST" action="{{ route('enabled-destinations.destroy', $destination) }}">
-                        @csrf
-                        @method('DELETE')
+        @can('delete', $destination)
+            <form
+                method="POST"
+                action="{{ route('destinations.destroy', $destination) }}"
+                onsubmit="return confirm('Delete this destination? The pipeline slot will open so you can add another.')"
+            >
+                @csrf
+                @method('DELETE')
 
-                        <x-button variant="ghost" :paw="false">Disable</x-button>
-                    </form>
-                @endif
-
-                @if ($destination->canEnable())
-                    <form method="POST" action="{{ route('enabled-destinations.store', $destination) }}">
-                        @csrf
-
-                        <x-button>Enable</x-button>
-                    </form>
-                @endif
-
-                @if ($destination->isArchived())
-                    <form method="POST" action="{{ route('archived-destinations.destroy', $destination) }}">
-                        @csrf
-                        @method('DELETE')
-
-                        <x-button>Restore</x-button>
-                    </form>
-                @else
-                    <form method="POST" action="{{ route('archived-destinations.store', $destination) }}">
-                        @csrf
-
-                        <x-button variant="ghost" :paw="false">Archive</x-button>
-                    </form>
-                @endif
-            </div>
+                <x-button variant="ghost" :paw="false">Delete destination</x-button>
+            </form>
         @endcan
     </x-card>
 </x-layout>

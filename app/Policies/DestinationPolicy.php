@@ -37,9 +37,9 @@ class DestinationPolicy
     }
 
     /**
-     * Editors and above enable, disable, archive and restore a destination.
+     * Editors and above may delete a destination.
      */
-    public function changeStatus(User $user, Destination $destination): bool
+    public function delete(User $user, Destination $destination): bool
     {
         return $this->memberIsAtLeast($user, $destination->project->organization, Role::Editor);
     }

@@ -16,18 +16,6 @@ class ProjectDestinationController extends Controller
 {
     public function __construct(private DestinationProviderRegistry $providers) {}
 
-    public function index(Organization $organization, Project $project): View
-    {
-        Gate::authorize('viewAny', [Destination::class, $project]);
-
-        return view('project-destinations.index', [
-            'project' => $project,
-            'destinations' => $project->destinations()->notArchived()->oldest('id')->get(),
-            'archived' => $project->destinations()->whereNotNull('archived_at')->oldest('id')->get(),
-            'types' => $this->providers->options(),
-        ]);
-    }
-
     public function create(Request $request, Organization $organization, Project $project): View|RedirectResponse
     {
         Gate::authorize('create', [Destination::class, $project]);

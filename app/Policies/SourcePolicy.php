@@ -37,9 +37,9 @@ class SourcePolicy
     }
 
     /**
-     * Editors and above enable, disable, archive and restore a source.
+     * Editors and above may delete a source.
      */
-    public function changeStatus(User $user, Source $source): bool
+    public function delete(User $user, Source $source): bool
     {
         return $this->memberIsAtLeast($user, $source->project->organization, Role::Editor);
     }

@@ -1,5 +1,5 @@
 <x-layout :title="$source->name">
-    <x-card :heading="$source->name" kicker="Sources" eared class="max-w-md">
+    <x-card :heading="$source->name" kicker="Source" eared class="max-w-md">
         <div class="flex flex-wrap items-center gap-3">
             <p class="font-mono text-xs text-muted">{{ $typeLabel }}</p>
             <x-source-status :source="$source" />
@@ -62,40 +62,17 @@
             </p>
         @endif
 
-        @can('changeStatus', $source)
-            <div class="flex flex-wrap items-center gap-2">
-                @if ($source->canDisable())
-                    <form method="POST" action="{{ route('enabled-sources.destroy', $source) }}">
-                        @csrf
-                        @method('DELETE')
+        @can('delete', $source)
+            <form
+                method="POST"
+                action="{{ route('sources.destroy', $source) }}"
+                onsubmit="return confirm('Delete this source? The pipeline slot will open so you can add another.')"
+            >
+                @csrf
+                @method('DELETE')
 
-                        <x-button variant="ghost" :paw="false">Disable</x-button>
-                    </form>
-                @endif
-
-                @if ($source->canEnable())
-                    <form method="POST" action="{{ route('enabled-sources.store', $source) }}">
-                        @csrf
-
-                        <x-button>Enable</x-button>
-                    </form>
-                @endif
-
-                @if ($source->isArchived())
-                    <form method="POST" action="{{ route('archived-sources.destroy', $source) }}">
-                        @csrf
-                        @method('DELETE')
-
-                        <x-button>Restore</x-button>
-                    </form>
-                @else
-                    <form method="POST" action="{{ route('archived-sources.store', $source) }}">
-                        @csrf
-
-                        <x-button variant="ghost" :paw="false">Archive</x-button>
-                    </form>
-                @endif
-            </div>
+                <x-button variant="ghost" :paw="false">Delete source</x-button>
+            </form>
         @endcan
     </x-card>
 </x-layout>

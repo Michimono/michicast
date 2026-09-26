@@ -119,12 +119,16 @@
         {{-- 2. Pipeline centrepiece: Source → Destination --}}
         <x-card heading="Pipeline" kicker="Flow">
             <x-slot:actions>
-                @can('create', [App\Models\Source::class, $project])
-                    <x-button href="{{ route('broadcast-sources.create', $project) }}" variant="ghost" :paw="false">Add a source</x-button>
-                @endcan
-                @can('create', [App\Models\Destination::class, $project])
-                    <x-button href="{{ route('broadcast-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
-                @endcan
+                @if (! $source)
+                    @can('create', [App\Models\Source::class, $project])
+                        <x-button href="{{ route('broadcast-sources.create', $project) }}" variant="ghost" :paw="false">Add a source</x-button>
+                    @endcan
+                @endif
+                @if (! $destination)
+                    @can('create', [App\Models\Destination::class, $project])
+                        <x-button href="{{ route('broadcast-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
+                    @endcan
+                @endif
             </x-slot:actions>
 
             <p class="mb-4 text-sm text-muted">Source to destination. Transforms can join this path later.</p>

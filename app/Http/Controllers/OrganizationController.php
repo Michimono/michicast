@@ -75,11 +75,6 @@ class OrganizationController extends Controller
 
         $projects = $organization->projects()
             ->notArchived()
-            ->withCount([
-                'sources' => fn ($query) => $query->notArchived(),
-                'destinations' => fn ($query) => $query->notArchived(),
-                'broadcasts' => fn ($query) => $query->notArchived(),
-            ])
             ->with('latestRun')
             ->oldest('id')
             ->get();

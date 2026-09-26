@@ -3,9 +3,7 @@
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\ArchivedBroadcastController;
-use App\Http\Controllers\ArchivedDestinationController;
 use App\Http\Controllers\ArchivedProjectController;
-use App\Http\Controllers\ArchivedSourceController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BroadcastDeliveryController;
 use App\Http\Controllers\BroadcastDryRunController;
@@ -18,8 +16,6 @@ use App\Http\Controllers\DestinationConnectionTestController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
 use App\Http\Controllers\EnabledBroadcastController;
-use App\Http\Controllers\EnabledDestinationController;
-use App\Http\Controllers\EnabledSourceController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ImmediateProjectRunController;
 use App\Http\Controllers\InvitationController;
@@ -174,10 +170,9 @@ Route::middleware('auth')->group(function (): void {
                 ]);
 
             Route::resource('broadcasts.sources', ProjectSourceController::class)
-                ->only(['index', 'create', 'store'])
+                ->only(['create', 'store'])
                 ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'index' => 'broadcast-sources.index',
                     'create' => 'broadcast-sources.create',
                     'store' => 'broadcast-sources.store',
                 ]);
@@ -190,58 +185,25 @@ Route::middleware('auth')->group(function (): void {
                 ])
                 ->middlewareFor('store', 'throttle:source-preview');
 
-            Route::resource('sources', SourceController::class)->only(['edit', 'update']);
+            Route::resource('sources', SourceController::class)->only(['edit', 'update', 'destroy']);
 
             Route::match(['POST', 'PATCH'], 'sources/{source}/connection-tests', [SourceConnectionTestController::class, 'store'])
                 ->name('source-connection-tests.store')
                 ->middleware('throttle:source-connection-test');
 
-            Route::singleton('sources.enabled-source', EnabledSourceController::class)
-                ->creatable()
-                ->only(['store', 'destroy'])
-                ->names([
-                    'store' => 'enabled-sources.store',
-                    'destroy' => 'enabled-sources.destroy',
-                ]);
-
-            Route::singleton('sources.archived-source', ArchivedSourceController::class)
-                ->creatable()
-                ->only(['store', 'destroy'])
-                ->names([
-                    'store' => 'archived-sources.store',
-                    'destroy' => 'archived-sources.destroy',
-                ]);
-
             Route::resource('broadcasts.destinations', ProjectDestinationController::class)
-                ->only(['index', 'create', 'store'])
+                ->only(['create', 'store'])
                 ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'index' => 'broadcast-destinations.index',
                     'create' => 'broadcast-destinations.create',
                     'store' => 'broadcast-destinations.store',
                 ]);
 
-            Route::resource('destinations', DestinationController::class)->only(['edit', 'update']);
+            Route::resource('destinations', DestinationController::class)->only(['edit', 'update', 'destroy']);
 
             Route::match(['POST', 'PATCH'], 'destinations/{destination}/connection-tests', [DestinationConnectionTestController::class, 'store'])
                 ->name('destination-connection-tests.store')
                 ->middleware('throttle:destination-connection-test');
-
-            Route::singleton('destinations.enabled-destination', EnabledDestinationController::class)
-                ->creatable()
-                ->only(['store', 'destroy'])
-                ->names([
-                    'store' => 'enabled-destinations.store',
-                    'destroy' => 'enabled-destinations.destroy',
-                ]);
-
-            Route::singleton('destinations.archived-destination', ArchivedDestinationController::class)
-                ->creatable()
-                ->only(['store', 'destroy'])
-                ->names([
-                    'store' => 'archived-destinations.store',
-                    'destroy' => 'archived-destinations.destroy',
-                ]);
 
             Route::resource('broadcasts.pipelines', ProjectBroadcastController::class)
                 ->only(['index', 'create', 'store'])

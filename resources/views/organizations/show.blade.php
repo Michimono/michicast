@@ -97,21 +97,6 @@
                                 @endcan
                             </div>
 
-                            <dl class="grid grid-cols-3 gap-3">
-                                <div>
-                                    <dt class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Sources</dt>
-                                    <dd class="font-mono text-lg text-ink">{{ $project->sources_count }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Destinations</dt>
-                                    <dd class="font-mono text-lg text-ink">{{ $project->destinations_count }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Broadcasts</dt>
-                                    <dd class="font-mono text-lg text-ink">{{ $project->broadcasts_count }}</dd>
-                                </div>
-                            </dl>
-
                             <div class="mt-auto flex flex-col gap-3 border-t border-line pt-3">
                                 <div class="flex flex-col gap-2">
                                     <div>

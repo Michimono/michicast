@@ -79,8 +79,10 @@ class BroadcastAsTopLevelTest extends TestCase
             ->assertSee('Pipeline')
             ->assertSee('Feed')
             ->assertSee('Channel')
-            ->assertSee(route('broadcast-sources.create', [$organization, $project]), false)
-            ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
+            ->assertDontSee('Add a source')
+            ->assertDontSee('Add destination')
+            ->assertDontSee(route('broadcast-sources.create', [$organization, $project]), false)
+            ->assertDontSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertSee(route('broadcast-runs.index', [$organization, $project]), false);
 
         $this->actingAs($user)
