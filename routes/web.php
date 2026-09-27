@@ -8,6 +8,7 @@ use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BroadcastDeliveryController;
 use App\Http\Controllers\BroadcastDryRunController;
 use App\Http\Controllers\BroadcastFilterController;
+use App\Http\Controllers\BroadcastMappingController;
 use App\Http\Controllers\BroadcastTransformController;
 use App\Http\Controllers\BroadcastTransformPreviewController;
 use App\Http\Controllers\ContentPreviewController;
@@ -259,6 +260,17 @@ Route::middleware('auth')->group(function (): void {
 
             Route::match(['POST', 'PATCH'], 'flows/{broadcast}/transform-preview', [BroadcastTransformPreviewController::class, 'store'])
                 ->name('broadcast-transform-previews.store');
+
+            Route::match(['PATCH', 'POST'], 'flows/{broadcast}/mapping', [BroadcastMappingController::class, 'update'])
+                ->name('broadcast-mappings.update');
+
+            Route::post('flows/{broadcast}/mapping-preview', [BroadcastMappingController::class, 'preview'])
+                ->name('broadcast-mapping-previews.store')
+                ->middleware('throttle:content-preview');
+
+            Route::post('flows/{broadcast}/mapping-sample', [BroadcastMappingController::class, 'sample'])
+                ->name('broadcast-mapping-samples.store')
+                ->middleware('throttle:content-preview');
 
             Route::singleton('flows.enabled-flow', EnabledBroadcastController::class)
                 ->creatable()

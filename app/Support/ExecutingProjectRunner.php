@@ -16,7 +16,7 @@ use App\Models\Project;
 use App\Models\ProjectRun;
 use App\Models\Source;
 use App\Support\BroadcastFilters\BroadcastFilterEvaluator;
-use App\Support\BroadcastTransforms\BroadcastTransformer;
+use App\Support\Mapping\ContentMapper;
 use Carbon\CarbonInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Throwable;
@@ -53,7 +53,7 @@ class ExecutingProjectRunner implements ProjectRunner
         private SourceProviderRegistry $sources,
         private DestinationProviderRegistry $destinations,
         private BroadcastFilterEvaluator $filters,
-        private BroadcastTransformer $transformer,
+        private ContentMapper $mapper,
         private Clock $clock,
     ) {}
 
@@ -145,7 +145,7 @@ class ExecutingProjectRunner implements ProjectRunner
                 continue;
             }
 
-            $message = $this->transformer->transform($item, $broadcast->transform, $sourceName);
+            $message = $this->mapper->prepare($broadcast, $item, $sourceName);
             $items[] = new BroadcastPreviewItem(
                 title: $this->itemLabel($item),
                 body: $item->body,
@@ -326,7 +326,7 @@ class ExecutingProjectRunner implements ProjectRunner
 
             $this->advanceLifecycle($item, ContentItemLifecycle::Eligible);
 
-            $message = $this->transformer->transform($item, $broadcast->transform, $sourceName);
+            $message = $this->mapper->prepare($broadcast, $item, $sourceName);
             $this->advanceLifecycle($item, ContentItemLifecycle::Transformed);
 
             if ($this->dry) {

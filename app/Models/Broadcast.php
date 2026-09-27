@@ -16,16 +16,17 @@ use Illuminate\Support\Carbon;
 /**
  * One route from a source to a destination inside a project. Filter JSON is
  * a list of closed rules evaluated with AND; transform JSON holds a template
- * and optional formatting rules.
+ * and optional formatting rules. Mapping JSON is an ordered list of steps.
  *
  * @property array{rules?: list<array<string, mixed>>}|null $filter
  * @property array{template?: string, rules?: list<array<string, mixed>>}|null $transform
+ * @property array{version?: int, steps?: list<array<string, mixed>>}|null $mapping
  * @property bool $enabled
  * @property int $consecutive_failures
  * @property string|null $failure_pause_reason
  * @property Carbon|null $archived_at
  */
-#[Fillable(['name', 'source_id', 'destination_id', 'filter', 'transform'])]
+#[Fillable(['name', 'source_id', 'destination_id', 'filter', 'transform', 'mapping'])]
 class Broadcast extends Model
 {
     /** @use HasFactory<BroadcastFactory> */
@@ -201,6 +202,7 @@ class Broadcast extends Model
         return [
             'filter' => 'array',
             'transform' => 'array',
+            'mapping' => 'array',
             'enabled' => 'boolean',
             'consecutive_failures' => 'integer',
             'archived_at' => 'datetime',

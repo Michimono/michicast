@@ -113,57 +113,15 @@
             </div>
         </x-card>
 
-        {{-- 2. Pipeline centrepiece: Source → Destination --}}
+        {{-- 2. Pipeline centrepiece: Source / Mapping / Destination --}}
         <x-card heading="Pipeline" kicker="Flow">
-            <x-slot:actions>
-                @if (! $source)
-                    @can('create', [App\Models\Source::class, $project])
-                        <x-button href="{{ route('broadcast-sources.create', $project) }}" variant="ghost" :paw="false">Add a source</x-button>
-                    @endcan
-                @endif
-                @if (! $destination)
-                    @can('create', [App\Models\Destination::class, $project])
-                        <x-button href="{{ route('broadcast-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
-                    @endcan
-                @endif
-            </x-slot:actions>
-
-            <p class="mb-4 text-sm text-muted">Source to destination. Transforms can join this path later.</p>
-
-            <div class="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
-                <div class="min-w-0 flex-1 rounded-card border border-line bg-paper p-4">
-                    <p class="font-mono text-[0.6875rem] tracking-wide text-muted uppercase">Source</p>
-                    @if ($source)
-                        <a class="mt-1 block truncate font-display text-xl tracking-tight text-ink hover:text-accent" href="{{ route('sources.edit', $source) }}">
-                            {{ $source->name }}
-                        </a>
-                        <div class="mt-3">
-                            <x-button href="{{ route('sources.edit', $source) }}" variant="ghost" :paw="false">Manage</x-button>
-                        </div>
-                    @else
-                        <p class="mt-2 text-sm text-muted">Nothing feeding this broadcast yet.</p>
-                    @endif
-                </div>
-
-                <div class="flex justify-center text-muted" aria-hidden="true">
-                    <x-icons.arrow-right class="size-6 rotate-90 sm:rotate-0" />
-                </div>
-
-                <div class="min-w-0 flex-1 rounded-card border border-line bg-paper p-4">
-                    <p class="font-mono text-[0.6875rem] tracking-wide text-muted uppercase">Destination</p>
-                    @if ($destination)
-                        <a class="mt-1 block truncate font-display text-xl tracking-tight text-ink hover:text-accent" href="{{ route('destinations.edit', $destination) }}">
-                            {{ $destination->name }}
-                        </a>
-                        <div class="mt-3">
-                            <x-button href="{{ route('destinations.edit', $destination) }}" variant="ghost" :paw="false">Manage</x-button>
-                        </div>
-                    @else
-                        <p class="mt-2 text-sm text-muted">Nowhere to publish yet.</p>
-                    @endif
-                </div>
-            </div>
-
+            <p class="mb-6 text-sm text-muted">Source, then simple mapping steps, then destination.</p>
+            @include('broadcast-mappings.pipeline', [
+                'project' => $project,
+                'source' => $source,
+                'destination' => $destination,
+                'mappingEditor' => $mappingEditor ?? ['ready' => false],
+            ])
             @if ($pipelineEmpty)
                 <div class="mt-6">
                     <x-empty-state

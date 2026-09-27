@@ -91,6 +91,12 @@ class ProjectController extends Controller
             ->oldest('id')
             ->get();
 
+        $mappingEditor = ['ready' => false];
+        if ($broadcast !== null && $source !== null && $destination !== null
+            && ! $source->isArchived() && ! $destination->isArchived()) {
+            $mappingEditor = app(BroadcastMappingController::class)->editorPayload($broadcast);
+        }
+
         return view('projects.show', [
             'project' => $project,
             'broadcast' => $broadcast,
@@ -102,6 +108,7 @@ class ProjectController extends Controller
             'autoPausedBroadcasts' => $autoPausedBroadcasts,
             'pipelineEmpty' => $source === null && $destination === null,
             'scheduleSummary' => $scheduleSummary->describe($project->schedule),
+            'mappingEditor' => $mappingEditor,
         ]);
     }
 

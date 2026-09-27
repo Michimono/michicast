@@ -382,3 +382,5 @@ document.addEventListener('click', (event) => {
 
     document.querySelectorAll('[data-schedule-fields]').forEach(syncScheduleFields);
 })();
+
+import './mapping-editor';

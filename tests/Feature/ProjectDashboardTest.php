@@ -105,7 +105,7 @@ class ProjectDashboardTest extends TestCase
         $response->assertDontSee('Nothing to chase yet');
         $response->assertDontSee('Add a source');
         $response->assertDontSee('Add destination');
-        $response->assertSeeInOrder(['Pipeline', 'RSS Feed', 'Manage', 'Telegram', 'Manage'], false);
+        $response->assertSeeInOrder(['Pipeline', 'Source', 'RSS Feed', 'Manage', 'Mapping', 'Destination', 'Telegram', 'Manage'], false);
         $response->assertDontSee(route('broadcast-sources.create', [$organization, $project]), false);
         $response->assertDontSee(route('broadcast-destinations.create', [$organization, $project]), false);
         $this->assertLessThan(40, $queries);
@@ -142,7 +142,7 @@ class ProjectDashboardTest extends TestCase
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Nothing to chase yet')
-            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Nothing to chase yet'], false)
+            ->assertSeeInOrder(['Pipeline', 'Source', 'Add a source', 'Mapping', 'Destination', 'Add destination', 'Nothing to chase yet'], false)
             ->assertSee(route('broadcast-sources.create', [$organization, $project]), false)
             ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertSee('Pipeline')
@@ -164,7 +164,7 @@ class ProjectDashboardTest extends TestCase
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertDontSee('Add a source')
-            ->assertSeeInOrder(['Pipeline', 'Add destination', 'Only feed', 'Manage'], false)
+            ->assertSeeInOrder(['Pipeline', 'Source', 'Only feed', 'Manage', 'Mapping', 'Destination', 'Add destination'], false)
             ->assertDontSee(route('broadcast-sources.create', [$organization, $project]), false)
             ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertDontSee('Nothing feeding this broadcast yet.');
@@ -176,7 +176,7 @@ class ProjectDashboardTest extends TestCase
             ->assertOk()
             ->assertDontSee('Add a source')
             ->assertDontSee('Add destination')
-            ->assertSeeInOrder(['Pipeline', 'Only feed', 'Manage', 'Only channel', 'Manage'], false)
+            ->assertSeeInOrder(['Pipeline', 'Source', 'Only feed', 'Manage', 'Mapping', 'Destination', 'Only channel', 'Manage'], false)
             ->assertDontSee(route('broadcast-sources.create', [$organization, $project]), false)
             ->assertDontSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertDontSee('Nowhere to publish yet.');
@@ -209,7 +209,7 @@ class ProjectDashboardTest extends TestCase
             ->assertSee('Nothing feeding this broadcast yet.')
             ->assertSee('Nowhere to publish yet.')
             ->assertSee('Nothing to chase yet')
-            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination'], false)
+            ->assertSeeInOrder(['Pipeline', 'Source', 'Add a source', 'Destination', 'Add destination'], false)
             ->assertSee(route('broadcast-sources.create', [$organization, $project]), false)
             ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertDontSee('Manage');
