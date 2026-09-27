@@ -1,9 +1,6 @@
 <x-layout :title="$source->name">
     <x-card :heading="$source->name" kicker="Source" eared class="max-w-md">
-        <div class="flex flex-wrap items-center gap-3">
-            <p class="font-mono text-xs text-muted">{{ $typeLabel }}</p>
-            <x-source-status :source="$source" />
-        </div>
+        <p class="font-mono text-xs text-muted">{{ $typeLabel }}</p>
 
         @if ($source->last_tested_at)
             <p @class([

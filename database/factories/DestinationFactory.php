@@ -20,18 +20,10 @@ class DestinationFactory extends Factory
             'project_id' => Project::factory(),
             'name' => fake()->unique()->words(2, true),
             'type' => 'recording',
-            'enabled' => true,
             'config' => ['channel' => 'updates'],
             'credentials' => ['token' => 'factory-secret-token'],
             'archived_at' => null,
         ];
-    }
-
-    public function disabled(): static
-    {
-        return $this->state(fn (): array => [
-            'enabled' => false,
-        ]);
     }
 
     public function archived(): static

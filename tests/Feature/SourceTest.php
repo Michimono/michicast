@@ -79,7 +79,6 @@ class SourceTest extends TestCase
         $this->assertSame('Pocket news feed', $source->name);
         $this->assertSame('fake', $source->type);
         $this->assertSame(['feed_url' => 'https://example.com/feed.xml'], $source->config);
-        $this->assertTrue($source->enabled);
         $this->assertTrue($source->isRunnable());
     }
 

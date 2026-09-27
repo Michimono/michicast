@@ -59,7 +59,10 @@ class DestinationLifecycleTest extends TestCase
             ->assertDontSee('>Archive</button>', false)
             ->assertDontSee('>Disable</button>', false)
             ->assertDontSee('>Enable</button>', false)
-            ->assertDontSee('>Restore</button>', false);
+            ->assertDontSee('>Restore</button>', false)
+            ->assertDontSee('Enabled')
+            ->assertDontSee('Disabled')
+            ->assertDontSee('name="enabled"', false);
     }
 
     public function test_destination_list_routes_are_gone(): void
@@ -72,11 +75,10 @@ class DestinationLifecycleTest extends TestCase
             ->assertMethodNotAllowed();
     }
 
-    public function test_only_enabled_and_unarchived_destinations_are_left_for_later_processing(): void
+    public function test_only_unarchived_destinations_are_left_for_later_processing(): void
     {
         $project = Project::factory()->create();
         $runnable = Destination::factory()->for($project)->create();
-        Destination::factory()->for($project)->disabled()->create();
         Destination::factory()->for($project)->archived()->create();
 
         $this->assertSame(

@@ -80,7 +80,6 @@ class DestinationTest extends TestCase
         $this->assertSame('recording', $destination->type);
         $this->assertSame(['channel' => 'updates'], $destination->config);
         $this->assertSame(['token' => 'super-secret-token'], $destination->credentials);
-        $this->assertTrue($destination->enabled);
         $this->assertTrue($destination->isRunnable());
     }
 

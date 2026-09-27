@@ -169,57 +169,37 @@ class ProjectExecutionTest extends TestCase
         $this->assertSame(1, ContentDelivery::query()->where('status', DeliveryStatus::Delivered)->count());
     }
 
-    public function test_disabled_sources_destinations_and_broadcasts_are_skipped(): void
+    public function test_disabled_broadcasts_are_skipped_while_sources_and_destinations_always_participate(): void
     {
         $project = Project::factory()->due()->create();
-        $enabledSource = Source::factory()->create([
+        $source = Source::factory()->create([
             'project_id' => $project->getKey(),
             'config' => [
                 'feed_url' => 'https://example.com/feed.xml',
                 'items' => [[
-                    'external_id' => 'only-enabled',
-                    'title' => 'Only this runs',
+                    'external_id' => 'from-source',
+                    'title' => 'This runs',
                     'canonical_url' => 'https://example.com/only',
                 ]],
             ],
         ]);
-        $disabledSource = Source::factory()->disabled()->create([
-            'project_id' => $project->getKey(),
-            'config' => [
-                'feed_url' => 'https://example.com/other.xml',
-                'items' => [[
-                    'external_id' => 'from-disabled-source',
-                    'title' => 'Nope',
-                    'canonical_url' => 'https://example.com/disabled-source',
-                ]],
-            ],
-        ]);
-        $enabledDestination = Destination::factory()->create([
+        $destination = Destination::factory()->create([
             'project_id' => $project->getKey(),
         ]);
-        $disabledDestination = Destination::factory()->disabled()->create([
+        $otherDestination = Destination::factory()->create([
             'project_id' => $project->getKey(),
+            'config' => ['channel' => 'other'],
         ]);
 
         Broadcast::factory()->disabled()->create([
             'project_id' => $project->getKey(),
-            'source_id' => $enabledSource->getKey(),
-            'destination_id' => $enabledDestination->getKey(),
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
         ]);
         Broadcast::factory()->create([
             'project_id' => $project->getKey(),
-            'source_id' => $disabledSource->getKey(),
-            'destination_id' => $enabledDestination->getKey(),
-        ]);
-        Broadcast::factory()->create([
-            'project_id' => $project->getKey(),
-            'source_id' => $enabledSource->getKey(),
-            'destination_id' => $disabledDestination->getKey(),
-        ]);
-        Broadcast::factory()->create([
-            'project_id' => $project->getKey(),
-            'source_id' => $enabledSource->getKey(),
-            'destination_id' => $enabledDestination->getKey(),
+            'source_id' => $source->getKey(),
+            'destination_id' => $otherDestination->getKey(),
         ]);
 
         $this->assertTrue($this->runner()->run($project));
@@ -228,8 +208,39 @@ class ProjectExecutionTest extends TestCase
         $this->assertSame(1, $run->broadcastRuns()->count());
         $this->assertSame(1, $run->items_delivered);
         $this->assertSame(1, ContentItem::query()->count());
-        $this->assertSame('only-enabled', ContentItem::query()->sole()->external_id);
+        $this->assertSame('from-source', ContentItem::query()->sole()->external_id);
         $this->assertSame(1, ContentDelivery::query()->count());
+        $this->assertSame($otherDestination->getKey(), ContentDelivery::query()->sole()->destination_id);
+    }
+
+    public function test_a_paused_project_is_not_dispatched(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
+
+        $project = Project::factory()->due(Carbon::parse('2026-03-15 09:00:00', 'UTC'))->paused()->create();
+        $source = Source::factory()->create([
+            'project_id' => $project->getKey(),
+            'config' => [
+                'feed_url' => 'https://example.com/feed.xml',
+                'items' => [[
+                    'external_id' => 'paused-item',
+                    'title' => 'Should not run',
+                    'canonical_url' => 'https://example.com/paused',
+                ]],
+            ],
+        ]);
+        $destination = Destination::factory()->create(['project_id' => $project->getKey()]);
+        Broadcast::factory()->create([
+            'project_id' => $project->getKey(),
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
+        ]);
+
+        $this->artisan('projects:dispatch')->assertSuccessful();
+
+        $this->assertSame(0, ProjectRun::query()->where('project_id', $project->getKey())->count());
+        $this->assertSame(0, ContentItem::query()->count());
+        $this->assertSame(0, ContentDelivery::query()->count());
     }
 
     public function test_shared_sources_are_fetched_once_per_run(): void

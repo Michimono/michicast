@@ -140,7 +140,6 @@
                         <a class="mt-1 block truncate font-display text-xl tracking-tight text-ink hover:text-accent" href="{{ route('sources.edit', $source) }}">
                             {{ $source->name }}
                         </a>
-                        <div class="mt-2"><x-source-status :source="$source" /></div>
                         <div class="mt-3">
                             <x-button href="{{ route('sources.edit', $source) }}" variant="ghost" :paw="false">Manage</x-button>
                         </div>
@@ -159,7 +158,6 @@
                         <a class="mt-1 block truncate font-display text-xl tracking-tight text-ink hover:text-accent" href="{{ route('destinations.edit', $destination) }}">
                             {{ $destination->name }}
                         </a>
-                        <div class="mt-2"><x-destination-status :destination="$destination" /></div>
                         <div class="mt-3">
                             <x-button href="{{ route('destinations.edit', $destination) }}" variant="ghost" :paw="false">Manage</x-button>
                         </div>
