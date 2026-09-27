@@ -5,10 +5,11 @@
     $projects ??= $organization->projects()->notArchived()->orderBy('name')->get();
     $inProject = $project instanceof \App\Models\Project;
     $broadcastsActive = ! $inProject && request()->routeIs('organizations.show', 'broadcasts.index', 'broadcasts.create');
+    $archivedActive = request()->routeIs('archived-broadcasts.index');
 @endphp
 
 {{--
-    Contextual two-level rail: organization (Broadcasts / Members / Settings),
+    Contextual two-level rail: organization (Broadcasts / Archived / Members / Settings),
     then broadcast (Overview / Activity)
     when a broadcast is in scope. Mobile uses the same hierarchy via the header menu.
 --}}
@@ -49,6 +50,14 @@
         >
             <x-slot:icon><x-icons.antenna class="size-5 shrink-0" /></x-slot:icon>
             Broadcasts
+        </x-sidebar-link>
+
+        <x-sidebar-link
+            :href="route('archived-broadcasts.index', $organization)"
+            :active="$archivedActive"
+        >
+            <x-slot:icon><x-icons.archive class="size-5 shrink-0" /></x-slot:icon>
+            Archived
         </x-sidebar-link>
 
         <x-sidebar-link

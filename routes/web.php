@@ -21,6 +21,7 @@ use App\Http\Controllers\ImmediateProjectRunController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MemberRoleController;
+use App\Http\Controllers\OrganizationArchivedBroadcastController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationSettingController;
 use App\Http\Controllers\PasswordController;
@@ -104,6 +105,9 @@ Route::middleware('auth')->group(function (): void {
             Route::resource('broadcasts', ProjectController::class)
                 ->only(['index', 'create', 'store', 'show', 'edit', 'update'])
                 ->parameters(['broadcasts' => 'project']);
+
+            Route::get('archived-broadcasts', [OrganizationArchivedBroadcastController::class, 'index'])
+                ->name('archived-broadcasts.index');
 
             Route::resource('broadcasts.runs', ProjectRunController::class)
                 ->only(['index', 'show'])

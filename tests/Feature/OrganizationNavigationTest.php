@@ -28,10 +28,12 @@ class OrganizationNavigationTest extends TestCase
         $this->assertStringContainsString(route('profile.edit'), $html);
         $this->assertStringContainsString(route('session.destroy'), $html);
         $this->assertStringContainsString(route('broadcasts.index', $organization), $html);
+        $this->assertStringContainsString(route('archived-broadcasts.index', $organization), $html);
         $this->assertStringContainsString(route('members.index', $organization), $html);
         $this->assertStringContainsString(route('organization-settings.edit', $organization), $html);
         $this->assertStringNotContainsString('Dashboard', $html);
         $this->assertStringContainsString('Broadcasts', $html);
+        $this->assertStringContainsString('Archived', $html);
         $this->assertStringContainsString('Members', $html);
         $this->assertStringContainsString('Settings', $html);
         $this->assertStringContainsString('All organizations', $html);
