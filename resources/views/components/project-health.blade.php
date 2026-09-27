@@ -8,6 +8,6 @@
     };
 @endphp
 
-<span {{ $attributes->class(['inline-flex rounded-full border px-2 py-0.5 font-mono text-xs tracking-wide uppercase', $classes]) }}>
+<span {{ $attributes->class(['inline-flex w-fit self-start rounded-full border px-2 py-0.5 font-mono text-xs tracking-wide uppercase', $classes]) }}>
     {{ $health->label() }}
 </span>

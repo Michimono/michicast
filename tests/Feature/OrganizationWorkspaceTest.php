@@ -86,6 +86,7 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertSee('View broadcast');
         $response->assertDontSee('aria-label="Open Pokemon TCGP News"', false);
         $response->assertSee('has-[details[open]]:z-30', false);
+        $response->assertSee('inline-flex w-fit self-start rounded-full', false);
         $response->assertSee('bg-paper-raised py-1 shadow-md', false);
         $response->assertSee('+ New broadcast');
         $response->assertSee('Pause');
