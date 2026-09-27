@@ -21,7 +21,7 @@ class DestinationCredentialTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
 
-        $this->actingAs($user)->post(route('project-destinations.store', [$organization, $project]), [
+        $this->actingAs($user)->post(route('broadcast-destinations.store', [$organization, $project]), [
             'name' => 'Updates channel',
             'type' => 'recording',
             'config' => ['channel' => 'updates'],
@@ -79,7 +79,7 @@ class DestinationCredentialTest extends TestCase
         $project = Project::factory()->for($organization)->create();
         $secret = 'never-echo-this-secret';
 
-        $create = $this->actingAs($user)->post(route('project-destinations.store', [$organization, $project]), [
+        $create = $this->actingAs($user)->post(route('broadcast-destinations.store', [$organization, $project]), [
             'name' => 'Updates channel',
             'type' => 'recording',
             'config' => ['channel' => 'updates'],
@@ -88,11 +88,11 @@ class DestinationCredentialTest extends TestCase
 
         $destination = $project->destinations()->sole();
 
-        $create->assertRedirect(route('project-destinations.index', [$organization, $project]));
+        $create->assertRedirect(route('broadcasts.show', [$organization, $project]));
         $create->assertDontSee($secret);
 
         $this->actingAs($user)
-            ->get(route('project-destinations.index', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertDontSee($secret);
 
@@ -102,7 +102,7 @@ class DestinationCredentialTest extends TestCase
             ->assertDontSee($secret)
             ->assertSee('Leave blank to keep the stored value.');
 
-        $failed = $this->actingAs($user)->post(route('project-destinations.store', [$organization, $project]), [
+        $failed = $this->actingAs($user)->post(route('broadcast-destinations.store', [$organization, $project]), [
             'name' => '',
             'type' => 'recording',
             'config' => ['channel' => 'updates'],
@@ -134,7 +134,7 @@ class DestinationCredentialTest extends TestCase
         $project = Project::factory()->for($organization)->create();
         $secret = 'never-log-this-secret';
 
-        $this->actingAs($user)->post(route('project-destinations.store', [$organization, $project]), [
+        $this->actingAs($user)->post(route('broadcast-destinations.store', [$organization, $project]), [
             'name' => 'Updates channel',
             'type' => 'recording',
             'config' => ['channel' => 'updates'],

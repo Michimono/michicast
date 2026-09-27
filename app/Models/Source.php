@@ -18,7 +18,6 @@ use Illuminate\Support\Carbon;
  * JSON config, validated by the rules that provider declares.
  *
  * @property array<string, mixed>|null $config
- * @property bool $enabled
  * @property int $consecutive_failures
  * @property Carbon|null $archived_at
  * @property Carbon|null $last_tested_at
@@ -34,7 +33,6 @@ class Source extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'enabled' => true,
         'consecutive_failures' => 0,
     ];
 
@@ -48,41 +46,7 @@ class Source extends Model
      */
     public function isRunnable(): bool
     {
-        return $this->enabled && ! $this->isArchived();
-    }
-
-    public function canEnable(): bool
-    {
-        return ! $this->enabled && ! $this->isArchived();
-    }
-
-    public function canDisable(): bool
-    {
-        return $this->enabled && ! $this->isArchived();
-    }
-
-    public function enable(): void
-    {
-        if ($this->isArchived()) {
-            throw new InvalidSourceTransitionException(
-                'An archived source cannot be enabled until it is restored.',
-            );
-        }
-
-        $this->enabled = true;
-        $this->save();
-    }
-
-    public function disable(): void
-    {
-        if ($this->isArchived()) {
-            throw new InvalidSourceTransitionException(
-                'An archived source is already out of use.',
-            );
-        }
-
-        $this->enabled = false;
-        $this->save();
+        return ! $this->isArchived();
     }
 
     public function archive(): void
@@ -155,7 +119,7 @@ class Source extends Model
     #[Scope]
     protected function runnable(Builder $query): Builder
     {
-        return $query->notArchived()->where('enabled', true);
+        return $query->notArchived();
     }
 
     /**
@@ -165,7 +129,6 @@ class Source extends Model
     {
         return [
             'config' => 'array',
-            'enabled' => 'boolean',
             'consecutive_failures' => 'integer',
             'last_test_successful' => 'boolean',
             'last_tested_at' => 'datetime',

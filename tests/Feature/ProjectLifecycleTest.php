@@ -21,7 +21,7 @@ class ProjectLifecycleTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
 
         $this->actingAs($user)
-            ->post(route('projects.store', $organization), ['name' => 'News'])
+            ->post(route('broadcasts.store', $organization), ['name' => 'News'])
             ->assertSessionHasNoErrors();
 
         $project = $organization->projects()->sole();
@@ -37,9 +37,9 @@ class ProjectLifecycleTest extends TestCase
         Broadcast::factory()->for($project)->create();
 
         $this->actingAs($user)
-            ->post(route('active-projects.store', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]))
-            ->assertSessionHas('success', 'The project has been activated.');
+            ->post(route('active-broadcasts.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('success', 'The broadcast has been activated.');
 
         $project->refresh();
 
@@ -53,7 +53,7 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('active-projects.store', [$organization, $project]))
+            ->post(route('active-broadcasts.store', [$organization, $project]))
             ->assertSessionHas('error', 'A project cannot be activated until it has at least one enabled broadcast.');
 
         $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
@@ -65,9 +65,9 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->active()->create();
 
         $this->actingAs($user)
-            ->post(route('paused-projects.store', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]))
-            ->assertSessionHas('success', 'The project has been paused.');
+            ->post(route('paused-broadcasts.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('success', 'The broadcast has been paused.');
 
         $project->refresh();
 
@@ -81,9 +81,9 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->paused()->create();
 
         $this->actingAs($user)
-            ->delete(route('paused-projects.destroy', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]))
-            ->assertSessionHas('success', 'The project has been resumed.');
+            ->delete(route('paused-broadcasts.destroy', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('success', 'The broadcast has been resumed.');
 
         $project->refresh();
 
@@ -99,9 +99,9 @@ class ProjectLifecycleTest extends TestCase
         $previous = $project->status;
 
         $this->actingAs($user)
-            ->post(route('archived-projects.store', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]))
-            ->assertSessionHas('success', 'The project has been archived.');
+            ->post(route('archived-broadcasts.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('success', 'The broadcast has been archived.');
 
         $project->refresh();
 
@@ -116,9 +116,9 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->archived(ProjectStatus::Active)->create();
 
         $this->actingAs($user)
-            ->delete(route('archived-projects.destroy', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]))
-            ->assertSessionHas('success', 'The project has been restored.');
+            ->delete(route('archived-broadcasts.destroy', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('success', 'The broadcast has been restored.');
 
         $project->refresh();
 
@@ -134,11 +134,11 @@ class ProjectLifecycleTest extends TestCase
         Project::factory()->for($organization)->archived()->create(['name' => 'Old Pipeline']);
 
         $this->actingAs($user)
-            ->get(route('projects.index', $organization))
+            ->get(route('broadcasts.index', $organization))
             ->assertOk()
             ->assertSee('Live Pipeline')
             ->assertDontSee('Old Pipeline')
-            ->assertSee(route('projects.show', [$organization, $visible]), false)
+            ->assertSee(route('broadcasts.show', [$organization, $visible]), false)
             ->assertSee('Draft');
 
         $this->assertSame(
@@ -153,7 +153,7 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->archived()->create(['name' => 'Old Pipeline']);
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Old Pipeline')
             ->assertSee('Archived')
@@ -168,7 +168,7 @@ class ProjectLifecycleTest extends TestCase
         Broadcast::factory()->for($project)->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Activate')
             ->assertSee('Archive')
@@ -183,7 +183,7 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('active-projects.store', [$organization, $project]))
+            ->post(route('active-broadcasts.store', [$organization, $project]))
             ->assertForbidden();
 
         $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
@@ -193,7 +193,7 @@ class ProjectLifecycleTest extends TestCase
     {
         $project = Project::factory()->create();
 
-        $this->post(route('active-projects.store', [$project->organization, $project]))
+        $this->post(route('active-broadcasts.store', [$project->organization, $project]))
             ->assertRedirect(route('session.create'));
 
         $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
@@ -206,7 +206,7 @@ class ProjectLifecycleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($outsider)
-            ->post(route('active-projects.store', [$organization, $project]))
+            ->post(route('active-broadcasts.store', [$organization, $project]))
             ->assertNotFound();
 
         $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
@@ -263,12 +263,12 @@ class ProjectLifecycleTest extends TestCase
     public static function invalidTransitions(): array
     {
         return [
-            'activate paused' => ['post', 'active-projects.store', 'paused', 'A project can only be activated from draft.'],
-            'activate archived' => ['post', 'active-projects.store', 'archived', 'An archived project cannot be activated without being restored.'],
-            'pause draft' => ['post', 'paused-projects.store', 'draft', 'A project can only be paused while it is active.'],
-            'resume draft' => ['delete', 'paused-projects.destroy', 'draft', 'A project can only be resumed while it is paused.'],
-            'archive archived' => ['post', 'archived-projects.store', 'archived', 'An archived project cannot be archived again.'],
-            'restore draft' => ['delete', 'archived-projects.destroy', 'draft', 'Only an archived project can be restored.'],
+            'activate paused' => ['post', 'active-broadcasts.store', 'paused', 'A project can only be activated from draft.'],
+            'activate archived' => ['post', 'active-broadcasts.store', 'archived', 'An archived project cannot be activated without being restored.'],
+            'pause draft' => ['post', 'paused-broadcasts.store', 'draft', 'A project can only be paused while it is active.'],
+            'resume draft' => ['delete', 'paused-broadcasts.destroy', 'draft', 'A project can only be resumed while it is paused.'],
+            'archive archived' => ['post', 'archived-broadcasts.store', 'archived', 'An archived project cannot be archived again.'],
+            'restore draft' => ['delete', 'archived-broadcasts.destroy', 'draft', 'Only an archived project can be restored.'],
         ];
     }
 

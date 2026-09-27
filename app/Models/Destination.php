@@ -20,7 +20,6 @@ use Illuminate\Support\Carbon;
  *
  * @property array<string, mixed>|null $config
  * @property array<string, mixed>|null $credentials
- * @property bool $enabled
  * @property int $consecutive_failures
  * @property Carbon|null $archived_at
  * @property Carbon|null $last_tested_at
@@ -37,7 +36,6 @@ class Destination extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'enabled' => true,
         'consecutive_failures' => 0,
     ];
 
@@ -51,41 +49,7 @@ class Destination extends Model
      */
     public function isRunnable(): bool
     {
-        return $this->enabled && ! $this->isArchived();
-    }
-
-    public function canEnable(): bool
-    {
-        return ! $this->enabled && ! $this->isArchived();
-    }
-
-    public function canDisable(): bool
-    {
-        return $this->enabled && ! $this->isArchived();
-    }
-
-    public function enable(): void
-    {
-        if ($this->isArchived()) {
-            throw new InvalidDestinationTransitionException(
-                'An archived destination cannot be enabled until it is restored.',
-            );
-        }
-
-        $this->enabled = true;
-        $this->save();
-    }
-
-    public function disable(): void
-    {
-        if ($this->isArchived()) {
-            throw new InvalidDestinationTransitionException(
-                'An archived destination is already out of use.',
-            );
-        }
-
-        $this->enabled = false;
-        $this->save();
+        return ! $this->isArchived();
     }
 
     public function archive(): void
@@ -159,7 +123,7 @@ class Destination extends Model
     #[Scope]
     protected function runnable(Builder $query): Builder
     {
-        return $query->notArchived()->where('enabled', true);
+        return $query->notArchived();
     }
 
     /**
@@ -170,7 +134,6 @@ class Destination extends Model
         return [
             'config' => 'array',
             'credentials' => 'encrypted:array',
-            'enabled' => 'boolean',
             'consecutive_failures' => 'integer',
             'last_test_successful' => 'boolean',
             'last_tested_at' => 'datetime',

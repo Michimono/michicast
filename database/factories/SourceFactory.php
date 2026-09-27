@@ -20,17 +20,9 @@ class SourceFactory extends Factory
             'project_id' => Project::factory(),
             'name' => fake()->unique()->words(2, true),
             'type' => 'fake',
-            'enabled' => true,
             'config' => ['feed_url' => fake()->url()],
             'archived_at' => null,
         ];
-    }
-
-    public function disabled(): static
-    {
-        return $this->state(fn (): array => [
-            'enabled' => false,
-        ]);
     }
 
     public function archived(): static

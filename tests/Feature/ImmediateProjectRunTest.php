@@ -30,8 +30,8 @@ class ImmediateProjectRunTest extends TestCase
         $this->recordingDestination();
 
         $this->actingAs($user)
-            ->post(route('immediate-project-runs.store', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]))
+            ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
             ->assertSessionHas('success');
 
         $run = ProjectRun::query()->where('project_id', $project->getKey())->where('is_dry', false)->sole();
@@ -49,7 +49,7 @@ class ImmediateProjectRunTest extends TestCase
         ]);
 
         $this->actingAs($viewer)
-            ->post(route('immediate-project-runs.store', [$organization, $project]))
+            ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
             ->assertForbidden();
     }
 

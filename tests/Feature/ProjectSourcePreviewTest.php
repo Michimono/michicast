@@ -34,8 +34,8 @@ class ProjectSourcePreviewTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->from(route('project-sources.create', [$organization, $project, 'type' => 'rss']))
-            ->post(route('project-source-previews.store', [$organization, $project]), [
+            ->from(route('broadcast-sources.create', [$organization, $project, 'type' => 'rss']))
+            ->post(route('broadcast-source-previews.store', [$organization, $project]), [
                 'name' => 'Pocket news',
                 'type' => 'rss',
                 'config' => ['feed_url' => 'https://example.com/feed.xml'],
@@ -60,7 +60,7 @@ class ProjectSourcePreviewTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('project-source-previews.store', [$organization, $project]), [
+            ->post(route('broadcast-source-previews.store', [$organization, $project]), [
                 'name' => 'Pocket news',
                 'type' => 'rss',
                 'config' => ['feed_url' => 'https://example.com/missing.xml'],
@@ -77,13 +77,13 @@ class ProjectSourcePreviewTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->from(route('project-sources.create', [$organization, $project, 'type' => 'rss']))
-            ->post(route('project-source-previews.store', [$organization, $project]), [
+            ->from(route('broadcast-sources.create', [$organization, $project, 'type' => 'rss']))
+            ->post(route('broadcast-source-previews.store', [$organization, $project]), [
                 'name' => 'Pocket news',
                 'type' => 'rss',
                 'config' => ['feed_url' => 'not-a-url'],
             ])
-            ->assertRedirect(route('project-sources.create', [$organization, $project, 'type' => 'rss']))
+            ->assertRedirect(route('broadcast-sources.create', [$organization, $project, 'type' => 'rss']))
             ->assertSessionHasErrors('config.feed_url');
     }
 
@@ -92,7 +92,7 @@ class ProjectSourcePreviewTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
 
-        $response = $this->actingAs($user)->post(route('project-sources.store', [$organization, $project]), [
+        $response = $this->actingAs($user)->post(route('broadcast-sources.store', [$organization, $project]), [
             'name' => 'Pocket news feed',
             'type' => 'rss',
             'config' => ['feed_url' => 'https://example.com/feed.xml'],
@@ -100,7 +100,7 @@ class ProjectSourcePreviewTest extends TestCase
 
         $source = $project->sources()->sole();
 
-        $response->assertRedirect(route('project-sources.index', [$organization, $project]));
+        $response->assertRedirect(route('broadcasts.show', [$organization, $project]));
         $response->assertSessionHas('success', 'The source has been added.');
 
         $this->assertSame('Pocket news feed', $source->name);
@@ -114,7 +114,7 @@ class ProjectSourcePreviewTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('project-sources.store', [$organization, $project]), [
+            ->post(route('broadcast-sources.store', [$organization, $project]), [
                 'name' => '',
                 'type' => 'rss',
                 'config' => ['feed_url' => 'not-a-url'],
@@ -130,7 +130,7 @@ class ProjectSourcePreviewTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('project-source-previews.store', [$organization, $project]), [
+            ->post(route('broadcast-source-previews.store', [$organization, $project]), [
                 'name' => 'Pocket news',
                 'type' => 'rss',
                 'config' => ['feed_url' => 'https://example.com/feed.xml'],
@@ -155,12 +155,12 @@ class ProjectSourcePreviewTest extends TestCase
 
         for ($attempt = 1; $attempt <= 6; $attempt++) {
             $this->actingAs($user)
-                ->post(route('project-source-previews.store', [$organization, $project]), $payload)
+                ->post(route('broadcast-source-previews.store', [$organization, $project]), $payload)
                 ->assertOk();
         }
 
         $this->actingAs($user)
-            ->post(route('project-source-previews.store', [$organization, $project]), $payload)
+            ->post(route('broadcast-source-previews.store', [$organization, $project]), $payload)
             ->assertTooManyRequests();
     }
 

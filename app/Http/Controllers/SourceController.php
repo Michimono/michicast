@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateSourceRequest;
+use App\Models\Broadcast;
 use App\Models\Organization;
 use App\Models\Source;
 use App\Support\ConnectionTestOutcome;
 use App\Support\SourceProviderRegistry;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -32,6 +34,22 @@ class SourceController extends Controller
         return redirect()
             ->route('sources.edit', $source)
             ->with('success', 'The source has been updated.');
+    }
+
+    public function destroy(Organization $organization, Source $source): RedirectResponse
+    {
+        Gate::authorize('delete', $source);
+
+        $project = $source->project;
+
+        DB::transaction(function () use ($source): void {
+            Broadcast::query()->where('source_id', $source->getKey())->delete();
+            $source->delete();
+        });
+
+        return redirect()
+            ->route('broadcasts.show', $project)
+            ->with('success', 'The source has been deleted.');
     }
 
     /**

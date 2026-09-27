@@ -112,7 +112,7 @@ class BroadcastFilterFormTest extends TestCase
         $broadcast = $this->broadcastIn($organization);
 
         $this->actingAs($user)
-            ->get(route('broadcasts.edit', [$organization, $broadcast]))
+            ->get(route('flows.edit', [$organization, $broadcast]))
             ->assertOk()
             ->assertSee(route('broadcast-filters.edit', [$organization, $broadcast]), false);
     }

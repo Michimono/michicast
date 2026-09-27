@@ -16,21 +16,15 @@ class ProjectDestinationController extends Controller
 {
     public function __construct(private DestinationProviderRegistry $providers) {}
 
-    public function index(Organization $organization, Project $project): View
-    {
-        Gate::authorize('viewAny', [Destination::class, $project]);
-
-        return view('project-destinations.index', [
-            'project' => $project,
-            'destinations' => $project->destinations()->notArchived()->oldest('id')->get(),
-            'archived' => $project->destinations()->whereNotNull('archived_at')->oldest('id')->get(),
-            'types' => $this->providers->options(),
-        ]);
-    }
-
-    public function create(Request $request, Organization $organization, Project $project): View
+    public function create(Request $request, Organization $organization, Project $project): View|RedirectResponse
     {
         Gate::authorize('create', [Destination::class, $project]);
+
+        if ($project->destinations()->notArchived()->exists()) {
+            return redirect()
+                ->route('broadcasts.show', $project)
+                ->with('error', 'This broadcast already has a destination. Manage it from Overview.');
+        }
 
         $type = $this->chosenType($request);
 
@@ -47,6 +41,12 @@ class ProjectDestinationController extends Controller
 
     public function store(StoreDestinationRequest $request, Organization $organization, Project $project): RedirectResponse
     {
+        if ($project->destinations()->notArchived()->exists()) {
+            return redirect()
+                ->route('broadcasts.show', $project)
+                ->with('error', 'This broadcast already has a destination. Manage it from Overview.');
+        }
+
         $project->destinations()->create([
             'name' => $request->name(),
             'type' => $request->type(),
@@ -57,7 +57,7 @@ class ProjectDestinationController extends Controller
         $project->ensureDefaultBroadcast();
 
         return redirect()
-            ->route('project-destinations.index', $project)
+            ->route('broadcasts.show', $project)
             ->with('success', 'The destination has been added.');
     }
 

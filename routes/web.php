@@ -3,9 +3,7 @@
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\ArchivedBroadcastController;
-use App\Http\Controllers\ArchivedDestinationController;
 use App\Http\Controllers\ArchivedProjectController;
-use App\Http\Controllers\ArchivedSourceController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BroadcastDeliveryController;
 use App\Http\Controllers\BroadcastDryRunController;
@@ -18,13 +16,12 @@ use App\Http\Controllers\DestinationConnectionTestController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
 use App\Http\Controllers\EnabledBroadcastController;
-use App\Http\Controllers\EnabledDestinationController;
-use App\Http\Controllers\EnabledSourceController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ImmediateProjectRunController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MemberRoleController;
+use App\Http\Controllers\OrganizationArchivedBroadcastController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationSettingController;
 use App\Http\Controllers\PasswordController;
@@ -45,6 +42,8 @@ use App\Http\Controllers\SourceConnectionTestController;
 use App\Http\Controllers\SourceController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\SetCurrentOrganization;
+use App\Models\Organization;
+use App\Models\Project;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
@@ -94,191 +93,189 @@ Route::middleware('auth')->group(function (): void {
      * Everything below belongs to one organization, and says so in its URL.
      * SetCurrentOrganization turns that id into the acting organization, and
      * scoped bindings keep a child of another organization out of reach.
+     *
+     * Product language: a broadcast is the top-level unit. Persistence still
+     * uses the Project aggregate; route params stay {project}. Eloquent
+     * Broadcast (source to destination) lives under /flows.
      */
     Route::prefix('organizations/{organization}')
         ->middleware(SetCurrentOrganization::class)
         ->scopeBindings()
         ->group(function (): void {
-            Route::resource('projects', ProjectController::class)
-                ->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+            Route::resource('broadcasts', ProjectController::class)
+                ->only(['index', 'create', 'store', 'show', 'edit', 'update'])
+                ->parameters(['broadcasts' => 'project']);
 
-            Route::resource('projects.runs', ProjectRunController::class)
+            Route::get('archived-broadcasts', [OrganizationArchivedBroadcastController::class, 'index'])
+                ->name('archived-broadcasts.index');
+
+            Route::resource('broadcasts.runs', ProjectRunController::class)
                 ->only(['index', 'show'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'index' => 'project-runs.index',
-                    'show' => 'project-runs.show',
+                    'index' => 'broadcast-runs.index',
+                    'show' => 'broadcast-runs.show',
                 ]);
 
-            Route::resource('projects.broadcast-dry-runs', BroadcastDryRunController::class)
+            Route::resource('broadcasts.broadcast-dry-runs', BroadcastDryRunController::class)
                 ->only(['store'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
                     'store' => 'broadcast-dry-runs.store',
                 ])
                 ->middlewareFor('store', 'throttle:broadcast-dry-run');
 
-            Route::singleton('projects.schedule', ProjectScheduleController::class)
+            Route::singleton('broadcasts.schedule', ProjectScheduleController::class)
                 ->only(['edit', 'update'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'edit' => 'project-schedules.edit',
-                    'update' => 'project-schedules.update',
+                    'edit' => 'broadcast-schedules.edit',
+                    'update' => 'broadcast-schedules.update',
                 ]);
 
-            Route::match(['POST', 'PATCH'], 'projects/{project}/schedule-preview', [ProjectSchedulePreviewController::class, 'store'])
-                ->name('project-schedule-previews.store');
+            Route::match(['POST', 'PATCH'], 'broadcasts/{project}/schedule-preview', [ProjectSchedulePreviewController::class, 'store'])
+                ->name('broadcast-schedule-previews.store');
 
-            Route::singleton('projects.due-project', DueProjectController::class)
+            Route::singleton('broadcasts.due-broadcast', DueProjectController::class)
                 ->creatable()
                 ->only(['store'])
-                ->names(['store' => 'due-projects.store']);
+                ->parameters(['broadcasts' => 'project'])
+                ->names(['store' => 'due-broadcasts.store']);
 
-            Route::singleton('projects.immediate-project-run', ImmediateProjectRunController::class)
+            Route::singleton('broadcasts.immediate-broadcast-run', ImmediateProjectRunController::class)
                 ->creatable()
                 ->only(['store'])
-                ->names(['store' => 'immediate-project-runs.store'])
+                ->parameters(['broadcasts' => 'project'])
+                ->names(['store' => 'immediate-broadcast-runs.store'])
                 ->middlewareFor('store', 'throttle:broadcast-dry-run');
 
-            Route::singleton('projects.active-project', ActiveProjectController::class)
+            Route::singleton('broadcasts.active-broadcast', ActiveProjectController::class)
                 ->creatable()
                 ->only(['store'])
-                ->names(['store' => 'active-projects.store']);
+                ->parameters(['broadcasts' => 'project'])
+                ->names(['store' => 'active-broadcasts.store']);
 
-            Route::singleton('projects.paused-project', PausedProjectController::class)
+            Route::singleton('broadcasts.paused-broadcast', PausedProjectController::class)
                 ->creatable()
                 ->only(['store', 'destroy'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'store' => 'paused-projects.store',
-                    'destroy' => 'paused-projects.destroy',
+                    'store' => 'paused-broadcasts.store',
+                    'destroy' => 'paused-broadcasts.destroy',
                 ]);
 
-            Route::singleton('projects.archived-project', ArchivedProjectController::class)
+            Route::singleton('broadcasts.archived-broadcast', ArchivedProjectController::class)
                 ->creatable()
                 ->only(['store', 'destroy'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'store' => 'archived-projects.store',
-                    'destroy' => 'archived-projects.destroy',
+                    'store' => 'archived-broadcasts.store',
+                    'destroy' => 'archived-broadcasts.destroy',
                 ]);
 
-            Route::resource('projects.sources', ProjectSourceController::class)
-                ->only(['index', 'create', 'store'])
+            Route::resource('broadcasts.sources', ProjectSourceController::class)
+                ->only(['create', 'store'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'index' => 'project-sources.index',
-                    'create' => 'project-sources.create',
-                    'store' => 'project-sources.store',
+                    'create' => 'broadcast-sources.create',
+                    'store' => 'broadcast-sources.store',
                 ]);
 
-            Route::resource('projects.source-previews', ProjectSourcePreviewController::class)
+            Route::resource('broadcasts.source-previews', ProjectSourcePreviewController::class)
                 ->only(['store'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'store' => 'project-source-previews.store',
+                    'store' => 'broadcast-source-previews.store',
                 ])
                 ->middlewareFor('store', 'throttle:source-preview');
 
-            Route::resource('sources', SourceController::class)->only(['edit', 'update']);
+            Route::resource('sources', SourceController::class)->only(['edit', 'update', 'destroy']);
 
             Route::match(['POST', 'PATCH'], 'sources/{source}/connection-tests', [SourceConnectionTestController::class, 'store'])
                 ->name('source-connection-tests.store')
                 ->middleware('throttle:source-connection-test');
 
-            Route::singleton('sources.enabled-source', EnabledSourceController::class)
-                ->creatable()
-                ->only(['store', 'destroy'])
+            Route::resource('broadcasts.destinations', ProjectDestinationController::class)
+                ->only(['create', 'store'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'store' => 'enabled-sources.store',
-                    'destroy' => 'enabled-sources.destroy',
+                    'create' => 'broadcast-destinations.create',
+                    'store' => 'broadcast-destinations.store',
                 ]);
 
-            Route::singleton('sources.archived-source', ArchivedSourceController::class)
-                ->creatable()
-                ->only(['store', 'destroy'])
-                ->names([
-                    'store' => 'archived-sources.store',
-                    'destroy' => 'archived-sources.destroy',
-                ]);
-
-            Route::resource('projects.destinations', ProjectDestinationController::class)
-                ->only(['index', 'create', 'store'])
-                ->names([
-                    'index' => 'project-destinations.index',
-                    'create' => 'project-destinations.create',
-                    'store' => 'project-destinations.store',
-                ]);
-
-            Route::resource('destinations', DestinationController::class)->only(['edit', 'update']);
+            Route::resource('destinations', DestinationController::class)->only(['edit', 'update', 'destroy']);
 
             Route::match(['POST', 'PATCH'], 'destinations/{destination}/connection-tests', [DestinationConnectionTestController::class, 'store'])
                 ->name('destination-connection-tests.store')
                 ->middleware('throttle:destination-connection-test');
 
-            Route::singleton('destinations.enabled-destination', EnabledDestinationController::class)
-                ->creatable()
-                ->only(['store', 'destroy'])
-                ->names([
-                    'store' => 'enabled-destinations.store',
-                    'destroy' => 'enabled-destinations.destroy',
-                ]);
-
-            Route::singleton('destinations.archived-destination', ArchivedDestinationController::class)
-                ->creatable()
-                ->only(['store', 'destroy'])
-                ->names([
-                    'store' => 'archived-destinations.store',
-                    'destroy' => 'archived-destinations.destroy',
-                ]);
-
-            Route::resource('projects.broadcasts', ProjectBroadcastController::class)
+            Route::resource('broadcasts.pipelines', ProjectBroadcastController::class)
                 ->only(['index', 'create', 'store'])
+                ->parameters(['broadcasts' => 'project'])
                 ->names([
-                    'index' => 'project-broadcasts.index',
-                    'create' => 'project-broadcasts.create',
-                    'store' => 'project-broadcasts.store',
+                    'index' => 'broadcast-pipelines.index',
+                    'create' => 'broadcast-pipelines.create',
+                    'store' => 'broadcast-pipelines.store',
                 ]);
 
-            Route::resource('broadcasts', BroadcastController::class)->only(['edit', 'update']);
+            Route::resource('flows', BroadcastController::class)
+                ->only(['edit', 'update'])
+                ->parameters(['flows' => 'broadcast'])
+                ->names([
+                    'edit' => 'flows.edit',
+                    'update' => 'flows.update',
+                ]);
 
-            Route::resource('broadcasts.content-previews', ContentPreviewController::class)
+            Route::resource('flows.content-previews', ContentPreviewController::class)
                 ->only(['store'])
+                ->parameters(['flows' => 'broadcast'])
                 ->names([
                     'store' => 'content-previews.store',
                 ])
                 ->middlewareFor('store', 'throttle:content-preview');
 
-            Route::resource('broadcasts.deliveries', BroadcastDeliveryController::class)
+            Route::resource('flows.deliveries', BroadcastDeliveryController::class)
                 ->only(['index'])
+                ->parameters(['flows' => 'broadcast'])
                 ->names([
                     'index' => 'broadcast-deliveries.index',
                 ]);
 
-            Route::singleton('broadcasts.filter', BroadcastFilterController::class)
+            Route::singleton('flows.filter', BroadcastFilterController::class)
                 ->only(['edit', 'update'])
+                ->parameters(['flows' => 'broadcast'])
                 ->names([
                     'edit' => 'broadcast-filters.edit',
                     'update' => 'broadcast-filters.update',
                 ]);
 
-            Route::singleton('broadcasts.transform', BroadcastTransformController::class)
+            Route::singleton('flows.transform', BroadcastTransformController::class)
                 ->only(['edit', 'update'])
+                ->parameters(['flows' => 'broadcast'])
                 ->names([
                     'edit' => 'broadcast-transforms.edit',
                     'update' => 'broadcast-transforms.update',
                 ]);
 
-            Route::match(['POST', 'PATCH'], 'broadcasts/{broadcast}/transform-preview', [BroadcastTransformPreviewController::class, 'store'])
+            Route::match(['POST', 'PATCH'], 'flows/{broadcast}/transform-preview', [BroadcastTransformPreviewController::class, 'store'])
                 ->name('broadcast-transform-previews.store');
 
-            Route::singleton('broadcasts.enabled-broadcast', EnabledBroadcastController::class)
+            Route::singleton('flows.enabled-flow', EnabledBroadcastController::class)
                 ->creatable()
                 ->only(['store', 'destroy'])
+                ->parameters(['flows' => 'broadcast'])
                 ->names([
-                    'store' => 'enabled-broadcasts.store',
-                    'destroy' => 'enabled-broadcasts.destroy',
+                    'store' => 'enabled-flows.store',
+                    'destroy' => 'enabled-flows.destroy',
                 ]);
 
-            Route::singleton('broadcasts.archived-broadcast', ArchivedBroadcastController::class)
+            Route::singleton('flows.archived-flow', ArchivedBroadcastController::class)
                 ->creatable()
                 ->only(['store', 'destroy'])
+                ->parameters(['flows' => 'broadcast'])
                 ->names([
-                    'store' => 'archived-broadcasts.store',
-                    'destroy' => 'archived-broadcasts.destroy',
+                    'store' => 'archived-flows.store',
+                    'destroy' => 'archived-flows.destroy',
                 ]);
 
             Route::resource('members', MemberController::class)->only(['index', 'destroy']);
@@ -288,5 +285,20 @@ Route::middleware('auth')->group(function (): void {
             Route::resource('invitations', InvitationController::class)->only(['store', 'destroy']);
 
             Route::singleton('organization-settings', OrganizationSettingController::class)->only(['edit', 'update']);
+
+            // Soft redirects from pre-#110 project URLs.
+            Route::redirect('projects', 'broadcasts', 301);
+
+            Route::get('projects/create', function (Organization $organization) {
+                return redirect()->route('broadcasts.create', $organization, 301);
+            });
+
+            Route::get('projects/{project}', function (Organization $organization, Project $project) {
+                return redirect()->route('broadcasts.show', [$organization, $project], 301);
+            });
+
+            Route::get('projects/{project}/edit', function (Organization $organization, Project $project) {
+                return redirect()->route('broadcasts.edit', [$organization, $project], 301);
+            });
         });
 });

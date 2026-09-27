@@ -5,22 +5,22 @@
                 <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Workspace</p>
                 <h1 class="font-display text-3xl tracking-tight">{{ $organization->name }}</h1>
                 <p class="max-w-prose text-sm text-muted">
-                    Your projects at a glance. Open a card to manage a pipeline, or start a new one.
+                    Your broadcasts at a glance. Open a card to manage a pipeline, or start a new one.
                 </p>
             </div>
 
             @can('create', [App\Models\Project::class, $organization])
-                <x-button href="{{ route('projects.create', $organization) }}">+ New project</x-button>
+                <x-button href="{{ route('broadcasts.create', $organization) }}">+ New broadcast</x-button>
             @endcan
         </div>
 
         @if ($projects->isEmpty())
             <x-empty-state
                 heading="Nothing to chase yet"
-                message="Create a project and this workspace becomes a row of cards you can scan and steer."
+                message="Create a broadcast and this workspace becomes a row of cards you can scan and steer."
             >
                 @can('create', [App\Models\Project::class, $organization])
-                    <x-button href="{{ route('projects.create', $organization) }}">+ New project</x-button>
+                    <x-button href="{{ route('broadcasts.create', $organization) }}">+ New broadcast</x-button>
                 @endcan
             </x-empty-state>
         @else
@@ -32,9 +32,13 @@
 
                             <div class="relative flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex flex-col gap-2">
+                                    <div class="flex items-center gap-2 text-muted" title="Broadcast">
+                                        <x-icons.antenna class="size-4 shrink-0" />
+                                        <span class="font-mono text-[0.625rem] tracking-[0.12em] uppercase">Broadcast</span>
+                                    </div>
                                     <h2 class="truncate font-display text-xl tracking-tight">
                                         <a
-                                            href="{{ route('projects.show', $project) }}"
+                                            href="{{ route('broadcasts.show', $project) }}"
                                             class="text-ink hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                                         >{{ $project->name }}</a>
                                     </h2>
@@ -53,13 +57,13 @@
                                         <div class="absolute right-0 z-40 mt-1 w-44 overflow-hidden rounded-md border border-line bg-paper-raised py-1 shadow-md">
                                             @can('update', $project)
                                                 <a
-                                                    href="{{ route('projects.edit', $project) }}"
+                                                    href="{{ route('broadcasts.edit', $project) }}"
                                                     class="block px-3 py-2 text-sm text-ink hover:bg-paper"
                                                 >Edit</a>
                                             @endcan
 
                                             @if ($project->canPause())
-                                                <form method="POST" action="{{ route('paused-projects.store', $project) }}">
+                                                <form method="POST" action="{{ route('paused-broadcasts.store', $project) }}">
                                                     @csrf
                                                     <input type="hidden" name="return" value="organization">
                                                     <button class="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-paper" type="submit">
@@ -69,7 +73,7 @@
                                             @endif
 
                                             @if ($project->canResume())
-                                                <form method="POST" action="{{ route('paused-projects.destroy', $project) }}">
+                                                <form method="POST" action="{{ route('paused-broadcasts.destroy', $project) }}">
                                                     @csrf
                                                     @method('DELETE')
                                                     <input type="hidden" name="return" value="organization">
@@ -80,7 +84,7 @@
                                             @endif
 
                                             @if ($project->canArchive())
-                                                <form method="POST" action="{{ route('archived-projects.store', $project) }}">
+                                                <form method="POST" action="{{ route('archived-broadcasts.store', $project) }}">
                                                     @csrf
                                                     <input type="hidden" name="return" value="organization">
                                                     <button class="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-paper" type="submit">
@@ -92,21 +96,6 @@
                                     </details>
                                 @endcan
                             </div>
-
-                            <dl class="grid grid-cols-3 gap-3">
-                                <div>
-                                    <dt class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Sources</dt>
-                                    <dd class="font-mono text-lg text-ink">{{ $project->sources_count }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Destinations</dt>
-                                    <dd class="font-mono text-lg text-ink">{{ $project->destinations_count }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Broadcasts</dt>
-                                    <dd class="font-mono text-lg text-ink">{{ $project->broadcasts_count }}</dd>
-                                </div>
-                            </dl>
 
                             <div class="mt-auto flex flex-col gap-3 border-t border-line pt-3">
                                 <div class="flex flex-col gap-2">
@@ -142,9 +131,9 @@
 
                                 <x-button
                                     variant="ghost"
-                                    href="{{ route('projects.show', $project) }}"
+                                    href="{{ route('broadcasts.show', $project) }}"
                                     class="self-start"
-                                >View project</x-button>
+                                >View broadcast</x-button>
                             </div>
                         </article>
                     </li>

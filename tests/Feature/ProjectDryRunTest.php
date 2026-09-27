@@ -70,12 +70,12 @@ class ProjectDryRunTest extends TestCase
         $run = ProjectRun::query()->where('project_id', $project->getKey())->sole();
 
         $this->actingAs($user)
-            ->get(route('project-runs.index', [$organization, $project]))
+            ->get(route('broadcast-runs.index', [$organization, $project]))
             ->assertOk()
             ->assertSee('Dry run');
 
         $this->actingAs($user)
-            ->get(route('project-runs.show', [$organization, $project, $run]))
+            ->get(route('broadcast-runs.show', [$organization, $project, $run]))
             ->assertOk()
             ->assertSee('dry run')
             ->assertSee('Would publish')
@@ -121,7 +121,7 @@ class ProjectDryRunTest extends TestCase
         $project = Project::factory()->for($organization)->active()->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertDontSee('Dry run');
 
@@ -151,7 +151,7 @@ class ProjectDryRunTest extends TestCase
         $project = Project::factory()->for($organization)->active()->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Dry run')
             ->assertSee(route('broadcast-dry-runs.store', [$organization, $project]), false);

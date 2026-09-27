@@ -7,7 +7,7 @@
         </p>
 
         <p>
-            <x-button href="{{ route('projects.show', $project) }}" variant="ghost" :paw="false">Back to project</x-button>
+            <x-button href="{{ route('broadcasts.show', $project) }}" variant="ghost" :paw="false">Back to project</x-button>
         </p>
 
         @if ($runs->isEmpty())
@@ -20,7 +20,7 @@
                 @foreach ($runs as $run)
                     <li class="flex flex-wrap items-center justify-between gap-4 py-4">
                         <div class="flex flex-col gap-1">
-                            <a class="text-sm font-medium text-ink hover:text-accent" href="{{ route('project-runs.show', [$project, $run]) }}">
+                            <a class="text-sm font-medium text-ink hover:text-accent" href="{{ route('broadcast-runs.show', [$project, $run]) }}">
                                 <x-timestamp :value="$run->started_at" />
                             </a>
                             <p class="font-mono text-xs text-muted">
@@ -39,7 +39,7 @@
                             </p>
                         </div>
 
-                        <x-button href="{{ route('project-runs.show', [$project, $run]) }}" variant="ghost" :paw="false">Open</x-button>
+                        <x-button href="{{ route('broadcast-runs.show', [$project, $run]) }}" variant="ghost" :paw="false">Open</x-button>
                     </li>
                 @endforeach
             </ul>

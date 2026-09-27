@@ -20,9 +20,9 @@ class SourceTest extends TestCase
         $project = $source->project;
         $organization = $project->organization;
 
-        $this->get(route('project-sources.index', [$organization, $project]))->assertRedirect(route('session.create'));
-        $this->get(route('project-sources.create', [$organization, $project]))->assertRedirect(route('session.create'));
-        $this->post(route('project-sources.store', [$organization, $project]), [])->assertRedirect(route('session.create'));
+        $this->get(route('broadcasts.show', [$organization, $project]))->assertRedirect(route('session.create'));
+        $this->get(route('broadcast-sources.create', [$organization, $project]))->assertRedirect(route('session.create'));
+        $this->post(route('broadcast-sources.store', [$organization, $project]), [])->assertRedirect(route('session.create'));
         $this->get(route('sources.edit', [$organization, $source]))->assertRedirect(route('session.create'));
         $this->patch(route('sources.update', [$organization, $source]), [])->assertRedirect(route('session.create'));
     }
@@ -36,7 +36,7 @@ class SourceTest extends TestCase
         Source::factory()->create(['name' => 'Someone else feed']);
 
         $this->actingAs($user)
-            ->get(route('project-sources.index', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Pocket news feed')
             ->assertDontSee('Another project feed')
@@ -50,7 +50,7 @@ class SourceTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('project-sources.create', [$organization, $project, 'type' => 'rss']))
+            ->get(route('broadcast-sources.create', [$organization, $project, 'type' => 'rss']))
             ->assertOk()
             ->assertSee('RSS / Atom feed')
             ->assertDontSee('Fake source')
@@ -65,7 +65,7 @@ class SourceTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
 
-        $response = $this->actingAs($user)->post(route('project-sources.store', [$organization, $project]), [
+        $response = $this->actingAs($user)->post(route('broadcast-sources.store', [$organization, $project]), [
             'name' => 'Pocket news feed',
             'type' => 'fake',
             'config' => ['feed_url' => 'https://example.com/feed.xml'],
@@ -73,13 +73,12 @@ class SourceTest extends TestCase
 
         $source = $project->sources()->sole();
 
-        $response->assertRedirect(route('project-sources.index', [$organization, $project]));
+        $response->assertRedirect(route('broadcasts.show', [$organization, $project]));
         $response->assertSessionHas('success', 'The source has been added.');
 
         $this->assertSame('Pocket news feed', $source->name);
         $this->assertSame('fake', $source->type);
         $this->assertSame(['feed_url' => 'https://example.com/feed.xml'], $source->config);
-        $this->assertTrue($source->enabled);
         $this->assertTrue($source->isRunnable());
     }
 
@@ -89,7 +88,7 @@ class SourceTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('project-sources.store', [$organization, $project]), [
+            ->post(route('broadcast-sources.store', [$organization, $project]), [
                 'name' => 'Pocket news feed',
                 'type' => 'fake',
                 'config' => ['feed_url' => 'not-a-url'],
@@ -105,7 +104,7 @@ class SourceTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->post(route('project-sources.store', [$organization, $project]), [
+            ->post(route('broadcast-sources.store', [$organization, $project]), [
                 'name' => 'Pocket news feed',
                 'type' => 'carrier-pigeon',
                 'config' => ['feed_url' => 'https://example.com/feed.xml'],
@@ -120,7 +119,7 @@ class SourceTest extends TestCase
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
 
-        $this->actingAs($user)->post(route('project-sources.store', [$organization, $project]), [
+        $this->actingAs($user)->post(route('broadcast-sources.store', [$organization, $project]), [
             'name' => 'Pocket news feed',
             'type' => 'fake',
             'config' => [
@@ -181,8 +180,8 @@ class SourceTest extends TestCase
         $source = $this->sourceIn($organization);
         $project = $source->project;
 
-        $this->actingAs($user)->get(route('project-sources.create', [$organization, $project]))->assertForbidden();
-        $this->actingAs($user)->post(route('project-sources.store', [$organization, $project]), [
+        $this->actingAs($user)->get(route('broadcast-sources.create', [$organization, $project]))->assertForbidden();
+        $this->actingAs($user)->post(route('broadcast-sources.store', [$organization, $project]), [
             'name' => 'Pocket news feed',
             'type' => 'fake',
             'config' => ['feed_url' => 'https://example.com/feed.xml'],

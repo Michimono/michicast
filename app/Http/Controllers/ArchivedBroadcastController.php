@@ -16,7 +16,7 @@ class ArchivedBroadcastController extends Controller
         $broadcast->archive();
 
         return redirect()
-            ->route('project-broadcasts.index', $broadcast->project)
+            ->route('broadcast-pipelines.index', $broadcast->project)
             ->with('success', 'The broadcast has been archived.');
     }
 
@@ -27,7 +27,7 @@ class ArchivedBroadcastController extends Controller
         $broadcast->restore();
 
         return redirect()
-            ->route('project-broadcasts.index', $broadcast->project)
+            ->route('broadcast-pipelines.index', $broadcast->project)
             ->with('success', 'The broadcast has been restored.');
     }
 }

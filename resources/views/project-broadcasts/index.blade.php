@@ -4,7 +4,7 @@
 
         @can('create', [App\Models\Broadcast::class, $project])
             <p>
-                <x-button href="{{ route('project-broadcasts.create', $project) }}">New broadcast</x-button>
+                <x-button href="{{ route('broadcast-pipelines.create', $project) }}">New broadcast</x-button>
             </p>
         @endcan
 
@@ -32,12 +32,12 @@
                             @endcan
 
                             @can('update', $broadcast)
-                                <x-button href="{{ route('broadcasts.edit', $broadcast) }}" variant="ghost" :paw="false">Edit</x-button>
+                                <x-button href="{{ route('flows.edit', $broadcast) }}" variant="ghost" :paw="false">Edit</x-button>
                             @endcan
 
                             @can('changeStatus', $broadcast)
                                 @if ($broadcast->canDisable())
-                                    <form method="POST" action="{{ route('enabled-broadcasts.destroy', $broadcast) }}">
+                                    <form method="POST" action="{{ route('enabled-flows.destroy', $broadcast) }}">
                                         @csrf
                                         @method('DELETE')
 
@@ -46,14 +46,14 @@
                                 @endif
 
                                 @if ($broadcast->canEnable())
-                                    <form method="POST" action="{{ route('enabled-broadcasts.store', $broadcast) }}">
+                                    <form method="POST" action="{{ route('enabled-flows.store', $broadcast) }}">
                                         @csrf
 
                                         <x-button>Enable</x-button>
                                     </form>
                                 @endif
 
-                                <form method="POST" action="{{ route('archived-broadcasts.store', $broadcast) }}">
+                                <form method="POST" action="{{ route('archived-flows.store', $broadcast) }}">
                                     @csrf
 
                                     <x-button variant="ghost" :paw="false">Archive</x-button>
@@ -81,7 +81,7 @@
                         </div>
 
                         @can('changeStatus', $broadcast)
-                            <form method="POST" action="{{ route('archived-broadcasts.destroy', $broadcast) }}">
+                            <form method="POST" action="{{ route('archived-flows.destroy', $broadcast) }}">
                                 @csrf
                                 @method('DELETE')
 

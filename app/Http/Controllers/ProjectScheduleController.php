@@ -24,7 +24,7 @@ class ProjectScheduleController extends Controller
         $project->applySchedule($request->schedule(), $request->timezoneOverride());
 
         return redirect()
-            ->route('projects.show', $project)
+            ->route('broadcasts.show', $project)
             ->with('success', 'The schedule has been saved.');
     }
 }

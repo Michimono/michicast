@@ -48,8 +48,8 @@
         </dl>
 
         <p class="flex flex-wrap gap-2">
-            <x-button href="{{ route('project-runs.index', $project) }}" variant="ghost" :paw="false">All runs</x-button>
-            <x-button href="{{ route('projects.show', $project) }}" variant="ghost" :paw="false">Project</x-button>
+            <x-button href="{{ route('broadcast-runs.index', $project) }}" variant="ghost" :paw="false">All runs</x-button>
+            <x-button href="{{ route('broadcasts.show', $project) }}" variant="ghost" :paw="false">Project</x-button>
         </p>
     </x-card>
 

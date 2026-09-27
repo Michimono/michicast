@@ -68,7 +68,7 @@ class ProjectDashboardTest extends TestCase
         });
 
         $response = $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]));
+            ->get(route('broadcasts.show', [$organization, $project]));
 
         $response->assertOk();
         $response->assertSee('Pokemon TCGP News');
@@ -87,8 +87,8 @@ class ProjectDashboardTest extends TestCase
         $response->assertSee($lastFinishedAt->diffForHumans());
         $response->assertSee(route('sources.edit', [$organization, $source]), false);
         $response->assertSee(route('destinations.edit', [$organization, $destination]), false);
-        $response->assertSee(route('project-runs.show', [$organization, $project, $newer]), false);
-        $response->assertSee(route('project-runs.show', [$organization, $project, $older]), false);
+        $response->assertSee(route('broadcast-runs.show', [$organization, $project, $newer]), false);
+        $response->assertSee(route('broadcast-runs.show', [$organization, $project, $older]), false);
         $response->assertSee('discovered 4');
         $response->assertSee('discovered 2');
         $response->assertDontSee('discovered 99');
@@ -98,15 +98,16 @@ class ProjectDashboardTest extends TestCase
         $response->assertSee('Run now');
         $response->assertSee('Dry run');
         $response->assertSee('Pause');
-        $response->assertSee(route('projects.edit', [$organization, $project]), false);
+        $response->assertSee(route('broadcasts.edit', [$organization, $project]), false);
         $response->assertDontSee('Save details');
         $response->assertDontSee('name="name"', false);
-        $response->assertDontSee('Broadcasts');
-        $response->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
+        $response->assertDontSee(route('broadcast-pipelines.index', [$organization, $project]), false);
         $response->assertDontSee('Nothing to chase yet');
-        $response->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'RSS Feed', 'Manage', 'Telegram', 'Manage'], false);
-        $response->assertSee(route('project-sources.create', [$organization, $project]), false);
-        $response->assertSee(route('project-destinations.create', [$organization, $project]), false);
+        $response->assertDontSee('Add a source');
+        $response->assertDontSee('Add destination');
+        $response->assertSeeInOrder(['Pipeline', 'RSS Feed', 'Manage', 'Telegram', 'Manage'], false);
+        $response->assertDontSee(route('broadcast-sources.create', [$organization, $project]), false);
+        $response->assertDontSee(route('broadcast-destinations.create', [$organization, $project]), false);
         $this->assertLessThan(40, $queries);
     }
 
@@ -123,7 +124,7 @@ class ProjectDashboardTest extends TestCase
         Source::factory()->for($project)->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Never run')
             ->assertSee('Next run')
@@ -138,18 +139,18 @@ class ProjectDashboardTest extends TestCase
         $project = Project::factory()->for($organization)->create(['name' => 'Fresh pipeline']);
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Nothing to chase yet')
             ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Nothing to chase yet'], false)
-            ->assertSee(route('project-sources.create', [$organization, $project]), false)
-            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertSee(route('broadcast-sources.create', [$organization, $project]), false)
+            ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertSee('Pipeline')
             ->assertSee('Never run')
             ->assertSee('No schedule set')
             ->assertSee('Set schedule')
             ->assertSee('All activity')
-            ->assertDontSee(route('project-broadcasts.index', [$organization, $project]), false);
+            ->assertDontSee(route('broadcast-pipelines.index', [$organization, $project]), false);
     }
 
     public function test_pipeline_keeps_add_actions_outside_endpoint_cards(): void
@@ -159,21 +160,24 @@ class ProjectDashboardTest extends TestCase
         Source::factory()->for($project)->create(['name' => 'Only feed']);
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Only feed', 'Manage'], false)
-            ->assertSee(route('project-sources.create', [$organization, $project]), false)
-            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
-            ->assertDontSee('Nothing feeding this project yet.');
+            ->assertDontSee('Add a source')
+            ->assertSeeInOrder(['Pipeline', 'Add destination', 'Only feed', 'Manage'], false)
+            ->assertDontSee(route('broadcast-sources.create', [$organization, $project]), false)
+            ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
+            ->assertDontSee('Nothing feeding this broadcast yet.');
 
         Destination::factory()->for($project)->create(['name' => 'Only channel']);
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination', 'Only feed', 'Manage', 'Only channel', 'Manage'], false)
-            ->assertSee(route('project-sources.create', [$organization, $project]), false)
-            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertDontSee('Add a source')
+            ->assertDontSee('Add destination')
+            ->assertSeeInOrder(['Pipeline', 'Only feed', 'Manage', 'Only channel', 'Manage'], false)
+            ->assertDontSee(route('broadcast-sources.create', [$organization, $project]), false)
+            ->assertDontSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertDontSee('Nowhere to publish yet.');
     }
 
@@ -197,16 +201,16 @@ class ProjectDashboardTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertDontSee('Old feed')
             ->assertDontSee('Old channel')
-            ->assertSee('Nothing feeding this project yet.')
+            ->assertSee('Nothing feeding this broadcast yet.')
             ->assertSee('Nowhere to publish yet.')
             ->assertSee('Nothing to chase yet')
             ->assertSeeInOrder(['Pipeline', 'Add a source', 'Add destination'], false)
-            ->assertSee(route('project-sources.create', [$organization, $project]), false)
-            ->assertSee(route('project-destinations.create', [$organization, $project]), false)
+            ->assertSee(route('broadcast-sources.create', [$organization, $project]), false)
+            ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertDontSee('Manage');
     }
 
@@ -217,21 +221,21 @@ class ProjectDashboardTest extends TestCase
         Source::factory()->for($project)->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Active')
             ->assertDontSee('Run now')
             ->assertDontSee('Dry run')
             ->assertDontSee('Pause')
             ->assertDontSee('Resume')
-            ->assertDontSee(route('projects.edit', [$organization, $project]), false)
+            ->assertDontSee(route('broadcasts.edit', [$organization, $project]), false)
             ->assertDontSee('Set schedule')
             ->assertDontSee('Edit schedule')
             ->assertDontSee('Add a source')
             ->assertDontSee('Add destination');
 
         $this->actingAs($user)
-            ->post(route('immediate-project-runs.store', [$organization, $project]))
+            ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
             ->assertForbidden();
 
         $this->actingAs($user)
@@ -239,7 +243,7 @@ class ProjectDashboardTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($user)
-            ->post(route('paused-projects.store', [$organization, $project]))
+            ->post(route('paused-broadcasts.store', [$organization, $project]))
             ->assertForbidden();
     }
 
@@ -259,12 +263,12 @@ class ProjectDashboardTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('A broadcast was auto-paused after repeated failures.')
             ->assertSee('Fragile route')
             ->assertSee('Telegram rejected the message: chat not found')
-            ->assertSee(route('broadcasts.edit', [$organization, $broadcast]), false);
+            ->assertSee(route('flows.edit', [$organization, $broadcast]), false);
     }
 
     /**

@@ -20,7 +20,7 @@ class ImmediateProjectRunController extends Controller
 
         if (! $project->canMarkDue()) {
             return redirect()
-                ->route('projects.show', $project)
+                ->route('broadcasts.show', $project)
                 ->with('error', 'Only an active project can run now.');
         }
 
@@ -30,14 +30,14 @@ class ImmediateProjectRunController extends Controller
             report($e);
 
             return redirect()
-                ->route('projects.show', $project)
+                ->route('broadcasts.show', $project)
                 ->with('error', 'The run could not finish: '.$e->getMessage());
         }
 
         $run = $project->runs()->where('is_dry', false)->latest('id')->first();
 
         return redirect()
-            ->route('projects.show', $project)
+            ->route('broadcasts.show', $project)
             ->with('success', $run === null
                 ? 'The run finished.'
                 : 'Run finished: '.$run->status->label().'.')

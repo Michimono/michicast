@@ -18,7 +18,7 @@ class ArchivedProjectController extends Controller
 
         return redirect()
             ->to($this->afterMutation($request, $organization, $project))
-            ->with('success', 'The project has been archived.');
+            ->with('success', 'The broadcast has been archived.');
     }
 
     public function destroy(Request $request, Organization $organization, Project $project): RedirectResponse
@@ -29,7 +29,7 @@ class ArchivedProjectController extends Controller
 
         return redirect()
             ->to($this->afterMutation($request, $organization, $project))
-            ->with('success', 'The project has been restored.');
+            ->with('success', 'The broadcast has been restored.');
     }
 
     private function afterMutation(Request $request, Organization $organization, Project $project): string
@@ -38,6 +38,6 @@ class ArchivedProjectController extends Controller
             return route('organizations.show', $organization);
         }
 
-        return route('projects.show', $project);
+        return route('broadcasts.show', $project);
     }
 }

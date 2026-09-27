@@ -81,7 +81,7 @@ class BroadcastPreviewTest extends TestCase
         [$user, $organization, $broadcast] = $this->broadcastReadyForPreview();
 
         $this->actingAs($user)
-            ->get(route('broadcasts.edit', [$organization, $broadcast]))
+            ->get(route('flows.edit', [$organization, $broadcast]))
             ->assertOk()
             ->assertSee(route('content-previews.store', [$organization, $broadcast]), false);
     }

@@ -5,7 +5,7 @@
             They are stored in UTC.
         </p>
 
-        <form class="flex flex-col gap-4" method="POST" action="{{ route('project-schedules.update', $project) }}">
+        <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcast-schedules.update', $project) }}">
             @csrf
             @method('PATCH')
 
@@ -62,7 +62,7 @@
                 <x-button
                     variant="ghost"
                     :paw="false"
-                    formaction="{{ route('project-schedule-previews.store', $project) }}"
+                    formaction="{{ route('broadcast-schedule-previews.store', $project) }}"
                 >Preview upcoming runs</x-button>
                 <x-button>Save schedule</x-button>
             </div>

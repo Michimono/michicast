@@ -23,12 +23,12 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->patch(route('project-schedules.update', [$organization, $project]), [
+            ->patch(route('broadcast-schedules.update', [$organization, $project]), [
                 'frequency' => 'daily',
                 'time' => '15:00',
                 'timezone' => '',
             ])
-            ->assertRedirect(route('projects.show', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
             ->assertSessionHas('success', 'The schedule has been saved.');
 
         $project->refresh();
@@ -39,7 +39,7 @@ class ProjectScheduleTest extends TestCase
         $this->assertTrue($project->next_run_at->equalTo(Carbon::parse('2026-03-07 15:00:00', 'UTC')));
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Saturday, March 7, 2026 at 3:00 PM UTC')
             ->assertSee('organization timezone');
@@ -55,11 +55,11 @@ class ProjectScheduleTest extends TestCase
         $project->save();
 
         $this->actingAs($user)
-            ->patch(route('project-schedules.update', [$organization, $project]), [
+            ->patch(route('broadcast-schedules.update', [$organization, $project]), [
                 'frequency' => 'daily',
                 'time' => '18:00',
             ])
-            ->assertRedirect(route('projects.show', [$organization, $project]));
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]));
 
         $this->assertTrue($project->refresh()->next_run_at->equalTo(Carbon::parse('2026-03-07 18:00:00', 'UTC')));
     }
@@ -72,7 +72,7 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->patch(route('project-schedules.update', [$organization, $project]), [
+            ->patch(route('broadcast-schedules.update', [$organization, $project]), [
                 'frequency' => 'daily',
                 'time' => '15:00',
                 'timezone' => 'Europe/Madrid',
@@ -94,7 +94,7 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->patch(route('project-schedule-previews.store', [$organization, $project]), [
+            ->patch(route('broadcast-schedule-previews.store', [$organization, $project]), [
                 'frequency' => 'daily',
                 'time' => '15:00',
                 'timezone' => 'Europe/Madrid',
@@ -113,7 +113,7 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('project-schedules.edit', [$organization, $project]))
+            ->get(route('broadcast-schedules.edit', [$organization, $project]))
             ->assertOk()
             ->assertSee('Use organization timezone (Europe/Madrid)')
             ->assertSee('Europe/Madrid, the organization timezone');
@@ -159,8 +159,8 @@ class ProjectScheduleTest extends TestCase
         $this->travelTo(Carbon::parse('2026-03-07 16:00:00', 'UTC'));
 
         $this->actingAs($user)
-            ->post(route('active-projects.store', [$organization, $project]))
-            ->assertRedirect(route('projects.show', [$organization, $project]));
+            ->post(route('active-broadcasts.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]));
 
         $this->assertTrue($project->refresh()->next_run_at->equalTo(Carbon::parse('2026-03-08 15:00:00', 'UTC')));
     }
@@ -171,11 +171,11 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('project-schedules.edit', [$organization, $project]))
+            ->get(route('broadcast-schedules.edit', [$organization, $project]))
             ->assertForbidden();
 
         $this->actingAs($user)
-            ->patch(route('project-schedules.update', [$organization, $project]), [
+            ->patch(route('broadcast-schedules.update', [$organization, $project]), [
                 'frequency' => 'daily',
                 'time' => '09:00',
             ])
@@ -189,11 +189,11 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($outsider)
-            ->get(route('project-schedules.edit', [$organization, $project]))
+            ->get(route('broadcast-schedules.edit', [$organization, $project]))
             ->assertNotFound();
 
         $this->actingAs($outsider)
-            ->patch(route('project-schedules.update', [$organization, $project]), [
+            ->patch(route('broadcast-schedules.update', [$organization, $project]), [
                 'frequency' => 'daily',
                 'time' => '09:00',
             ])
@@ -204,7 +204,7 @@ class ProjectScheduleTest extends TestCase
     {
         $project = Project::factory()->create();
 
-        $this->get(route('project-schedules.edit', [$project->organization, $project]))
+        $this->get(route('broadcast-schedules.edit', [$project->organization, $project]))
             ->assertRedirect(route('session.create'));
     }
 
@@ -214,7 +214,7 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->patch(route('project-schedules.update', [$organization, $project]), [
+            ->patch(route('broadcast-schedules.update', [$organization, $project]), [
                 'frequency' => 'daily',
                 'time' => '09:00',
                 'timezone' => 'Mars/Olympus_Mons',
@@ -230,7 +230,7 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->patch(route('project-schedules.update', [$organization, $project]), [
+            ->patch(route('broadcast-schedules.update', [$organization, $project]), [
                 'frequency' => 'weekly',
                 'time' => '09:00',
             ])
@@ -243,9 +243,9 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('projects.show', [$organization, $project]))
+            ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee(route('project-schedules.edit', [$organization, $project]), false)
+            ->assertSee(route('broadcast-schedules.edit', [$organization, $project]), false)
             ->assertSee('Set schedule')
             ->assertSee('No schedule set');
     }

@@ -12,15 +12,15 @@
 
             <div class="flex flex-wrap items-center gap-2">
                 @can('create', [App\Models\Source::class, $project])
-                    <x-button href="{{ route('project-sources.create', $project) }}" variant="ghost" :paw="false">Add source</x-button>
+                    <x-button href="{{ route('broadcast-sources.create', $project) }}" variant="ghost" :paw="false">Add source</x-button>
                 @endcan
 
                 @can('create', [App\Models\Destination::class, $project])
-                    <x-button href="{{ route('project-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
+                    <x-button href="{{ route('broadcast-destinations.create', $project) }}" variant="ghost" :paw="false">Add destination</x-button>
                 @endcan
             </div>
         @else
-            <form class="flex flex-col gap-4" method="POST" action="{{ route('project-broadcasts.store', $project) }}">
+            <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcast-pipelines.store', $project) }}">
                 @csrf
 
                 <x-input name="name" label="Broadcast name" autofocus required />

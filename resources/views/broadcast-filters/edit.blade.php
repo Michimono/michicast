@@ -41,7 +41,7 @@
         </form>
 
         <p>
-            <x-button href="{{ route('broadcasts.edit', $broadcast) }}" variant="ghost" :paw="false">Back to broadcast</x-button>
+            <x-button href="{{ route('flows.edit', $broadcast) }}" variant="ghost" :paw="false">Back to broadcast</x-button>
         </p>
     </x-card>
 </x-layout>

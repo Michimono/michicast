@@ -21,14 +21,14 @@ class BroadcastLifecycleTest extends TestCase
         $broadcast = $this->broadcastIn($organization);
 
         $this->actingAs($user)
-            ->delete(route('enabled-broadcasts.destroy', [$organization, $broadcast]))
+            ->delete(route('enabled-flows.destroy', [$organization, $broadcast]))
             ->assertSessionHas('success', 'The broadcast has been disabled.');
 
         $this->assertFalse($broadcast->refresh()->enabled);
         $this->assertFalse($broadcast->isRunnable());
 
         $this->actingAs($user)
-            ->post(route('enabled-broadcasts.store', [$organization, $broadcast]))
+            ->post(route('enabled-flows.store', [$organization, $broadcast]))
             ->assertSessionHas('success', 'The broadcast has been enabled.');
 
         $this->assertTrue($broadcast->refresh()->enabled);
@@ -42,16 +42,16 @@ class BroadcastLifecycleTest extends TestCase
         $project = $broadcast->project;
 
         $this->actingAs($user)
-            ->post(route('archived-broadcasts.store', [$organization, $broadcast]))
-            ->assertRedirect(route('project-broadcasts.index', [$organization, $project]))
+            ->post(route('archived-flows.store', [$organization, $broadcast]))
+            ->assertRedirect(route('broadcast-pipelines.index', [$organization, $project]))
             ->assertSessionHas('success', 'The broadcast has been archived.');
 
         $this->assertTrue($broadcast->refresh()->isArchived());
         $this->assertFalse($broadcast->isRunnable());
 
         $this->actingAs($user)
-            ->delete(route('archived-broadcasts.destroy', [$organization, $broadcast]))
-            ->assertRedirect(route('project-broadcasts.index', [$organization, $project]))
+            ->delete(route('archived-flows.destroy', [$organization, $broadcast]))
+            ->assertRedirect(route('broadcast-pipelines.index', [$organization, $project]))
             ->assertSessionHas('success', 'The broadcast has been restored.');
 
         $this->assertFalse($broadcast->refresh()->isArchived());
@@ -64,7 +64,7 @@ class BroadcastLifecycleTest extends TestCase
         $broadcast = $this->broadcastIn($organization, ['enabled' => false, 'archived_at' => now()]);
 
         $this->actingAs($user)
-            ->post(route('enabled-broadcasts.store', [$organization, $broadcast]))
+            ->post(route('enabled-flows.store', [$organization, $broadcast]))
             ->assertSessionHas('error', 'An archived broadcast cannot be enabled until it is restored.');
 
         $this->assertFalse($broadcast->refresh()->enabled);
@@ -81,7 +81,7 @@ class BroadcastLifecycleTest extends TestCase
         Broadcast::factory()->for($broadcast->project)->archived()->create(['name' => 'Retired route']);
 
         $this->actingAs($user)
-            ->get(route('project-broadcasts.index', [$organization, $broadcast->project]))
+            ->get(route('broadcast-pipelines.index', [$organization, $broadcast->project]))
             ->assertOk()
             ->assertSee('Live route')
             ->assertSee('Retired route')
@@ -108,7 +108,7 @@ class BroadcastLifecycleTest extends TestCase
         $broadcast = $this->broadcastIn($organization);
 
         $this->actingAs($user)
-            ->delete(route('enabled-broadcasts.destroy', [$organization, $broadcast]))
+            ->delete(route('enabled-flows.destroy', [$organization, $broadcast]))
             ->assertForbidden();
 
         $this->assertTrue($broadcast->refresh()->enabled);
@@ -121,7 +121,7 @@ class BroadcastLifecycleTest extends TestCase
         $broadcast = $this->broadcastIn($organization);
 
         $this->actingAs($outsider)
-            ->delete(route('enabled-broadcasts.destroy', [$organization, $broadcast]))
+            ->delete(route('enabled-flows.destroy', [$organization, $broadcast]))
             ->assertNotFound();
 
         $this->assertTrue($broadcast->refresh()->enabled);

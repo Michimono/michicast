@@ -13,7 +13,7 @@
                 Choose a source type, fill in its settings, and test the feed before you add it.
             </p>
 
-            <form class="flex flex-col gap-4" method="GET" action="{{ route('project-sources.create', $project) }}">
+            <form class="flex flex-col gap-4" method="GET" action="{{ route('broadcast-sources.create', $project) }}">
                 <x-select
                     name="type"
                     label="Source type"
@@ -26,7 +26,7 @@
 
             <x-whisker-divider />
 
-            <form class="flex flex-col gap-4" method="POST" action="{{ route('project-sources.store', $project) }}" data-source-create-form>
+            <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcast-sources.store', $project) }}" data-source-create-form>
                 @csrf
 
                 <input type="hidden" name="type" value="{{ $type }}">
@@ -39,7 +39,7 @@
                     @if ($supportsPreview)
                         <x-button
                             type="submit"
-                            formaction="{{ route('project-source-previews.store', $project) }}"
+                            formaction="{{ route('broadcast-source-previews.store', $project) }}"
                             formmethod="POST"
                             variant="ghost"
                             :paw="false"

@@ -385,6 +385,16 @@ class Project extends Model
      * @return Builder<self>
      */
     #[Scope]
+    protected function archived(Builder $query): Builder
+    {
+        return $query->where('status', ProjectStatus::Archived);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    #[Scope]
     protected function dispatchable(Builder $query): Builder
     {
         return $query->where('status', ProjectStatus::Active);
