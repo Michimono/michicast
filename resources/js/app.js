@@ -353,3 +353,32 @@ document.addEventListener('click', (event) => {
     form.addEventListener('change', syncTestButton);
     syncTestButton();
 })();
+/*
+ * Schedule fields: show only the inputs the selected frequency needs.
+ */
+(function () {
+    function syncScheduleFields(root) {
+        const frequency = root.querySelector('[data-schedule-frequency]')?.value ?? '';
+
+        root.querySelectorAll('[data-schedule-panel]').forEach((panel) => {
+            const modes = (panel.getAttribute('data-schedule-panel') ?? '').split(/\s+/).filter(Boolean);
+            panel.hidden = !modes.includes(frequency);
+        });
+    }
+
+    document.addEventListener('change', (event) => {
+        const select = event.target.closest('[data-schedule-frequency]');
+
+        if (select === null) {
+            return;
+        }
+
+        const root = select.closest('[data-schedule-fields]');
+
+        if (root !== null) {
+            syncScheduleFields(root);
+        }
+    });
+
+    document.querySelectorAll('[data-schedule-fields]').forEach(syncScheduleFields);
+})();

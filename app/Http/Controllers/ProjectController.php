@@ -25,11 +25,11 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function create(Organization $organization): View
+    public function create(Organization $organization, ProjectScheduleForm $scheduleForm): View
     {
         Gate::authorize('create', [Project::class, $organization]);
 
-        return view('projects.create');
+        return view('projects.create', $scheduleForm->forCreate($organization));
     }
 
     public function store(StoreProjectRequest $request, Organization $organization): RedirectResponse
@@ -42,6 +42,10 @@ class ProjectController extends Controller
             'description' => $request->nullableDescription(),
         ]);
 
+        if ($request->hasSchedule()) {
+            $project->applySchedule($request->schedule(), $request->timezoneOverride());
+        }
+
         return redirect()
             ->route('broadcasts.show', $project)
             ->with('success', 'The broadcast has been created.');
@@ -51,7 +55,6 @@ class ProjectController extends Controller
         Organization $organization,
         Project $project,
         ProjectHealthResolver $health,
-        ProjectScheduleForm $scheduleForm,
         ScheduleSummary $scheduleSummary,
     ): View {
         Gate::authorize('view', $project);
@@ -98,18 +101,15 @@ class ProjectController extends Controller
             'health' => $health->resolve($project, $lastLiveRun, $autoPausedBroadcasts),
             'autoPausedBroadcasts' => $autoPausedBroadcasts,
             'pipelineEmpty' => $source === null && $destination === null,
-            'scheduleForm' => $scheduleForm->toArray($project),
             'scheduleSummary' => $scheduleSummary->describe($project->schedule),
         ]);
     }
 
-    public function edit(Organization $organization, Project $project): View
+    public function edit(Organization $organization, Project $project, ProjectScheduleForm $scheduleForm): View
     {
         Gate::authorize('update', $project);
 
-        return view('projects.edit', [
-            'project' => $project,
-        ]);
+        return view('projects.edit', $scheduleForm->toArray($project));
     }
 
     public function update(UpdateProjectRequest $request, Organization $organization, Project $project): RedirectResponse
@@ -118,6 +118,10 @@ class ProjectController extends Controller
             'name' => $request->string('name')->toString(),
             'description' => $request->nullableDescription(),
         ]);
+
+        if ($request->hasSchedule()) {
+            $project->applySchedule($request->schedule(), $request->timezoneOverride());
+        }
 
         return redirect()
             ->route('broadcasts.show', $project)

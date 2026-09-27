@@ -52,6 +52,9 @@ class BroadcastAsTopLevelTest extends TestCase
         $response = $this->actingAs($user)->post(route('broadcasts.store', $organization), [
             'name' => 'Evening Relay',
             'description' => 'Quiet nightly pass.',
+            'frequency' => 'daily',
+            'time' => '09:00',
+            'timezone' => '',
         ]);
 
         $project = $organization->projects()->sole();
@@ -118,7 +121,7 @@ class BroadcastAsTopLevelTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('broadcast-schedules.edit', [$organization, $project]))
-            ->assertOk();
+            ->assertRedirect(route('broadcasts.edit', [$organization, $project]));
 
         $this->actingAs($user)
             ->get(route('broadcast-runs.index', [$organization, $project]))

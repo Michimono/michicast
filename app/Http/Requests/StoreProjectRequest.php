@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Project;
 use App\Support\CurrentOrganization;
+use App\Support\ProjectScheduleFields;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -22,10 +23,16 @@ class StoreProjectRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
         ];
+
+        if ($this->filled('frequency')) {
+            $rules = array_merge($rules, ProjectScheduleFields::rules());
+        }
+
+        return $rules;
     }
 
     public function nullableDescription(): ?string
@@ -33,5 +40,36 @@ class StoreProjectRequest extends FormRequest
         $description = $this->string('description')->trim()->toString();
 
         return $description === '' ? null : $description;
+    }
+
+    public function hasSchedule(): bool
+    {
+        return $this->filled('frequency');
+    }
+
+    /**
+     * @return array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}
+     */
+    public function schedule(): array
+    {
+        return ProjectScheduleFields::schedule($this);
+    }
+
+    public function timezoneOverride(): ?string
+    {
+        return ProjectScheduleFields::timezoneOverride($this);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return ProjectScheduleFields::messages();
+    }
+
+    protected function prepareForValidation(): void
+    {
+        ProjectScheduleFields::prepare($this);
     }
 }

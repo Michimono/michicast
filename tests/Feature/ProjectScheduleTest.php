@@ -101,7 +101,7 @@ class ProjectScheduleTest extends TestCase
             ])
             ->assertOk()
             ->assertSee('Saturday, March 7, 2026 at 3:00 PM CET')
-            ->assertSee('Europe/Madrid, the project override');
+            ->assertSee('Europe/Madrid, the broadcast override');
 
         $this->assertNull($project->refresh()->schedule);
         $this->assertNull($project->next_run_at);
@@ -113,7 +113,7 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('broadcast-schedules.edit', [$organization, $project]))
+            ->get(route('broadcasts.edit', [$organization, $project]))
             ->assertOk()
             ->assertSee('Use organization timezone (Europe/Madrid)')
             ->assertSee('Europe/Madrid, the organization timezone');
@@ -171,7 +171,7 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($user)
-            ->get(route('broadcast-schedules.edit', [$organization, $project]))
+            ->get(route('broadcasts.edit', [$organization, $project]))
             ->assertForbidden();
 
         $this->actingAs($user)
@@ -189,7 +189,7 @@ class ProjectScheduleTest extends TestCase
         $project = Project::factory()->for($organization)->create();
 
         $this->actingAs($outsider)
-            ->get(route('broadcast-schedules.edit', [$organization, $project]))
+            ->get(route('broadcasts.edit', [$organization, $project]))
             ->assertNotFound();
 
         $this->actingAs($outsider)
@@ -204,7 +204,7 @@ class ProjectScheduleTest extends TestCase
     {
         $project = Project::factory()->create();
 
-        $this->get(route('broadcast-schedules.edit', [$project->organization, $project]))
+        $this->get(route('broadcasts.edit', [$project->organization, $project]))
             ->assertRedirect(route('session.create'));
     }
 
@@ -245,8 +245,7 @@ class ProjectScheduleTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee(route('broadcast-schedules.edit', [$organization, $project]), false)
-            ->assertSee('Set schedule')
+            ->assertSee(route('broadcasts.edit', [$organization, $project]), false)
             ->assertSee('No schedule set');
     }
 

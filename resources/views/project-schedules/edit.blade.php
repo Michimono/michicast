@@ -1,61 +1,17 @@
 <x-layout title="Schedule {{ $project->name }}">
-    <x-card heading="Schedule" kicker="Projects" eared class="max-w-md">
-        <p class="text-sm text-ink">
-            Runs are calculated in {{ $timezoneName }}, the {{ $timezoneSource }}.
-            They are stored in UTC.
-        </p>
-
+    <x-card heading="Schedule" kicker="Broadcasts" eared class="max-w-md">
         <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcast-schedules.update', $project) }}">
             @csrf
             @method('PATCH')
 
-            <x-select name="frequency" label="Frequency" :value="old('frequency', $schedule['frequency'] ?? 'daily')" :options="$frequencies" />
-
-            <x-input
-                name="time"
-                type="time"
-                label="Time"
-                :value="old('time', $schedule['time'] ?? '')"
-            />
-
-            <fieldset class="flex flex-col gap-1.5">
-                <legend class="text-sm font-medium">Weekdays</legend>
-                <p class="text-sm text-muted">Used when the frequency is weekly.</p>
-
-                <div class="flex flex-col gap-1">
-                    @foreach ($weekdays as $value => $label)
-                        <label class="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                name="weekdays[]"
-                                value="{{ $value }}"
-                                @checked(in_array((string) $value, array_map('strval', old('weekdays', $schedule['weekdays'] ?? [])), true))
-                            >
-                            {{ $label }}
-                        </label>
-                    @endforeach
-                </div>
-
-                @error('weekdays')
-                    <p class="text-sm text-state-fail">{{ $message }}</p>
-                @enderror
-            </fieldset>
-
-            <x-input
-                name="hours"
-                type="number"
-                label="Hours between runs"
-                :value="old('hours', $schedule['hours'] ?? '')"
-                min="1"
-                max="168"
-            />
-
-            <x-select
-                name="timezone"
-                label="Timezone"
-                :value="old('timezone', $selectedTimezone)"
-                :options="$timezones"
-                hint="Leave this on the organization timezone unless this project should run on a different clock."
+            <x-schedule-fields
+                :frequencies="$frequencies"
+                :weekdays="$weekdays"
+                :timezones="$timezones"
+                :schedule="$schedule"
+                :selected-timezone="$selectedTimezone"
+                :timezone-name="$timezoneName"
+                :timezone-source="$timezoneSource"
             />
 
             <div class="flex flex-wrap gap-2">

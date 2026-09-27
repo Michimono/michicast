@@ -19,9 +19,6 @@
                     <div class="flex flex-wrap items-center gap-2">
                         @can('update', $project)
                             <x-button href="{{ route('broadcasts.edit', $project) }}" variant="ghost" :paw="false">Edit</x-button>
-                            <x-button type="button" variant="ghost" :paw="false" data-open-dialog="schedule-drawer">
-                                {{ $project->schedule ? 'Edit schedule' : 'Set schedule' }}
-                            </x-button>
                         @endcan
 
                         @can('markDue', $project)
@@ -233,53 +230,5 @@
             </ul>
         </x-card>
 
-        @can('update', $project)
-            <dialog id="schedule-drawer" class="w-full max-w-md rounded-card border border-line bg-paper-raised p-0 text-ink shadow-md backdrop:bg-ink/40">
-                <div class="flex flex-col gap-4 p-6">
-                    <div class="flex items-start justify-between gap-3">
-                        <h2 class="font-display text-xl tracking-tight">Edit schedule</h2>
-                        <button type="button" class="rounded-md px-2 py-1 text-sm text-muted hover:bg-paper hover:text-ink" data-close-dialog>Close</button>
-                    </div>
-                    <p class="text-sm text-ink">
-                        Runs are calculated in {{ $scheduleForm['timezoneName'] }}, the {{ $scheduleForm['timezoneSource'] }}.
-                    </p>
-                    <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcast-schedules.update', $project) }}">
-                        @csrf
-                        @method('PATCH')
-                        <x-select name="frequency" label="Frequency" :value="old('frequency', $scheduleForm['schedule']['frequency'] ?? 'daily')" :options="$scheduleForm['frequencies']" />
-                        <x-input name="time" type="time" label="Time" :value="old('time', $scheduleForm['schedule']['time'] ?? '')" />
-                        <fieldset class="flex flex-col gap-1.5">
-                            <legend class="text-sm font-medium">Weekdays</legend>
-                            <p class="text-sm text-muted">Used when the frequency is weekly.</p>
-                            <div class="flex flex-col gap-1">
-                                @foreach ($scheduleForm['weekdays'] as $value => $label)
-                                    <label class="flex items-center gap-2 text-sm">
-                                        <input
-                                            type="checkbox"
-                                            name="weekdays[]"
-                                            value="{{ $value }}"
-                                            @checked(in_array((string) $value, array_map('strval', old('weekdays', $scheduleForm['schedule']['weekdays'] ?? [])), true))
-                                        >
-                                        {{ $label }}
-                                    </label>
-                                @endforeach
-                            </div>
-                        </fieldset>
-                        <x-input name="hours" type="number" label="Hours between runs" :value="old('hours', $scheduleForm['schedule']['hours'] ?? '')" min="1" max="168" />
-                        <x-select
-                            name="timezone"
-                            label="Timezone"
-                            :value="old('timezone', $scheduleForm['selectedTimezone'])"
-                            :options="$scheduleForm['timezones']"
-                            hint="Leave this on the organization timezone unless this broadcast should run on a different clock."
-                        />
-                        <div class="flex flex-wrap gap-2">
-                            <x-button>Save schedule</x-button>
-                            <x-button href="{{ route('broadcast-schedules.edit', $project) }}" variant="ghost" :paw="false">Open full editor</x-button>
-                        </div>
-                    </form>
-                </div>
-            </dialog>
-        @endcan
     </div>
 </x-layout>

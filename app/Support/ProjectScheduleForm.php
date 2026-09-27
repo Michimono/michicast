@@ -21,7 +21,7 @@ class ProjectScheduleForm
         $schedule = $request?->schedule() ?? $project->schedule;
         $timezone = $request?->effectiveTimezone($project) ?? $project->effectiveTimezone();
         $source = $request?->timezoneSource($project)
-            ?? ($project->hasTimezoneOverride() ? 'project override' : 'organization timezone');
+            ?? ($project->hasTimezoneOverride() ? 'broadcast override' : 'organization timezone');
 
         $upcoming = array_map(
             fn (CarbonImmutable $run): string => $run->timezone($timezone)->format('l, F j, Y \a\t g:i A T'),
@@ -38,6 +38,28 @@ class ProjectScheduleForm
             'timezoneName' => $timezone,
             'timezoneSource' => $source,
             'selectedTimezone' => $request?->timezoneOverride() ?? $project->timezone,
+        ];
+    }
+
+    /**
+     * Defaults for the create-broadcast form (no project yet).
+     *
+     * @return array<string, mixed>
+     */
+    public function forCreate(Organization $organization): array
+    {
+        return [
+            'frequencies' => ScheduleFrequency::options(),
+            'weekdays' => ScheduleFrequency::weekdayOptions(),
+            'timezones' => $this->timezoneOptions($organization),
+            'schedule' => [
+                'frequency' => ScheduleFrequency::Daily->value,
+                'time' => '09:00',
+            ],
+            'upcoming' => [],
+            'timezoneName' => $organization->timezone,
+            'timezoneSource' => 'organization timezone',
+            'selectedTimezone' => null,
         ];
     }
 

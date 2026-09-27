@@ -16,6 +16,6 @@ class ProjectSchedulePreviewController extends Controller
         Project $project,
         ProjectScheduleForm $form,
     ): View {
-        return view('project-schedules.edit', $form->toArray($project, $request));
+        return view('projects.edit', $form->toArray($project, $request));
     }
 }

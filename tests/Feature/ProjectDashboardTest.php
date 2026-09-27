@@ -82,7 +82,7 @@ class ProjectDashboardTest extends TestCase
         $response->assertDontSee('Archived channel');
         $response->assertSee('Next run');
         $response->assertSee('Europe/Madrid');
-        $response->assertSee('project override');
+        $response->assertSee('broadcast override');
         $response->assertSee('Failed');
         $response->assertSee($lastFinishedAt->diffForHumans());
         $response->assertSee(route('sources.edit', [$organization, $source]), false);
@@ -94,7 +94,7 @@ class ProjectDashboardTest extends TestCase
         $response->assertDontSee('discovered 99');
         $response->assertSee('Daily at 9:00');
         $response->assertSee('All activity');
-        $response->assertSee('Edit schedule');
+        $response->assertSee('Edit');
         $response->assertSee('Run now');
         $response->assertSee('Dry run');
         $response->assertSee('Pause');
@@ -148,7 +148,8 @@ class ProjectDashboardTest extends TestCase
             ->assertSee('Pipeline')
             ->assertSee('Never run')
             ->assertSee('No schedule set')
-            ->assertSee('Set schedule')
+            ->assertSee('Edit')
+            ->assertSee(route('broadcasts.edit', [$organization, $project]), false)
             ->assertSee('All activity')
             ->assertDontSee(route('broadcast-pipelines.index', [$organization, $project]), false);
     }
