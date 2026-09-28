@@ -7,7 +7,7 @@
 
 <div class="flex flex-col gap-6">
     {{-- SOURCE --}}
-    <x-card heading="Source" kicker="Pipeline">
+    <x-card heading="Source" kicker="Pipeline" highlighted>
         @if ($source)
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">

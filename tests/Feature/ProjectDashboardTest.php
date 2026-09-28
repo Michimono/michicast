@@ -82,13 +82,13 @@ class ProjectDashboardTest extends TestCase
         $response->assertDontSee('Recent activity');
         $response->assertDontSee('>Archive</button>', false);
         $response->assertSee('Daily at 9:00');
-        $response->assertSee('All activity');
-        $response->assertSee('Edit');
+        $response->assertSee('Settings');
         $response->assertSee('Run now');
-        $response->assertSee('Dry run');
         $response->assertSee('Pause');
+        $response->assertDontSee('Dry run');
+        $response->assertDontSee('All activity');
         $response->assertSee(route('broadcasts.edit', [$organization, $project]), false);
-        $response->assertSee(route('broadcast-runs.index', [$organization, $project]), false);
+        // Activity lives in the sidebar, not the header.
         $response->assertSee(route('sources.edit', [$organization, $source]), false);
         $response->assertSee(route('destinations.edit', [$organization, $destination]), false);
         $response->assertDontSee('Save details');
@@ -129,7 +129,6 @@ class ProjectDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Never run')
             ->assertDontSee('Recent activity')
-            ->assertSee('All activity')
             ->assertDontSee('No source yet');
     }
 
@@ -152,10 +151,11 @@ class ProjectDashboardTest extends TestCase
             ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertSee('Never run')
             ->assertSee('No schedule set')
-            ->assertSee('Edit')
+            ->assertSee('Settings')
             ->assertSee(route('broadcasts.edit', [$organization, $project]), false)
-            ->assertSee('All activity')
             ->assertDontSee('Recent activity')
+            ->assertDontSee('Dry run')
+            ->assertDontSee('All activity')
             ->assertDontSee(route('broadcast-pipelines.index', [$organization, $project]), false);
     }
 

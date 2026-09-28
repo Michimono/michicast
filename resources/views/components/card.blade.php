@@ -1,7 +1,11 @@
-@props(['heading' => null, 'kicker' => null, 'eared' => false])
+@props(['heading' => null, 'kicker' => null, 'eared' => false, 'highlighted' => false])
 
-<section {{ $attributes->class('relative flex flex-col gap-3 rounded-card border border-line bg-paper-raised p-6') }}>
-    @if ($eared)
+<section {{ $attributes->class([
+    'relative flex flex-col gap-3 rounded-card bg-paper-raised p-6',
+    'border border-line' => ! $highlighted,
+    'border house-edge' => $highlighted,
+]) }}>
+    @if ($eared || $highlighted)
         <x-card-ears />
     @endif
 

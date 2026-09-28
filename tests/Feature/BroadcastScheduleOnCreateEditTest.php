@@ -55,7 +55,7 @@ class BroadcastScheduleOnCreateEditTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcasts.edit', [$organization, $project]))
             ->assertOk()
-            ->assertSee('Edit broadcast')
+            ->assertSee('General')
             ->assertSee('Schedule')
             ->assertSee('Old Name');
 
@@ -124,7 +124,7 @@ class BroadcastScheduleOnCreateEditTest extends TestCase
             ->assertSessionHasErrors('time');
     }
 
-    public function test_overview_points_edit_at_the_unified_form(): void
+    public function test_overview_points_settings_at_the_unified_form(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
@@ -133,7 +133,7 @@ class BroadcastScheduleOnCreateEditTest extends TestCase
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee(route('broadcasts.edit', [$organization, $project]), false)
-            ->assertSee('Edit')
+            ->assertSee('Settings')
             ->assertDontSee('Set schedule')
             ->assertDontSee('schedule-drawer')
             ->assertSee('No schedule set');

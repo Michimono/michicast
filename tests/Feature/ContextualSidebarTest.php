@@ -55,6 +55,7 @@ class ContextualSidebarTest extends TestCase
         $this->assertStringNotContainsString('>Sources</span>', $html);
         $this->assertStringNotContainsString('>Destinations</span>', $html);
         $this->assertStringContainsString('>Activity</span>', $html);
+        $this->assertStringContainsString('>Settings</span>', $html);
         $this->assertStringNotContainsString('>Schedule</span>', $html);
         $this->assertAnchorIsCurrent(route('broadcasts.show', [$organization, $project]), $html);
     }

@@ -59,7 +59,7 @@
                                                 <a
                                                     href="{{ route('broadcasts.edit', $project) }}"
                                                     class="block px-3 py-2 text-sm text-ink hover:bg-paper"
-                                                >Edit</a>
+                                                >Settings</a>
                                             @endcan
 
                                             @if ($project->canPause())

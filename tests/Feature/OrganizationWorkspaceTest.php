@@ -92,7 +92,7 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertSee('Pause');
         $response->assertSee('Resume');
         $response->assertSee('Archive');
-        $response->assertSee('Edit');
+        $response->assertSee('Settings');
         $response->assertSee('viewBox="0 0 64 10"', false);
         $response->assertSee('M2 10 10 1 18 10', false);
         $this->assertSame(2, substr_count($response->getContent(), 'viewBox="0 0 64 10"'));

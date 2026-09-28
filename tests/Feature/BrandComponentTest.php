@@ -46,6 +46,17 @@ class BrandComponentTest extends TestCase
             ->assertDontSee('<svg', false);
     }
 
+    public function test_a_highlighted_card_grows_ears_and_house_edge(): void
+    {
+        $this->blade('<x-card heading="Source" highlighted>Body</x-card>')
+            ->assertSee('house-edge', false)
+            ->assertSee('viewBox="0 0 64 10"', false)
+            ->assertSee('M2 10 10 1 18 10', false);
+        $this->blade('<x-card heading="Plain">Body</x-card>')
+            ->assertDontSee('house-edge', false)
+            ->assertDontSee('viewBox="0 0 64 10"', false);
+    }
+
     public function test_only_eared_empty_states_grow_ears(): void
     {
         $this->blade('<x-empty-state eared heading="Quiet" />')

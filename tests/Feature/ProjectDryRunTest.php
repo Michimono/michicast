@@ -145,13 +145,18 @@ class ProjectDryRunTest extends TestCase
             ->assertTooManyRequests();
     }
 
-    public function test_an_editor_sees_dry_run_next_to_run_now(): void
+    public function test_an_editor_sees_dry_run_on_settings(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->active()->create();
 
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
+            ->assertOk()
+            ->assertDontSee('Dry run');
+
+        $this->actingAs($user)
+            ->get(route('broadcasts.edit', [$organization, $project]))
             ->assertOk()
             ->assertSee('Dry run')
             ->assertSee(route('broadcast-dry-runs.store', [$organization, $project]), false);

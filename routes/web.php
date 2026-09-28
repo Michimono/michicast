@@ -8,6 +8,7 @@ use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BroadcastDeliveryController;
 use App\Http\Controllers\BroadcastDryRunController;
 use App\Http\Controllers\BroadcastFilterController;
+use App\Http\Controllers\BroadcastLatestResendController;
 use App\Http\Controllers\BroadcastMappingController;
 use App\Http\Controllers\BroadcastTransformController;
 use App\Http\Controllers\BroadcastTransformPreviewController;
@@ -124,6 +125,13 @@ Route::middleware('auth')->group(function (): void {
                 ->names([
                     'store' => 'broadcast-dry-runs.store',
                 ])
+                ->middlewareFor('store', 'throttle:broadcast-dry-run');
+
+            Route::singleton('broadcasts.latest-resend', BroadcastLatestResendController::class)
+                ->creatable()
+                ->only(['store'])
+                ->parameters(['broadcasts' => 'project'])
+                ->names(['store' => 'broadcast-latest-resends.store'])
                 ->middlewareFor('store', 'throttle:broadcast-dry-run');
 
             Route::singleton('broadcasts.schedule', ProjectScheduleController::class)

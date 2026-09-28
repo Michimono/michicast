@@ -1,8 +1,8 @@
-<x-layout title="Edit {{ $project->name }}">
+<x-layout title="Settings · {{ $project->name }}">
     <div class="mx-auto flex w-full max-w-lg flex-col gap-8">
-        <x-card heading="Edit broadcast" kicker="Broadcasts" eared>
+        <x-card id="general" heading="General" eared class="scroll-mt-8">
             <p class="text-sm text-ink">
-                Rename the broadcast and adjust when it runs. The slug stays {{ $project->slug }}.
+                Rename the broadcast and describe what it does. The slug stays {{ $project->slug }}.
             </p>
 
             <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcasts.update', $project) }}">
@@ -37,7 +37,7 @@
             </form>
         </x-card>
 
-        <x-card heading="Upcoming runs" kicker="Preview">
+        <x-card id="upcoming" heading="Upcoming runs" kicker="Preview" class="scroll-mt-8">
             @if ($upcoming === [])
                 <p class="text-sm text-muted">Save a complete schedule, or preview it, to see the next runs.</p>
             @else
@@ -50,9 +50,56 @@
             @endif
         </x-card>
 
+        <x-card id="operations" heading="Operations" kicker="Ops" class="scroll-mt-8">
+            <p class="text-sm text-muted">
+                Rehearse a run without publishing, or clear delivery state for the latest received item so Run now can publish it again.
+            </p>
+
+            <div class="flex flex-wrap items-center gap-2">
+                @can('dryRun', $project)
+                    <form method="POST" action="{{ route('broadcast-dry-runs.store', $project) }}" data-run-form>
+                        @csrf
+                        <x-button variant="ghost" :paw="false" data-run-submit>Dry run</x-button>
+                    </form>
+                @endcan
+
+                @can('allowLatestResend', $project)
+                    <form
+                        method="POST"
+                        action="{{ route('broadcast-latest-resends.store', $project) }}"
+                        onsubmit="return confirm('Clear delivery state for the latest received item? It will not publish until you use Run now.')"
+                    >
+                        @csrf
+                        <x-button variant="ghost" :paw="false">Allow resend of latest</x-button>
+                    </form>
+                @endcan
+            </div>
+
+            @can('changeStatus', $project)
+                @if ($project->canActivate())
+                    <div class="border-t border-line pt-4">
+                        <p class="mb-2 text-sm text-muted">This broadcast is still a draft.</p>
+                        <form method="POST" action="{{ route('active-broadcasts.store', $project) }}">
+                            @csrf
+                            <x-button>Activate</x-button>
+                        </form>
+                    </div>
+                @endif
+            @endcan
+
+            <div hidden data-run-progress class="rounded-md border border-line bg-paper px-4 py-3">
+                <p class="text-sm text-ink">Running…</p>
+                <div class="mt-2 flex items-center gap-2" aria-hidden="true">
+                    <x-icons.paw class="size-4 house-text" />
+                    <x-icons.paw class="size-4 text-muted" />
+                    <x-icons.paw class="size-4 text-muted" />
+                </div>
+            </div>
+        </x-card>
+
         @can('changeStatus', $project)
             @if ($project->canArchive() || $project->canRestore())
-                <x-card heading="Archive" kicker="Danger zone">
+                <x-card id="archive" heading="Archive" kicker="Danger zone" class="scroll-mt-8">
                     <p class="text-sm text-muted">
                         Archiving hides this broadcast from the workspace. Historical activity is kept.
                     </p>

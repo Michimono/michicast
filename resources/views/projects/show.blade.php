@@ -18,10 +18,8 @@
 
                     <div class="flex flex-wrap items-center gap-2">
                         @can('update', $project)
-                            <x-button href="{{ route('broadcasts.edit', $project) }}" variant="ghost" :paw="false">Edit</x-button>
+                            <x-button href="{{ route('broadcasts.edit', $project) }}" variant="ghost" :paw="false">Settings</x-button>
                         @endcan
-
-                        <x-button href="{{ route('broadcast-runs.index', $project) }}" variant="ghost" :paw="false">All activity</x-button>
 
                         @can('markDue', $project)
                             @if ($project->canMarkDue())
@@ -32,21 +30,7 @@
                             @endif
                         @endcan
 
-                        @can('dryRun', $project)
-                            <form method="POST" action="{{ route('broadcast-dry-runs.store', $project) }}" data-run-form>
-                                @csrf
-                                <x-button variant="ghost" :paw="false" data-run-submit>Dry run</x-button>
-                            </form>
-                        @endcan
-
                         @can('changeStatus', $project)
-                            @if ($project->canActivate())
-                                <form method="POST" action="{{ route('active-broadcasts.store', $project) }}">
-                                    @csrf
-                                    <x-button>Activate</x-button>
-                                </form>
-                            @endif
-
                             @if ($project->canPause())
                                 <form method="POST" action="{{ route('paused-broadcasts.store', $project) }}">
                                     @csrf
