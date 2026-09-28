@@ -40,21 +40,28 @@ class BrandComponentTest extends TestCase
     {
         $this->blade('<x-card heading="Plain" eared>Body</x-card>')
             ->assertSee('viewBox="0 0 64 10"', false)
-            ->assertSee('M2 10 10 1 18 10', false);
+            ->assertSee('M2 10 10 1 18 10', false)
+            ->assertDontSee('linearGradient', false)
+            ->assertSee('text-line', false);
         $this->blade('<x-card heading="Plain">Body</x-card>')
             ->assertDontSee('viewBox="0 0 64 10"', false)
             ->assertDontSee('<svg', false);
     }
 
-    public function test_a_highlighted_card_grows_ears_and_house_edge(): void
+    public function test_a_highlighted_card_grows_rainbow_ears_and_house_edge(): void
     {
-        $this->blade('<x-card heading="Source" highlighted>Body</x-card>')
-            ->assertSee('house-edge', false)
-            ->assertSee('viewBox="0 0 64 10"', false)
-            ->assertSee('M2 10 10 1 18 10', false);
-        $this->blade('<x-card heading="Plain">Body</x-card>')
-            ->assertDontSee('house-edge', false)
-            ->assertDontSee('viewBox="0 0 64 10"', false);
+        $html = (string) $this->blade('<x-card heading="Overview" highlighted>Body</x-card>');
+
+        $this->assertStringContainsString('house-edge', $html);
+        $this->assertStringContainsString('viewBox="0 0 64 10"', $html);
+        $this->assertStringContainsString('M2 10 10 1 18 10', $html);
+        $this->assertStringContainsString('linearGradient', $html);
+        $this->assertStringContainsString('var(--color-house-1)', $html);
+        $this->assertStringContainsString('var(--color-house-2)', $html);
+
+        $plain = (string) $this->blade('<x-card heading="Plain">Body</x-card>');
+        $this->assertStringNotContainsString('house-edge', $plain);
+        $this->assertStringNotContainsString('viewBox="0 0 64 10"', $plain);
     }
 
     public function test_only_eared_empty_states_grow_ears(): void

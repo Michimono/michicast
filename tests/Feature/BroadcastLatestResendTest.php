@@ -63,7 +63,7 @@ class BroadcastLatestResendTest extends TestCase
             ->assertSee(route('broadcasts.edit', [$organization, $project]), false);
     }
 
-    public function test_first_pipeline_card_is_highlighted_with_ears(): void
+    public function test_overview_card_is_highlighted_with_rainbow_ears_not_pipeline(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
@@ -75,7 +75,18 @@ class BroadcastLatestResendTest extends TestCase
 
         $this->assertStringContainsString('house-edge', $html);
         $this->assertStringContainsString('viewBox="0 0 64 10"', $html);
+        $this->assertStringContainsString('linearGradient', $html);
+        $this->assertStringContainsString('var(--color-house-1)', $html);
+        $this->assertStringContainsString('var(--color-house-2)', $html);
         $this->assertStringContainsString('data-pipeline-empty="source"', $html);
+
+        // Highlight + rainbow ears belong on the Overview card, before the Pipeline stack.
+        $this->assertMatchesRegularExpression(
+            '/house-edge[\s\S]+linearGradient[\s\S]+Overview[\s\S]+Pipeline[\s\S]+data-pipeline-empty="source"/',
+            $html
+        );
+        $this->assertSame(1, substr_count($html, 'house-edge'));
+        $this->assertSame(1, substr_count($html, 'viewBox="0 0 64 10"'));
     }
 
     public function test_allow_resend_of_latest_clears_delivery_without_publishing(): void

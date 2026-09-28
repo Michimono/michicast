@@ -1,7 +1,7 @@
 <x-layout :title="$project->name">
     <div class="flex flex-col gap-8">
         {{-- 1. Header: read-only identity + sparse actions --}}
-        <x-card eared kicker="Overview">
+        <x-card highlighted kicker="Overview">
             <div class="flex flex-col gap-4">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="min-w-0 flex flex-col gap-2">

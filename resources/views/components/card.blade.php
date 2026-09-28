@@ -6,7 +6,7 @@
     'border house-edge' => $highlighted,
 ]) }}>
     @if ($eared || $highlighted)
-        <x-card-ears />
+        <x-card-ears :rainbow="$highlighted" />
     @endif
 
     @if ($kicker)
