@@ -171,9 +171,16 @@ class ProjectLifecycleTest extends TestCase
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Activate')
-            ->assertSee('Archive')
+            ->assertDontSee('>Archive</button>', false)
             ->assertDontSee('Pause')
             ->assertDontSee('Resume')
+            ->assertDontSee('Restore');
+
+        $this->actingAs($user)
+            ->get(route('broadcasts.edit', [$organization, $project]))
+            ->assertOk()
+            ->assertSee('Archive')
+            ->assertSee(route('archived-broadcasts.store', [$organization, $project]), false)
             ->assertDontSee('Restore');
     }
 

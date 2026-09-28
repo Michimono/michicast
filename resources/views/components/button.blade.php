@@ -2,8 +2,8 @@
 
 @php
     $classes = match ($variant) {
-        'ghost' => 'group inline-flex items-center justify-center gap-2 rounded-md border border-line-strong bg-transparent px-4 py-2 text-sm font-medium text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-        default => 'group inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+        'ghost' => 'cursor-pointer group inline-flex items-center justify-center gap-2 rounded-md border border-line-strong bg-transparent px-4 py-2 text-sm font-medium text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+        default => 'cursor-pointer group inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
     };
 @endphp
 

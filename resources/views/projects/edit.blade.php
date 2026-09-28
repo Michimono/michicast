@@ -49,5 +49,35 @@
                 </ul>
             @endif
         </x-card>
+
+        @can('changeStatus', $project)
+            @if ($project->canArchive() || $project->canRestore())
+                <x-card heading="Archive" kicker="Danger zone">
+                    <p class="text-sm text-muted">
+                        Archiving hides this broadcast from the workspace. Historical activity is kept.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if ($project->canArchive())
+                            <form
+                                method="POST"
+                                action="{{ route('archived-broadcasts.store', $project) }}"
+                                onsubmit="return confirm('Archive this broadcast? Historical activity is kept.')"
+                            >
+                                @csrf
+                                <x-button variant="ghost" :paw="false">Archive</x-button>
+                            </form>
+                        @endif
+
+                        @if ($project->canRestore())
+                            <form method="POST" action="{{ route('archived-broadcasts.destroy', $project) }}">
+                                @csrf
+                                @method('DELETE')
+                                <x-button>Restore</x-button>
+                            </form>
+                        @endif
+                    </div>
+                </x-card>
+            @endif
+        @endcan
     </div>
 </x-layout>

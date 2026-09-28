@@ -21,6 +21,8 @@
                             <x-button href="{{ route('broadcasts.edit', $project) }}" variant="ghost" :paw="false">Edit</x-button>
                         @endcan
 
+                        <x-button href="{{ route('broadcast-runs.index', $project) }}" variant="ghost" :paw="false">All activity</x-button>
+
                         @can('markDue', $project)
                             @if ($project->canMarkDue())
                                 <form method="POST" action="{{ route('immediate-broadcast-runs.store', $project) }}" data-run-form>
@@ -59,25 +61,6 @@
                                     <x-button>Resume</x-button>
                                 </form>
                             @endif
-
-                            @if ($project->canArchive())
-                                <form
-                                    method="POST"
-                                    action="{{ route('archived-broadcasts.store', $project) }}"
-                                    onsubmit="return confirm('Archive this broadcast? Historical activity is kept.')"
-                                >
-                                    @csrf
-                                    <x-button variant="ghost" :paw="false">Archive</x-button>
-                                </form>
-                            @endif
-
-                            @if ($project->canRestore())
-                                <form method="POST" action="{{ route('archived-broadcasts.destroy', $project) }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <x-button>Restore</x-button>
-                                </form>
-                            @endif
                         @endcan
                     </div>
                 </div>
@@ -113,72 +96,13 @@
             </div>
         </x-card>
 
-        {{-- 2. Pipeline centrepiece: Source / Mapping / Destination --}}
-        <x-card heading="Pipeline" kicker="Flow">
-            <p class="mb-6 text-sm text-muted">Source, then simple mapping steps, then destination.</p>
-            @include('broadcast-mappings.pipeline', [
-                'project' => $project,
-                'source' => $source,
-                'destination' => $destination,
-                'mappingEditor' => $mappingEditor ?? ['ready' => false],
-            ])
-        </x-card>
-
-        {{-- 3. Recent activity: next run first, then executions --}}
-        <x-card heading="Recent activity" :kicker="$project->name">
-            <x-slot:actions>
-                <x-button href="{{ route('broadcast-runs.index', $project) }}" variant="ghost" :paw="false">All activity</x-button>
-            </x-slot:actions>
-
-            <ul class="flex flex-col divide-y divide-line border-t border-line">
-                @if ($project->next_run_at)
-                    <li class="flex flex-wrap items-center justify-between gap-4 py-4">
-                        <div class="flex flex-col gap-1">
-                            <p class="text-sm font-medium text-ink">Next run</p>
-                            <p class="font-mono text-xs text-ink">
-                                {{ $project->next_run_at->timezone($project->effectiveTimezone())->format('l, F j, Y \a\t g:i A T') }}
-                                ({{ $project->effectiveTimezone() }})
-                            </p>
-                            <p class="text-sm text-muted">
-                                Shown in {{ $project->effectiveTimezone() }}, the {{ $project->hasTimezoneOverride() ? 'broadcast override' : 'organization timezone' }}.
-                            </p>
-                        </div>
-                    </li>
-                @endif
-
-                @forelse ($recentRuns as $run)
-                    <li @class([
-                        'flex flex-wrap items-center justify-between gap-4 py-4',
-                        'bg-paper' => session('last_run_id') == $run->getKey(),
-                    ])>
-                        <div class="flex flex-col gap-1">
-                            <a class="text-sm font-medium text-ink hover:text-accent" href="{{ route('broadcast-runs.show', [$project, $run]) }}">
-                                <x-timestamp :value="$run->started_at" />
-                            </a>
-                            <p class="font-mono text-xs text-muted">
-                                @if ($run->is_dry)
-                                    Dry run ·
-                                @endif
-                                {{ $run->status->label() }}
-                                · discovered {{ $run->items_found }}
-                                · published {{ $run->items_delivered }}
-                                · skipped {{ $run->items_skipped }}
-                                · failed {{ $run->items_failed }}
-                                @if ($run->finished_at && $run->started_at)
-                                    · {{ $run->started_at->diffInSeconds($run->finished_at) }}s
-                                @endif
-                                · {{ ($run->finished_at ?? $run->started_at)->diffForHumans() }}
-                            </p>
-                        </div>
-                        <x-button href="{{ route('broadcast-runs.show', [$project, $run]) }}" variant="ghost" :paw="false">Open</x-button>
-                    </li>
-                @empty
-                    @unless ($project->next_run_at)
-                        <li class="py-4 text-sm text-muted">This broadcast has never run.</li>
-                    @endunless
-                @endforelse
-            </ul>
-        </x-card>
+        {{-- 2. Pipeline: Source / Mapping / Destination as three vertical cards --}}
+        @include('broadcast-mappings.pipeline', [
+            'project' => $project,
+            'source' => $source,
+            'destination' => $destination,
+            'mappingEditor' => $mappingEditor ?? ['ready' => false],
+        ])
 
     </div>
 </x-layout>

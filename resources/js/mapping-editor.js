@@ -127,16 +127,16 @@
                 '<p class="text-sm text-ink">' + escapeHtml(summarize(step)) + '</p>' +
                 '</div>' +
                 '<div class="flex flex-wrap gap-1">' +
-                '<button type="button" class="rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-up' + (index === 0 ? ' disabled' : '') + '>Up</button>' +
-                '<button type="button" class="rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-down' + (index === steps.length - 1 ? ' disabled' : '') + '>Down</button>' +
-                '<button type="button" class="rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-preview>Show result</button>' +
-                '<button type="button" class="rounded px-2 py-1 text-xs text-accent hover:underline" data-step-edit>Edit</button>' +
-                '<button type="button" class="rounded px-2 py-1 text-xs text-state-fail hover:underline" data-step-remove>Remove</button>' +
+                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-up' + (index === 0 ? ' disabled' : '') + '>Up</button>' +
+                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-down' + (index === steps.length - 1 ? ' disabled' : '') + '>Down</button>' +
+                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-preview>Show result</button>' +
+                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-accent hover:underline" data-step-edit>Edit</button>' +
+                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-state-fail hover:underline" data-step-remove>Remove</button>' +
                 '</div></div>' +
                 '<div hidden class="mt-3 rounded-md border border-line bg-paper-raised p-3" data-step-result>' +
                 '<div class="flex items-center justify-between gap-2">' +
                 '<p class="text-xs font-medium tracking-wide text-muted uppercase">Result after step ' + (index + 1) + '</p>' +
-                '<button type="button" class="text-xs text-muted hover:text-ink" data-step-collapse>Collapse</button>' +
+                '<button type="button" class="cursor-pointer text-xs text-muted hover:text-ink" data-step-collapse>Collapse</button>' +
                 '</div>' +
                 '<pre class="mt-2 whitespace-pre-wrap text-sm text-ink" data-step-result-body></pre>' +
                 '</div>';
@@ -175,9 +175,9 @@
         return '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">' + escapeHtml(label) + '</span>' +
             '<textarea name="' + escapeHtml(name) + '" rows="3" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm">' + escapeHtml(value != null ? value : '') + '</textarea>' +
             '<span class="flex flex-wrap gap-2 text-xs text-muted">' +
-            '<button type="button" class="underline" data-insert="space">space</button>' +
-            '<button type="button" class="underline" data-insert="lf">line break</button>' +
-            '<button type="button" class="underline" data-insert="para">paragraph break</button>' +
+            '<button type="button" class="cursor-pointer underline" data-insert="space">space</button>' +
+            '<button type="button" class="cursor-pointer underline" data-insert="lf">line break</button>' +
+            '<button type="button" class="cursor-pointer underline" data-insert="para">paragraph break</button>' +
             '</span></label>';
     }
 
@@ -441,7 +441,7 @@
             addBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
             if (open) {
                 addMenu.innerHTML = (state.operations || []).map(function (op) {
-                    return '<button type="button" role="menuitem" class="block w-full rounded px-3 py-2 text-left text-sm hover:bg-paper" data-op="' + escapeHtml(op.id) + '">' + escapeHtml(op.label) + '</button>';
+                    return '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-2 text-left text-sm hover:bg-paper" data-op="' + escapeHtml(op.id) + '">' + escapeHtml(op.label) + '</button>';
                 }).join('');
             }
         });

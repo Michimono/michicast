@@ -1,4 +1,4 @@
-{{-- Vertical Source → Mapping → Destination pipeline for the broadcast overview. --}}
+{{-- Vertical Source → Mapping → Destination as three stacked cards. --}}
 @php
     $mappingReady = ($mappingEditor['ready'] ?? false) === true;
     $sourceMeta = $mappingEditor['source'] ?? null;
@@ -7,9 +7,7 @@
 
 <div class="flex flex-col gap-6">
     {{-- SOURCE --}}
-    <section class="flex flex-col gap-3">
-        <p class="font-mono text-[0.6875rem] tracking-wide text-muted uppercase">Source</p>
-
+    <x-card heading="Source" kicker="Pipeline">
         @if ($source)
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
@@ -25,10 +23,10 @@
                 <div class="flex flex-wrap gap-2">
                     <x-button href="{{ route('sources.edit', $source) }}" variant="ghost" :paw="false">Manage</x-button>
                     @if ($mappingReady)
-                        <button type="button" class="rounded-md border border-line px-3 py-2 text-sm text-ink hover:border-accent" data-mapping-view-source>
+                        <button type="button" class="cursor-pointer rounded-md border border-line px-3 py-2 text-sm text-ink hover:border-accent" data-mapping-view-source>
                             View source data
                         </button>
-                        <button type="button" class="rounded-md border border-line px-3 py-2 text-sm text-muted hover:text-ink" data-mapping-refresh-sample>
+                        <button type="button" class="cursor-pointer rounded-md border border-line px-3 py-2 text-sm text-muted hover:text-ink" data-mapping-refresh-sample>
                             Refresh sample
                         </button>
                     @endif
@@ -43,23 +41,23 @@
                 @endcan
             </div>
         @endif
-    </section>
+    </x-card>
 
     <div class="flex justify-center text-muted" aria-hidden="true">
         <x-icons.arrow-right class="size-5 rotate-90" />
     </div>
 
     {{-- MAPPING --}}
-    @include('broadcast-mappings.panel', ['mappingEditor' => $mappingEditor])
+    <x-card heading="Mapping" kicker="Pipeline">
+        @include('broadcast-mappings.panel', ['mappingEditor' => $mappingEditor])
+    </x-card>
 
     <div class="flex justify-center text-muted" aria-hidden="true">
         <x-icons.arrow-right class="size-5 rotate-90" />
     </div>
 
     {{-- DESTINATION --}}
-    <section class="flex flex-col gap-3">
-        <p class="font-mono text-[0.6875rem] tracking-wide text-muted uppercase">Destination</p>
-
+    <x-card heading="Destination" kicker="Pipeline">
         @if ($destination)
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
@@ -81,7 +79,7 @@
                 <div class="flex flex-wrap gap-2">
                     <x-button href="{{ route('destinations.edit', $destination) }}" variant="ghost" :paw="false">Manage</x-button>
                     @if ($mappingReady)
-                        <button type="button" class="rounded-md border border-line px-3 py-2 text-sm text-ink hover:border-accent" data-mapping-view-destination>
+                        <button type="button" class="cursor-pointer rounded-md border border-line px-3 py-2 text-sm text-ink hover:border-accent" data-mapping-view-destination>
                             View destination fields
                         </button>
                     @endif
@@ -96,5 +94,5 @@
                 @endcan
             </div>
         @endif
-    </section>
+    </x-card>
 </div>

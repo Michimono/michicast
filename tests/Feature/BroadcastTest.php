@@ -195,7 +195,7 @@ class BroadcastTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee('Pipeline')
+            ->assertSee('Source')->assertSee('Mapping')->assertSee('Destination')
             ->assertDontSee(route('broadcast-pipelines.index', [$organization, $project]), false);
     }
 
