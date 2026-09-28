@@ -9,7 +9,9 @@ use App\Models\Project;
 
 /**
  * Clears delivery and skip state for the latest received source item so a later
- * Run now can publish it again. Does not publish on its own.
+ * Run now can publish it again. Does not publish on its own. Run now still
+ * applies backfill and filters; use SendLatest when those should be bypassed
+ * for a one-item correction publish.
  */
 class AllowLatestResend
 {

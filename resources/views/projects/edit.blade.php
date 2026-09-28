@@ -52,7 +52,7 @@
 
         <x-card id="operations" heading="Operations" kicker="Ops" class="scroll-mt-8">
             <p class="text-sm text-muted">
-                Rehearse a run without publishing, or clear delivery state for the latest received item so Run now can publish it again.
+                Rehearse a run without publishing, clear delivery state so Run now can try again, or publish only the latest received item now (bypasses backfill and already-delivered blockers for that item alone).
             </p>
 
             <div class="flex flex-wrap items-center gap-2">
@@ -71,6 +71,18 @@
                     >
                         @csrf
                         <x-button variant="ghost" :paw="false">Allow resend of latest</x-button>
+                    </form>
+                @endcan
+
+                @can('sendLatest', $project)
+                    <form
+                        method="POST"
+                        action="{{ route('broadcast-send-latests.store', $project) }}"
+                        data-run-form
+                        onsubmit="return confirm('Publish only the latest received item to the destination now? This bypasses backfill and already-delivered blockers for that item alone.')"
+                    >
+                        @csrf
+                        <x-button variant="ghost" :paw="false" data-run-submit>Send latest</x-button>
                     </form>
                 @endcan
             </div>

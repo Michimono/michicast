@@ -36,8 +36,10 @@ class BroadcastLatestResendTest extends TestCase
             ->assertSee('Operations')
             ->assertSee('Dry run')
             ->assertSee('Allow resend of latest')
+            ->assertSee('Send latest')
             ->assertSee(route('broadcast-dry-runs.store', [$organization, $project]), false)
             ->assertSee(route('broadcast-latest-resends.store', [$organization, $project]), false)
+            ->assertSee(route('broadcast-send-latests.store', [$organization, $project]), false)
             ->assertDontSee('Edit broadcast')
             ->getContent();
 

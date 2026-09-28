@@ -75,4 +75,12 @@ class ProjectPolicy
     {
         return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
     }
+
+    /**
+     * Editors and above may force-publish the latest received item now.
+     */
+    public function sendLatest(User $user, Project $project): bool
+    {
+        return $this->memberIsAtLeast($user, $project->organization, Role::Editor);
+    }
 }

@@ -35,6 +35,9 @@ use Throwable;
  * Preview and dry-run reuse the same filter and transform path with publishing
  * disabled. Preview never persists items, deliveries or lifecycle; dry-run
  * records a ProjectRun marked is_dry and a per-broadcast dry_report.
+ *
+ * publishSingleItem supports Send latest: one persisted item, no feed walk,
+ * optional backfill bypass after the caller clears prior deliveries.
  */
 class ExecutingProjectRunner implements ProjectRunner
 {
@@ -74,6 +77,134 @@ class ExecutingProjectRunner implements ProjectRunner
         $this->dry = true;
 
         return $this->execute($project, null);
+    }
+
+    /**
+     * Publish a single already-persisted content item on each matching runnable
+     * broadcast. Skips the source fetch and, when $bypassBackfill is true, the
+     * backfill guard. Prior delivery blockers must be cleared by the caller.
+     * Broadcast filters still apply.
+     */
+    public function publishSingleItem(
+        Project $project,
+        ContentItem $item,
+        bool $bypassBackfill = false,
+    ): ProjectRun {
+        $this->dry = false;
+        $this->fetchedBySource = [];
+
+        $projectRun = ProjectRun::query()->create([
+            'project_id' => $project->getKey(),
+            'status' => RunStatus::Running,
+            'is_dry' => false,
+            'started_at' => now(),
+        ]);
+
+        $broadcasts = $project->broadcasts()
+            ->runnable()
+            ->where('source_id', $item->source_id)
+            ->with(['source', 'destination'])
+            ->orderBy('id')
+            ->get();
+
+        foreach ($broadcasts as $broadcast) {
+            if (! $this->broadcastPartnersRunnable($broadcast)) {
+                continue;
+            }
+
+            $this->publishSingleItemOnBroadcast($project, $projectRun, $broadcast, $item, $bypassBackfill);
+        }
+
+        $this->rollUpCounts($projectRun);
+
+        $projectRun->status = RunStatus::Completed;
+        $projectRun->finished_at = now();
+        $projectRun->save();
+
+        return $projectRun;
+    }
+
+    private function publishSingleItemOnBroadcast(
+        Project $project,
+        ProjectRun $projectRun,
+        Broadcast $broadcast,
+        ContentItem $item,
+        bool $bypassBackfill,
+    ): void {
+        $broadcastRun = BroadcastRun::query()->create([
+            'project_run_id' => $projectRun->getKey(),
+            'broadcast_id' => $broadcast->getKey(),
+            'status' => RunStatus::Running,
+            'started_at' => now(),
+            'dry_report' => null,
+        ]);
+
+        $destination = $broadcast->destination;
+        $provider = $this->destinations->get($destination->type);
+        $sourceName = $broadcast->source->name;
+        $broadcastRun->items_found = 1;
+
+        if (! $bypassBackfill && $this->isBackfill($item, $broadcast)) {
+            $this->recordOutcome(
+                $broadcastRun,
+                $broadcast,
+                $item,
+                (int) $destination->getKey(),
+                'skip',
+                'Item was published before this broadcast existed.',
+                createSkippedDelivery: true,
+            );
+            $this->advanceLifecycle($item, ContentItemLifecycle::Skipped);
+            $broadcastRun->items_skipped++;
+            $broadcastRun->status = RunStatus::Completed;
+            $broadcastRun->finished_at = now();
+            $broadcastRun->save();
+
+            return;
+        }
+
+        $decision = $this->filters->evaluate($broadcast->filter, $item);
+
+        if (! $decision->passed) {
+            $reason = $decision->skipReason ?? 'Filtered out by a broadcast rule.';
+            $this->recordOutcome(
+                $broadcastRun,
+                $broadcast,
+                $item,
+                (int) $destination->getKey(),
+                'skip',
+                $reason,
+                createSkippedDelivery: true,
+            );
+            $this->advanceLifecycle($item, ContentItemLifecycle::Skipped);
+            $broadcastRun->items_skipped++;
+            $broadcastRun->status = RunStatus::Completed;
+            $broadcastRun->finished_at = now();
+            $broadcastRun->save();
+
+            return;
+        }
+
+        $this->advanceLifecycle($item, ContentItemLifecycle::Eligible);
+
+        $message = $this->mapper->prepare($broadcast, $item, $sourceName);
+        $this->advanceLifecycle($item, ContentItemLifecycle::Transformed);
+
+        $this->publish(
+            $project,
+            $broadcastRun,
+            $broadcast,
+            $destination,
+            $item,
+            $provider,
+            $destination->toDefinition(),
+            $message,
+            null,
+        );
+
+        $broadcastRun->status = RunStatus::Completed;
+        $broadcastRun->finished_at = now();
+        $broadcastRun->save();
     }
 
     /**
