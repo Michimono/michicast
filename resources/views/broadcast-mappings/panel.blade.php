@@ -11,7 +11,10 @@
     </div>
 
     @unless ($ready)
-        <p class="text-sm text-muted">Choose both ends of the pipeline to connect fields with mapping steps.</p>
+        <div class="flex flex-col items-center gap-3 px-4 py-8 text-center" data-pipeline-empty="mapping">
+            <h3 class="font-display text-lg tracking-tight text-ink">No mapping yet</h3>
+            <p class="max-w-sm text-sm text-muted">Connect the source fields to the destination fields. Choose both ends of the pipeline first.</p>
+        </div>
     @else
         <div hidden data-mapping-auto class="rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink">
             <span data-mapping-auto-text></span>
@@ -23,9 +26,10 @@
 
         <div class="flex flex-col gap-3" data-mapping-steps></div>
 
-        <p hidden class="text-sm text-muted" data-mapping-empty>
-            Connect the source fields to the destination fields.
-        </p>
+        <div @if (($mappingEditor['proposed_count'] ?? 0) > 0) hidden @endif class="flex flex-col items-center gap-3 px-4 py-8 text-center" data-mapping-empty data-pipeline-empty="mapping">
+            <h3 class="font-display text-lg tracking-tight text-ink">No steps yet</h3>
+            <p class="max-w-sm text-sm text-muted">Connect the source fields to the destination fields. Build the message with simple steps.</p>
+        </div>
 
         <div class="relative">
             <button

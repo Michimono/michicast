@@ -102,7 +102,9 @@ class ProjectDashboardTest extends TestCase
         $response->assertDontSee('Save details');
         $response->assertDontSee('name="name"', false);
         $response->assertDontSee(route('broadcast-pipelines.index', [$organization, $project]), false);
-        $response->assertDontSee('Nothing to chase yet');
+        $response->assertDontSee('No source yet');
+        $response->assertDontSee('No mapping yet');
+        $response->assertDontSee('No destination yet');
         $response->assertDontSee('Add a source');
         $response->assertDontSee('Add destination');
         $response->assertSeeInOrder(['Pipeline', 'Source', 'RSS Feed', 'Manage', 'Mapping', 'Destination', 'Telegram', 'Manage'], false);
@@ -130,7 +132,7 @@ class ProjectDashboardTest extends TestCase
             ->assertSee('Next run')
             ->assertSee('UTC')
             ->assertSee('organization timezone')
-            ->assertDontSee('Nothing to chase yet');
+            ->assertDontSee('No source yet');
     }
 
     public function test_an_empty_project_guides_toward_the_pipeline(): void
@@ -141,8 +143,13 @@ class ProjectDashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee('Nothing to chase yet')
-            ->assertSeeInOrder(['Pipeline', 'Source', 'Add a source', 'Mapping', 'Destination', 'Add destination', 'Nothing to chase yet'], false)
+            ->assertSee('No source yet')
+            ->assertSee('No mapping yet')
+            ->assertSee('No destination yet')
+            ->assertSee('Nothing feeding this broadcast yet.')
+            ->assertSee('Nowhere to publish yet.')
+            ->assertSee('Connect the source fields to the destination fields.')
+            ->assertSeeInOrder(['Pipeline', 'Source', 'No source yet', 'Add a source', 'Mapping', 'No mapping yet', 'Destination', 'No destination yet', 'Add destination'], false)
             ->assertSee(route('broadcast-sources.create', [$organization, $project]), false)
             ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertSee('Pipeline')
@@ -206,10 +213,12 @@ class ProjectDashboardTest extends TestCase
             ->assertOk()
             ->assertDontSee('Old feed')
             ->assertDontSee('Old channel')
+            ->assertSee('No source yet')
+            ->assertSee('No mapping yet')
+            ->assertSee('No destination yet')
             ->assertSee('Nothing feeding this broadcast yet.')
             ->assertSee('Nowhere to publish yet.')
-            ->assertSee('Nothing to chase yet')
-            ->assertSeeInOrder(['Pipeline', 'Source', 'Add a source', 'Destination', 'Add destination'], false)
+            ->assertSeeInOrder(['Pipeline', 'Source', 'No source yet', 'Add a source', 'Destination', 'No destination yet', 'Add destination'], false)
             ->assertSee(route('broadcast-sources.create', [$organization, $project]), false)
             ->assertSee(route('broadcast-destinations.create', [$organization, $project]), false)
             ->assertDontSee('Manage');

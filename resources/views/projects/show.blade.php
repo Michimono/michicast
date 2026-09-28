@@ -122,14 +122,6 @@
                 'destination' => $destination,
                 'mappingEditor' => $mappingEditor ?? ['ready' => false],
             ])
-            @if ($pipelineEmpty)
-                <div class="mt-6">
-                    <x-empty-state
-                        heading="Nothing to chase yet"
-                        message="Add a source and a destination. Michicast connects them into one quiet pipeline."
-                    />
-                </div>
-            @endif
         </x-card>
 
         {{-- 3. Recent activity: next run first, then executions --}}

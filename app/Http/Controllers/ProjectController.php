@@ -106,7 +106,6 @@ class ProjectController extends Controller
             'lastLiveRun' => $lastLiveRun,
             'health' => $health->resolve($project, $lastLiveRun, $autoPausedBroadcasts),
             'autoPausedBroadcasts' => $autoPausedBroadcasts,
-            'pipelineEmpty' => $source === null && $destination === null,
             'scheduleSummary' => $scheduleSummary->describe($project->schedule),
             'mappingEditor' => $mappingEditor,
         ]);
