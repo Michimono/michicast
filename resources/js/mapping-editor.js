@@ -1,6 +1,6 @@
 /*
  * Inline mapping editor on the broadcast overview.
- * Configures ordered steps; previews via the shared MappingEngine endpoint.
+ * Recipe-style Set field steps; previews via the shared MappingEngine endpoint.
  */
 (function () {
     const root = document.querySelector('[data-mapping-editor]');
@@ -43,7 +43,9 @@
     let editingId = null;
     let expandedResultId = null;
     let previewTimer = null;
+    let livePreviewTimer = null;
     let currentOperation = null;
+    let openMenuId = null;
 
     function normalizeStep(step) {
         return {
@@ -77,6 +79,16 @@
         const src = state.source && state.source.schema;
         const dst = state.destination && state.destination.schema;
         switch (step.operation) {
+            case 'set_field': {
+                const field = cfg.field || cfg.to || '';
+                let label = fieldLabel(dst, field);
+                if (!label || label === field) {
+                    label = fieldLabel(src, field) || field;
+                }
+                let t = String(cfg.value != null ? cfg.value : '').replace(/\n/g, '↵');
+                if (t.length > 48) t = t.slice(0, 45) + '…';
+                return label + ' = "' + t + '"';
+            }
             case 'map':
                 return fieldLabel(src, cfg.from) + ' → ' + fieldLabel(dst, cfg.to);
             case 'concatenate':
@@ -111,50 +123,102 @@
             .replace(/"/g, '&quot;');
     }
 
+    function closeStepMenus() {
+        if (!stepsEl) return;
+        stepsEl.querySelectorAll('[data-step-menu]').forEach(function (menu) {
+            menu.hidden = true;
+        });
+        stepsEl.querySelectorAll('[data-step-menu-toggle]').forEach(function (btn) {
+            btn.setAttribute('aria-expanded', 'false');
+        });
+        openMenuId = null;
+    }
+
     function renderSteps() {
         if (!stepsEl) return;
         stepsEl.innerHTML = '';
         steps.forEach(function (step, index) {
             step.order = index;
-            const card = document.createElement('article');
-            card.className = 'rounded-md bg-paper px-3 py-3';
-            card.dataset.stepId = step.id;
-            card.innerHTML =
-                '<div class="flex flex-wrap items-start justify-between gap-3">' +
-                '<div class="min-w-0 flex flex-col gap-1">' +
-                '<p class="font-mono text-[0.6875rem] text-muted">Step ' + (index + 1) + '</p>' +
-                '<p class="text-sm font-medium text-ink">' + escapeHtml(operationLabel(step.operation)) + '</p>' +
-                '<p class="text-sm text-ink">' + escapeHtml(summarize(step)) + '</p>' +
+            const row = document.createElement('article');
+            row.className = 'group border-b border-line py-3 last:border-b-0';
+            row.dataset.stepId = step.id;
+            row.setAttribute('role', 'listitem');
+            row.innerHTML =
+                '<div class="flex items-start gap-3">' +
+                '<span class="mt-0.5 w-6 shrink-0 text-right font-mono text-[0.6875rem] text-muted" aria-hidden="true">' + (index + 1) + '</span>' +
+                '<div class="min-w-0 flex-1">' +
+                '<p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">' + escapeHtml(operationLabel(step.operation)) + '</p>' +
+                '<p class="mt-0.5 text-sm text-ink break-words">' + escapeHtml(summarize(step)) + '</p>' +
                 '</div>' +
-                '<div class="flex flex-wrap gap-1">' +
-                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-up' + (index === 0 ? ' disabled' : '') + '>Up</button>' +
-                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-down' + (index === steps.length - 1 ? ' disabled' : '') + '>Down</button>' +
-                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-ink" data-step-preview>Show result</button>' +
-                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-accent hover:underline" data-step-edit>Edit</button>' +
-                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-state-fail hover:underline" data-step-remove>Remove</button>' +
-                '</div></div>' +
-                '<div hidden class="mt-3 rounded-md border border-line bg-paper-raised p-3" data-step-result>' +
+                '<div class="relative shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">' +
+                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent focus-visible:opacity-100" data-step-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Step ' + (index + 1) + ' actions">⋯</button>' +
+                '<div hidden data-step-menu role="menu" class="absolute right-0 z-20 mt-1 min-w-[9rem] rounded-md border border-line bg-paper-raised p-1 shadow-sm">' +
+                '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-preview>Preview</button>' +
+                '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-edit>Edit</button>' +
+                '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-up' + (index === 0 ? ' disabled' : '') + '>Move up</button>' +
+                '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-down' + (index === steps.length - 1 ? ' disabled' : '') + '>Move down</button>' +
+                '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm text-state-fail hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-remove>Remove</button>' +
+                '</div></div></div>' +
+                '<div hidden class="mt-2 ml-9 rounded-md border border-line bg-paper-raised p-3" data-step-result>' +
                 '<div class="flex items-center justify-between gap-2">' +
-                '<p class="text-xs font-medium tracking-wide text-muted uppercase">Result after step ' + (index + 1) + '</p>' +
-                '<button type="button" class="cursor-pointer text-xs text-muted hover:text-ink" data-step-collapse>Collapse</button>' +
+                '<p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">After step ' + (index + 1) + '</p>' +
+                '<button type="button" class="cursor-pointer text-xs text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-collapse>Collapse</button>' +
                 '</div>' +
-                '<pre class="mt-2 whitespace-pre-wrap text-sm text-ink" data-step-result-body></pre>' +
+                '<pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-sm text-ink" data-step-result-body></pre>' +
                 '</div>';
-            stepsEl.appendChild(card);
+            stepsEl.appendChild(row);
         });
         if (emptyEl) emptyEl.hidden = steps.length > 0;
     }
 
-    function sourceOptions() {
-        return ((state.source && state.source.schema && state.source.schema.fields) || []).map(function (f) {
-            return { value: f.name, label: f.label + ' · ' + f.type };
-        });
+    function sourceFields() {
+        return (state.source && state.source.schema && state.source.schema.fields) || [];
     }
 
-    function destinationOptions() {
-        return ((state.destination && state.destination.schema && state.destination.schema.fields) || []).map(function (f) {
-            return { value: f.name, label: f.label + ' · ' + f.type + (f.required ? ' · required' : '') };
+    function destinationFields() {
+        return (state.destination && state.destination.schema && state.destination.schema.fields) || [];
+    }
+
+    function fieldSuggestions() {
+        const seen = {};
+        const list = [];
+        destinationFields().forEach(function (f) {
+            if (!seen[f.name]) {
+                seen[f.name] = true;
+                list.push({ value: f.name, label: f.label, group: 'Destination', type: f.type, required: !!f.required });
+            }
         });
+        sourceFields().forEach(function (f) {
+            if (!seen[f.name]) {
+                seen[f.name] = true;
+                list.push({ value: f.name, label: f.label, group: 'Source', type: f.type, required: false });
+            }
+        });
+        steps.forEach(function (step) {
+            if (step.operation === 'set_field') {
+                const name = (step.config && step.config.field) || '';
+                if (name && !seen[name]) {
+                    seen[name] = true;
+                    list.push({ value: name, label: name, group: 'Intermediate', type: 'text', required: false });
+                }
+            }
+        });
+        return list;
+    }
+
+    function insertChipsHtml() {
+        const fields = sourceFields().concat(destinationFields());
+        const seen = {};
+        const chips = [];
+        fields.forEach(function (f) {
+            if (seen[f.name]) return;
+            seen[f.name] = true;
+            chips.push(
+                '<button type="button" class="cursor-pointer rounded-full border border-line px-2 py-0.5 text-xs text-ink hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-insert-field="' +
+                escapeHtml(f.name) + '" aria-label="Insert ' + escapeHtml(f.label) + '">{{' + escapeHtml(f.name) + '}}</button>'
+            );
+        });
+        return chips.join('');
     }
 
     function selectHtml(name, options, selected, label) {
@@ -162,69 +226,179 @@
             return '<option value="' + escapeHtml(o.value) + '"' + (o.value === selected ? ' selected' : '') + '>' + escapeHtml(o.label) + '</option>';
         }).join('');
         return '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">' + escapeHtml(label) + '</span>' +
-            '<select name="' + escapeHtml(name) + '" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm">' +
+            '<select name="' + escapeHtml(name) + '" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent">' +
             '<option value="">Choose…</option>' + opts + '</select></label>';
     }
 
     function inputHtml(name, label, value) {
         return '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">' + escapeHtml(label) + '</span>' +
-            '<input name="' + escapeHtml(name) + '" value="' + escapeHtml(value != null ? value : '') + '" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm" /></label>';
+            '<input name="' + escapeHtml(name) + '" value="' + escapeHtml(value != null ? value : '') + '" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" /></label>';
     }
 
     function textareaHtml(name, label, value) {
         return '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">' + escapeHtml(label) + '</span>' +
-            '<textarea name="' + escapeHtml(name) + '" rows="3" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm">' + escapeHtml(value != null ? value : '') + '</textarea>' +
+            '<textarea name="' + escapeHtml(name) + '" rows="3" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent">' + escapeHtml(value != null ? value : '') + '</textarea>' +
             '<span class="flex flex-wrap gap-2 text-xs text-muted">' +
-            '<button type="button" class="cursor-pointer underline" data-insert="space">space</button>' +
-            '<button type="button" class="cursor-pointer underline" data-insert="lf">line break</button>' +
-            '<button type="button" class="cursor-pointer underline" data-insert="para">paragraph break</button>' +
+            '<button type="button" class="cursor-pointer underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-insert="space">space</button>' +
+            '<button type="button" class="cursor-pointer underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-insert="lf">line break</button>' +
+            '<button type="button" class="cursor-pointer underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-insert="para">paragraph break</button>' +
             '</span></label>';
+    }
+
+    function sourceOptions() {
+        return sourceFields().map(function (f) {
+            return { value: f.name, label: f.label + ' · ' + f.type };
+        });
+    }
+
+    function destinationOptions() {
+        return destinationFields().map(function (f) {
+            return { value: f.name, label: f.label + ' · ' + f.type + (f.required ? ' · required' : '') };
+        });
+    }
+
+    function openSetFieldEditor(step) {
+        const cfg = step ? (step.config || {}) : {};
+        const suggestions = fieldSuggestions();
+        const datalistId = 'mapping-field-suggestions';
+        let html = '<p class="text-sm font-medium text-ink">Set field</p>';
+        html += '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">Field</span>' +
+            '<input name="field" list="' + datalistId + '" value="' + escapeHtml(cfg.field || cfg.to || '') + '" placeholder="Destination or intermediate field" autocomplete="off" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" />' +
+            '<datalist id="' + datalistId + '">' +
+            suggestions.map(function (s) {
+                return '<option value="' + escapeHtml(s.value) + '">' + escapeHtml(s.label + ' · ' + s.group) + '</option>';
+            }).join('') +
+            '</datalist></label>';
+
+        html += '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">Value</span>' +
+            '<textarea name="value" rows="5" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" placeholder="Use {{field}} to insert values">' +
+            escapeHtml(cfg.value != null ? cfg.value : '') +
+            '</textarea></label>';
+
+        html += '<div class="flex flex-col gap-1"><p class="text-xs font-medium text-muted">Insert field</p>' +
+            '<div class="flex flex-wrap gap-1.5" data-insert-chips>' + insertChipsHtml() + '</div></div>';
+
+        html += '<div class="rounded-md bg-paper-raised px-3 py-2" data-live-preview-wrap>' +
+            '<p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Resolved preview</p>' +
+            '<pre class="mt-1 whitespace-pre-wrap text-sm text-ink" data-live-preview>(empty)</pre></div>';
+
+        if (editorFields) editorFields.innerHTML = html;
+        wireSetFieldEditor();
+        scheduleLivePreview();
+    }
+
+    function wireSetFieldEditor() {
+        if (!editorFields) return;
+
+        editorFields.querySelectorAll('[data-insert-field]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const ta = editorFields.querySelector('textarea[name="value"]');
+                if (!ta) return;
+                const token = '{{' + btn.getAttribute('data-insert-field') + '}}';
+                const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+                const end = ta.selectionEnd != null ? ta.selectionEnd : start;
+                ta.value = ta.value.slice(0, start) + token + ta.value.slice(end);
+                ta.focus();
+                const caret = start + token.length;
+                ta.setSelectionRange(caret, caret);
+                scheduleLivePreview();
+            });
+        });
+
+        const valueEl = editorFields.querySelector('textarea[name="value"]');
+        const fieldEl = editorFields.querySelector('input[name="field"]');
+        if (valueEl) {
+            valueEl.addEventListener('input', scheduleLivePreview);
+        }
+        if (fieldEl) {
+            fieldEl.addEventListener('input', scheduleLivePreview);
+        }
+    }
+
+    function scheduleLivePreview() {
+        clearTimeout(livePreviewTimer);
+        livePreviewTimer = setTimeout(runLivePreview, 180);
+    }
+
+    function clientResolve(template, context) {
+        const single = /^\s*\{\{\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*\}\}\s*$/;
+        const token = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*\}\}/g;
+        const m = String(template).match(single);
+        if (m) {
+            const path = m[1];
+            if (Object.prototype.hasOwnProperty.call(context, path)) {
+                return context[path];
+            }
+            return '';
+        }
+        return String(template).replace(token, function (_, path) {
+            if (!Object.prototype.hasOwnProperty.call(context, path)) return '';
+            const v = context[path];
+            if (v == null) return '';
+            if (typeof v === 'object') return '';
+            return String(v);
+        });
+    }
+
+    function runLivePreview() {
+        const wrap = editorFields && editorFields.querySelector('[data-live-preview]');
+        if (!wrap) return;
+        const valueEl = editorFields.querySelector('textarea[name="value"]');
+        const template = valueEl ? valueEl.value : '';
+        const resolved = clientResolve(template, sample || {});
+        if (resolved === '' || resolved == null) {
+            wrap.textContent = '(empty)';
+        } else if (typeof resolved === 'object') {
+            wrap.textContent = JSON.stringify(resolved, null, 2);
+        } else {
+            wrap.textContent = String(resolved);
+        }
     }
 
     function openEditor(operation, step) {
         editingId = step ? step.id : null;
         currentOperation = operation;
         const cfg = step ? (step.config || {}) : {};
-        let html = '<p class="text-sm font-medium text-ink">' + escapeHtml(operationLabel(operation)) + '</p>';
 
-        if (operation === 'map') {
-            html += selectHtml('from', sourceOptions(), cfg.from || '', 'From source field');
-            html += selectHtml('to', destinationOptions(), cfg.to || '', 'To destination field');
-        } else if (operation === 'concatenate') {
-            html += selectHtml('value', sourceOptions(), cfg.value || '', 'Value');
-            html += selectHtml('to', destinationOptions(), cfg.to || '', 'To');
-            html += '<p class="text-sm text-muted">Appends the value to the current destination field.</p>';
-        } else if (operation === 'add_text') {
-            html += textareaHtml('text', 'Text', cfg.text || '');
-            html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'To');
-        } else if (operation === 'replace') {
-            html += selectHtml('in', destinationOptions(), cfg.in || 'text', 'Replace in');
-            html += inputHtml('find', 'Find', cfg.find || '');
-            html += inputHtml('replace', 'Replace with', cfg.replace || '');
-        } else if (operation === 'trim') {
-            html += selectHtml('field', destinationOptions(), cfg.field || 'text', 'Field');
-            html += inputHtml('max_length', 'Maximum length', cfg.max_length != null ? cfg.max_length : 1000);
-        } else if (operation === 'format_date') {
-            html += selectHtml('field', sourceOptions(), cfg.field || '', 'Field');
-            const presets = Object.entries(state.date_presets || {}).map(function (pair) {
-                return { value: pair[0], label: pair[1] };
-            });
-            html += selectHtml('format', presets, cfg.format || 'j M Y', 'Format');
-            html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'To');
-        } else if (operation === 'first' || operation === 'last' || operation === 'join') {
-            html += selectHtml('field', sourceOptions(), cfg.field || '', 'Field');
-            if (operation === 'join') {
-                html += inputHtml('separator', 'Separator', cfg.separator != null ? cfg.separator : ', ');
+        if (operation === 'set_field') {
+            openSetFieldEditor(step);
+        } else {
+            let html = '<p class="text-sm font-medium text-ink">' + escapeHtml(operationLabel(operation)) + '</p>';
+
+            if (operation === 'map') {
+                html += selectHtml('from', sourceOptions(), cfg.from || '', 'From source field');
+                html += selectHtml('to', destinationOptions(), cfg.to || '', 'To destination field');
+            } else if (operation === 'concatenate') {
+                html += selectHtml('value', sourceOptions(), cfg.value || '', 'Value');
+                html += selectHtml('to', destinationOptions(), cfg.to || '', 'To');
+                html += '<p class="text-sm text-muted">Appends the value to the current destination field.</p>';
+            } else if (operation === 'add_text') {
+                html += textareaHtml('text', 'Text', cfg.text || '');
+                html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'To');
+            } else if (operation === 'replace') {
+                html += selectHtml('in', destinationOptions(), cfg.in || 'text', 'Replace in');
+                html += inputHtml('find', 'Find', cfg.find || '');
+                html += inputHtml('replace', 'Replace with', cfg.replace || '');
+            } else if (operation === 'trim') {
+                html += selectHtml('field', destinationOptions(), cfg.field || 'text', 'Field');
+                html += inputHtml('max_length', 'Maximum length', cfg.max_length != null ? cfg.max_length : 1000);
+            } else if (operation === 'format_date') {
+                html += selectHtml('field', sourceOptions(), cfg.field || '', 'Field');
+                const presets = Object.entries(state.date_presets || {}).map(function (pair) {
+                    return { value: pair[0], label: pair[1] };
+                });
+                html += selectHtml('format', presets, cfg.format || 'j M Y', 'Format');
+                html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'To');
+            } else if (operation === 'first' || operation === 'last' || operation === 'join') {
+                html += selectHtml('field', sourceOptions(), cfg.field || '', 'Field');
+                if (operation === 'join') {
+                    html += inputHtml('separator', 'Separator', cfg.separator != null ? cfg.separator : ', ');
+                }
+                html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'Target');
             }
-            html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'Target');
-        }
 
-        if (editorFields) editorFields.innerHTML = html;
-        if (editorEl) editorEl.hidden = false;
-        if (addMenu) addMenu.hidden = true;
-        if (addBtn) addBtn.setAttribute('aria-expanded', 'false');
+            if (editorFields) editorFields.innerHTML = html;
 
-        if (editorFields) {
             editorFields.querySelectorAll('[data-insert]').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     const ta = editorFields.querySelector('textarea[name="text"]');
@@ -237,6 +411,13 @@
                 });
             });
         }
+
+        if (editorEl) editorEl.hidden = false;
+        if (addMenu) addMenu.hidden = true;
+        if (addBtn) addBtn.setAttribute('aria-expanded', 'false');
+
+        const focusEl = editorFields && editorFields.querySelector(operation === 'set_field' ? 'textarea[name="value"]' : 'input, select, textarea');
+        if (focusEl) focusEl.focus();
     }
 
     function readEditorConfig() {
@@ -312,8 +493,12 @@
                 const body = card && card.querySelector('[data-step-result-body]');
                 if (box && body) {
                     box.hidden = false;
-                    const text = (data.human && data.human.text != null) ? data.human.text : JSON.stringify(data.data || {}, null, 2);
-                    body.textContent = text || '(empty)';
+                    if (data.data && typeof data.data === 'object') {
+                        body.textContent = JSON.stringify(data.data, null, 2);
+                    } else {
+                        const text = (data.human && data.human.text != null) ? data.human.text : '';
+                        body.textContent = text || '(empty)';
+                    }
                 }
                 return;
             }
@@ -427,10 +612,23 @@
             return;
         }
         const count = state.proposed_count || steps.length;
-        if (count > 0) {
-            autoText.textContent = count === 1 ? '1 field mapped automatically.' : (count + ' fields mapped automatically.');
-            autoEl.hidden = false;
+        if (count <= 0) {
+            autoEl.hidden = true;
+            return;
         }
+        const hasProviderDefault = !!(state.provider_default && state.provider_default.steps && state.provider_default.steps.length);
+        autoText.textContent = hasProviderDefault ? 'Default mapping applied.' : 'Suggested mapping applied.';
+        autoEl.hidden = false;
+    }
+
+    function sortedOperations() {
+        const ops = (state.operations || []).slice();
+        ops.sort(function (a, b) {
+            if (a.id === 'set_field') return -1;
+            if (b.id === 'set_field') return 1;
+            return 0;
+        });
+        return ops;
     }
 
     if (addBtn) {
@@ -440,8 +638,13 @@
             addMenu.hidden = !open;
             addBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
             if (open) {
-                addMenu.innerHTML = (state.operations || []).map(function (op) {
-                    return '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-2 text-left text-sm hover:bg-paper" data-op="' + escapeHtml(op.id) + '">' + escapeHtml(op.label) + '</button>';
+                addMenu.innerHTML = sortedOperations().map(function (op, index) {
+                    const primary = op.id === 'set_field' || op.primary;
+                    return '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-2 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent ' +
+                        (primary ? 'font-medium text-ink' : 'text-ink') +
+                        '" data-op="' + escapeHtml(op.id) + '">' +
+                        escapeHtml(op.label) + (primary && index === 0 ? ' · recommended' : '') +
+                        '</button>';
                 }).join('');
             }
         });
@@ -477,17 +680,33 @@
             const index = steps.findIndex(function (s) { return s.id === id; });
             if (index < 0) return;
 
+            if (event.target.closest('[data-step-menu-toggle]')) {
+                const menu = card.querySelector('[data-step-menu]');
+                const toggle = card.querySelector('[data-step-menu-toggle]');
+                const willOpen = menu && menu.hidden;
+                closeStepMenus();
+                if (willOpen && menu && toggle) {
+                    menu.hidden = false;
+                    toggle.setAttribute('aria-expanded', 'true');
+                    openMenuId = id;
+                }
+                return;
+            }
+
             if (event.target.closest('[data-step-edit]')) {
+                closeStepMenus();
                 openEditor(steps[index].operation, steps[index]);
                 return;
             }
             if (event.target.closest('[data-step-remove]')) {
+                closeStepMenus();
                 steps.splice(index, 1);
                 renderSteps();
                 schedulePreview();
                 return;
             }
             if (event.target.closest('[data-step-up]') && index > 0) {
+                closeStepMenus();
                 const tmp = steps[index - 1];
                 steps[index - 1] = steps[index];
                 steps[index] = tmp;
@@ -496,6 +715,7 @@
                 return;
             }
             if (event.target.closest('[data-step-down]') && index < steps.length - 1) {
+                closeStepMenus();
                 const tmp = steps[index + 1];
                 steps[index + 1] = steps[index];
                 steps[index] = tmp;
@@ -504,6 +724,7 @@
                 return;
             }
             if (event.target.closest('[data-step-preview]')) {
+                closeStepMenus();
                 if (expandedResultId && expandedResultId !== id) {
                     const prev = stepsEl.querySelector('[data-step-id="' + expandedResultId + '"] [data-step-result]');
                     if (prev) prev.hidden = true;
@@ -582,6 +803,19 @@
         if (addMenu && !addMenu.hidden && !event.target.closest('[data-mapping-add]') && !addMenu.contains(event.target)) {
             addMenu.hidden = true;
             if (addBtn) addBtn.setAttribute('aria-expanded', 'false');
+        }
+        if (openMenuId && !event.target.closest('[data-step-menu-toggle]') && !event.target.closest('[data-step-menu]')) {
+            closeStepMenus();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeStepMenus();
+            if (addMenu && !addMenu.hidden) {
+                addMenu.hidden = true;
+                if (addBtn) addBtn.setAttribute('aria-expanded', 'false');
+            }
         }
     });
 

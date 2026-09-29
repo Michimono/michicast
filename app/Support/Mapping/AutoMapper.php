@@ -5,7 +5,7 @@ namespace App\Support\Mapping;
 use Illuminate\Support\Str;
 
 /**
- * Suggests high-confidence step mappings: exact name + compatible types.
+ * Suggests high-confidence Set field steps: exact name + compatible types.
  */
 class AutoMapper
 {
@@ -27,11 +27,11 @@ class AutoMapper
 
             $steps[] = new MappingStep(
                 id: (string) Str::uuid(),
-                operation: 'map',
+                operation: 'set_field',
                 order: $order++,
                 config: [
-                    'from' => $sourceField->name,
-                    'to' => $destField->name,
+                    'field' => $destField->name,
+                    'value' => '{{'.$sourceField->name.'}}',
                 ],
             );
         }

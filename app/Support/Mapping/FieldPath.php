@@ -27,6 +27,26 @@ final class FieldPath
         return $current;
     }
 
+    public static function has(array $data, string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        $segments = explode('.', $path);
+        $current = $data;
+
+        foreach ($segments as $segment) {
+            if (! is_array($current) || ! array_key_exists($segment, $current)) {
+                return false;
+            }
+
+            $current = $current[$segment];
+        }
+
+        return true;
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
