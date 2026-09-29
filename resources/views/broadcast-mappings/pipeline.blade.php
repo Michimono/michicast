@@ -1,4 +1,4 @@
-{{-- Continuous vertical pipeline: Source → Mapping → Destination → Preview → Save. --}}
+{{-- Continuous vertical pipeline: Source → Mapping → Preview → Destination. --}}
 @php
     $mappingReady = ($mappingEditor['ready'] ?? false) === true;
     $sourceMeta = $mappingEditor['source'] ?? null;
@@ -13,12 +13,13 @@
     }
 @endphp
 
-<div class="mx-auto flex w-full max-w-2xl flex-col gap-0" data-mapping-pipeline>
-    {{-- SOURCE (compact) --}}
-    <section class="border-b border-line pb-6" aria-labelledby="mapping-source-heading">
-        <p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Source</p>
+{{-- Level 0 = page bg-paper. Level 1 = elevated white cards. Mapping is the centerpiece. --}}
+<div class="mx-auto flex w-full max-w-2xl flex-col" data-mapping-pipeline>
+
+    {{-- SOURCE (Level 1, compact) --}}
+    <x-card kicker="Source" class="!gap-3 !p-5">
         @if ($source)
-            <div class="mt-2 flex flex-wrap items-start justify-between gap-3">
+            <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
                     <h2 id="mapping-source-heading" class="font-display text-xl tracking-tight text-ink">
                         {{ $source->name }}
@@ -34,7 +35,7 @@
                     @if ($mappingReady)
                         <button
                             type="button"
-                            class="cursor-pointer rounded-md border border-line px-3 py-1.5 text-sm text-ink hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                            class="cursor-pointer rounded-md border border-line bg-paper px-3 py-1.5 text-sm text-ink hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
                             data-mapping-view-source
                             aria-haspopup="dialog"
                         >
@@ -45,7 +46,7 @@
                 </div>
             </div>
         @else
-            <div class="mt-3 flex flex-col items-start gap-2" data-pipeline-empty="source">
+            <div class="flex flex-col items-start gap-2" data-pipeline-empty="source">
                 <h2 id="mapping-source-heading" class="font-display text-lg tracking-tight text-ink">No source yet</h2>
                 <p class="max-w-sm text-sm text-muted">Nothing feeding this broadcast yet. Add a source to start the pipeline.</p>
                 @can('create', [App\Models\Source::class, $project])
@@ -53,26 +54,23 @@
                 @endcan
             </div>
         @endif
-    </section>
+    </x-card>
 
-    <div class="flex justify-center py-3" aria-hidden="true">
-        <span class="h-4 w-px bg-line"></span>
+    <div class="flex justify-center py-2" aria-hidden="true">
+        <span class="select-none text-base leading-none text-line-strong">↓</span>
     </div>
 
-    {{-- MAPPING --}}
-    <section class="border-b border-line pb-6" aria-labelledby="mapping-heading">
-        @include('broadcast-mappings.panel', ['mappingEditor' => $mappingEditor])
-    </section>
+    {{-- Mapping + Preview share the editor root for JS; each is a Level 1 card. --}}
+    @include('broadcast-mappings.panel', ['mappingEditor' => $mappingEditor])
 
-    <div class="flex justify-center py-3" aria-hidden="true">
-        <span class="h-4 w-px bg-line"></span>
+    <div class="flex justify-center py-2" aria-hidden="true">
+        <span class="select-none text-base leading-none text-line-strong">↓</span>
     </div>
 
-    {{-- DESTINATION (compact) --}}
-    <section class="border-b border-line pb-6" aria-labelledby="mapping-destination-heading">
-        <p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Destination</p>
+    {{-- DESTINATION (Level 1, compact) --}}
+    <x-card kicker="Destination" class="!gap-3 !p-5">
         @if ($destination)
-            <div class="mt-2 flex flex-wrap items-start justify-between gap-3">
+            <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
                     <h2 id="mapping-destination-heading" class="font-display text-xl tracking-tight text-ink">
                         {{ $destination->name }}
@@ -89,7 +87,7 @@
                     @if ($mappingReady)
                         <button
                             type="button"
-                            class="cursor-pointer rounded-md border border-line px-3 py-1.5 text-sm text-ink hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+                            class="cursor-pointer rounded-md border border-line bg-paper px-3 py-1.5 text-sm text-ink hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
                             data-mapping-view-destination
                             aria-haspopup="dialog"
                         >
@@ -100,7 +98,7 @@
                 </div>
             </div>
         @else
-            <div class="mt-3 flex flex-col items-start gap-2" data-pipeline-empty="destination">
+            <div class="flex flex-col items-start gap-2" data-pipeline-empty="destination">
                 <h2 id="mapping-destination-heading" class="font-display text-lg tracking-tight text-ink">No destination yet</h2>
                 <p class="max-w-sm text-sm text-muted">Nowhere to publish yet. Add a destination to finish the pipeline.</p>
                 @can('create', [App\Models\Destination::class, $project])
@@ -108,5 +106,5 @@
                 @endcan
             </div>
         @endif
-    </section>
+    </x-card>
 </div>

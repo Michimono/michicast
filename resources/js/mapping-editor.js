@@ -74,6 +74,21 @@
         return found ? found.label : (path || '');
     }
 
+    function setFieldParts(step) {
+        const cfg = step.config || {};
+        const src = state.source && state.source.schema;
+        const dst = state.destination && state.destination.schema;
+        const field = cfg.field || cfg.to || '';
+        let label = fieldLabel(dst, field);
+        if (!label || label === field) {
+            label = fieldLabel(src, field) || field;
+        }
+        let value = String(cfg.value != null ? cfg.value : '');
+        let short = value.replace(/\n/g, '↵');
+        if (short.length > 56) short = short.slice(0, 53) + '…';
+        return { field: field, label: label || '—', value: value, short: short };
+    }
+
     function summarize(step) {
         const cfg = step.config || {};
         const src = state.source && state.source.schema;
@@ -140,26 +155,41 @@
         steps.forEach(function (step, index) {
             step.order = index;
             const row = document.createElement('article');
-            row.className = 'group border-b border-line py-3 last:border-b-0';
+            // Level 2 step card on Level 1 Mapping surface
+            row.className = 'group relative rounded-lg border border-line bg-paper p-3 sm:p-3.5';
             row.dataset.stepId = step.id;
             row.setAttribute('role', 'listitem');
+
+            const op = escapeHtml(operationLabel(step.operation));
+            let bodyHtml;
+            if (step.operation === 'set_field') {
+                const parts = setFieldParts(step);
+                bodyHtml =
+                    '<p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">' + op + '</p>' +
+                    '<p class="mt-1 text-sm text-ink"><span class="text-muted">Field</span> <span class="font-medium">' + escapeHtml(parts.label) + '</span></p>' +
+                    '<p class="mt-0.5 text-sm text-ink break-words"><span class="text-muted">Value</span> <span class="font-mono text-[0.8125rem]">' + escapeHtml(parts.short || '—') + '</span></p>';
+            } else {
+                bodyHtml =
+                    '<p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">' + op + '</p>' +
+                    '<p class="mt-1 text-sm text-ink break-words">' + escapeHtml(summarize(step)) + '</p>';
+            }
+
             row.innerHTML =
                 '<div class="flex items-start gap-3">' +
-                '<span class="mt-0.5 w-6 shrink-0 text-right font-mono text-[0.6875rem] text-muted" aria-hidden="true">' + (index + 1) + '</span>' +
-                '<div class="min-w-0 flex-1">' +
-                '<p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">' + escapeHtml(operationLabel(step.operation)) + '</p>' +
-                '<p class="mt-0.5 text-sm text-ink break-words">' + escapeHtml(summarize(step)) + '</p>' +
-                '</div>' +
-                '<div class="relative shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">' +
-                '<button type="button" class="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent focus-visible:opacity-100" data-step-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Step ' + (index + 1) + ' actions">⋯</button>' +
-                '<div hidden data-step-menu role="menu" class="absolute right-0 z-20 mt-1 min-w-[9rem] rounded-md border border-line bg-paper-raised p-1 shadow-sm">' +
-                '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-preview>Preview</button>' +
+                '<span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[0.6875rem] font-medium text-paper" aria-hidden="true">' + (index + 1) + '</span>' +
+                '<div class="min-w-0 flex-1">' + bodyHtml + '</div>' +
+                '<div class="relative shrink-0">' +
+                '<button type="button" class="cursor-pointer rounded-md p-1.5 text-muted hover:bg-paper-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Step ' + (index + 1) + ' actions">' +
+                '<svg viewBox="0 0 24 24" fill="currentColor" class="size-5" aria-hidden="true"><circle cx="12" cy="5" r="1.75"/><circle cx="12" cy="12" r="1.75"/><circle cx="12" cy="19" r="1.75"/></svg>' +
+                '</button>' +
+                '<div hidden data-step-menu role="menu" class="absolute right-0 z-20 mt-1 min-w-[10rem] rounded-md border border-line bg-paper-raised p-1 shadow-sm">' +
                 '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-edit>Edit</button>' +
                 '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-up' + (index === 0 ? ' disabled' : '') + '>Move up</button>' +
                 '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-down' + (index === steps.length - 1 ? ' disabled' : '') + '>Move down</button>' +
+                '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-preview>Show result</button>' +
                 '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-1.5 text-left text-sm text-state-fail hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-remove>Remove</button>' +
                 '</div></div></div>' +
-                '<div hidden class="mt-2 ml-9 rounded-md border border-line bg-paper-raised p-3" data-step-result>' +
+                '<div hidden class="mt-3 rounded-md border border-line bg-paper-raised p-3" data-step-result>' +
                 '<div class="flex items-center justify-between gap-2">' +
                 '<p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">After step ' + (index + 1) + '</p>' +
                 '<button type="button" class="cursor-pointer text-xs text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-collapse>Collapse</button>' +
@@ -213,9 +243,18 @@
         fields.forEach(function (f) {
             if (seen[f.name]) return;
             seen[f.name] = true;
+            let sample = '';
+            if (state.source && state.source.sample && state.source.sample[f.name] != null) {
+                sample = String(state.source.sample[f.name]);
+            }
+            if (sample.length > 28) sample = sample.slice(0, 25) + '…';
+            const title = sample ? (f.label + ' — e.g. ' + sample) : f.label;
             chips.push(
-                '<button type="button" class="cursor-pointer rounded-full border border-line px-2 py-0.5 text-xs text-ink hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-insert-field="' +
-                escapeHtml(f.name) + '" aria-label="Insert ' + escapeHtml(f.label) + '">{{' + escapeHtml(f.name) + '}}</button>'
+                '<button type="button" class="cursor-pointer rounded-full border border-line bg-paper-raised px-2.5 py-1 text-xs text-ink hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-insert-field="' +
+                escapeHtml(f.name) + '" title="' + escapeHtml(title) + '" aria-label="Insert ' + escapeHtml(f.label) + '">' +
+                '<span class="font-mono">{{' + escapeHtml(f.name) + '}}</span>' +
+                (sample ? '<span class="ml-1 text-muted">' + escapeHtml(sample) + '</span>' : '') +
+                '</button>'
             );
         });
         return chips.join('');
@@ -260,25 +299,36 @@
     function openSetFieldEditor(step) {
         const cfg = step ? (step.config || {}) : {};
         const suggestions = fieldSuggestions();
-        const datalistId = 'mapping-field-suggestions';
+        const selected = cfg.field || cfg.to || '';
+        const inputClass = 'rounded-md border border-line bg-paper-raised px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent';
+
         let html = '<p class="text-sm font-medium text-ink">Set field</p>';
+
+        let options = suggestions.map(function (s) {
+            const req = s.required ? ' · required' : '';
+            return '<option value="' + escapeHtml(s.value) + '"' + (s.value === selected ? ' selected' : '') + '>' +
+                escapeHtml(s.label) + ' · ' + escapeHtml(s.group) + req + '</option>';
+        }).join('');
+
+        if (selected && !suggestions.some(function (s) { return s.value === selected; })) {
+            options += '<option value="' + escapeHtml(selected) + '" selected>' + escapeHtml(selected) + ' · Custom</option>';
+        }
+
         html += '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">Field</span>' +
-            '<input name="field" list="' + datalistId + '" value="' + escapeHtml(cfg.field || cfg.to || '') + '" placeholder="Destination or intermediate field" autocomplete="off" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" />' +
-            '<datalist id="' + datalistId + '">' +
-            suggestions.map(function (s) {
-                return '<option value="' + escapeHtml(s.value) + '">' + escapeHtml(s.label + ' · ' + s.group) + '</option>';
-            }).join('') +
-            '</datalist></label>';
+            '<select name="field" class="' + inputClass + '">' +
+            '<option value="">Choose field…</option>' +
+            options +
+            '</select></label>';
 
         html += '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">Value</span>' +
-            '<textarea name="value" rows="5" class="rounded-md border border-line bg-paper-raised px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" placeholder="Use {{field}} to insert values">' +
+            '<textarea name="value" rows="5" class="' + inputClass + ' font-mono" placeholder="Use {{field}} to insert values">' +
             escapeHtml(cfg.value != null ? cfg.value : '') +
             '</textarea></label>';
 
-        html += '<div class="flex flex-col gap-1"><p class="text-xs font-medium text-muted">Insert field</p>' +
+        html += '<div class="flex flex-col gap-1.5"><p class="text-xs font-medium text-muted">Insert variable</p>' +
             '<div class="flex flex-wrap gap-1.5" data-insert-chips>' + insertChipsHtml() + '</div></div>';
 
-        html += '<div class="rounded-md bg-paper-raised px-3 py-2" data-live-preview-wrap>' +
+        html += '<div class="rounded-md border border-line bg-paper-raised px-3 py-2" data-live-preview-wrap>' +
             '<p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Resolved preview</p>' +
             '<pre class="mt-1 whitespace-pre-wrap text-sm text-ink" data-live-preview>(empty)</pre></div>';
 
@@ -306,7 +356,7 @@
         });
 
         const valueEl = editorFields.querySelector('textarea[name="value"]');
-        const fieldEl = editorFields.querySelector('input[name="field"]');
+        const fieldEl = editorFields.querySelector('[name="field"]');
         if (valueEl) {
             valueEl.addEventListener('input', scheduleLivePreview);
         }
@@ -616,14 +666,17 @@
             autoEl.hidden = true;
             return;
         }
-        const hasProviderDefault = !!(state.provider_default && state.provider_default.steps && state.provider_default.steps.length);
-        autoText.textContent = hasProviderDefault ? 'Default mapping applied.' : 'Suggested mapping applied.';
+        autoText.textContent = count === 1 ? '1 field mapped' : (count + ' fields mapped');
         autoEl.hidden = false;
     }
 
     function sortedOperations() {
         const ops = (state.operations || []).slice();
+        const secondaryIds = { map: true, add_text: true, concatenate: true };
         ops.sort(function (a, b) {
+            const ap = a.id === 'set_field' || a.primary ? 0 : (secondaryIds[a.id] || a.secondary ? 2 : 1);
+            const bp = b.id === 'set_field' || b.primary ? 0 : (secondaryIds[b.id] || b.secondary ? 2 : 1);
+            if (ap !== bp) return ap - bp;
             if (a.id === 'set_field') return -1;
             if (b.id === 'set_field') return 1;
             return 0;
@@ -638,14 +691,34 @@
             addMenu.hidden = !open;
             addBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
             if (open) {
-                addMenu.innerHTML = sortedOperations().map(function (op, index) {
-                    const primary = op.id === 'set_field' || op.primary;
-                    return '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-2 text-left text-sm hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent ' +
-                        (primary ? 'font-medium text-ink' : 'text-ink') +
+                const secondaryIds = { map: true, add_text: true, concatenate: true };
+                const ops = sortedOperations();
+                const primary = [];
+                const tools = [];
+                const more = [];
+                ops.forEach(function (op) {
+                    if (op.id === 'set_field' || op.primary) primary.push(op);
+                    else if (secondaryIds[op.id] || op.secondary) more.push(op);
+                    else tools.push(op);
+                });
+                function opButton(op, emphasized) {
+                    return '<button type="button" role="menuitem" class="cursor-pointer block w-full rounded px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent ' +
+                        (emphasized ? 'font-medium text-ink hover:bg-paper' : 'text-muted hover:bg-paper hover:text-ink') +
                         '" data-op="' + escapeHtml(op.id) + '">' +
-                        escapeHtml(op.label) + (primary && index === 0 ? ' · recommended' : '') +
+                        escapeHtml(op.label) +
                         '</button>';
-                }).join('');
+                }
+                let html = '';
+                primary.forEach(function (op) { html += opButton(op, true); });
+                if (tools.length) {
+                    html += '<p class="px-3 pt-2 pb-1 text-[0.625rem] font-medium tracking-wide text-muted uppercase">Tools</p>';
+                    tools.forEach(function (op) { html += opButton(op, false); });
+                }
+                if (more.length) {
+                    html += '<p class="px-3 pt-2 pb-1 text-[0.625rem] font-medium tracking-wide text-muted uppercase">More</p>';
+                    more.forEach(function (op) { html += opButton(op, false); });
+                }
+                addMenu.innerHTML = html;
             }
         });
     }

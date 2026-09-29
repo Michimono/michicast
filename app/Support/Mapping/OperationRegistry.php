@@ -62,10 +62,11 @@ class OperationRegistry
     }
 
     /**
-     * @return list<array{id: string, label: string, primary?: bool}>
+     * @return list<array{id: string, label: string, primary?: bool, secondary?: bool}>
      */
     public function catalog(): array
     {
+        $secondary = ['map', 'add_text', 'concatenate'];
         $items = [];
 
         foreach ($this->operations as $operation) {
@@ -76,6 +77,8 @@ class OperationRegistry
 
             if ($operation->id() === 'set_field') {
                 $item['primary'] = true;
+            } elseif (in_array($operation->id(), $secondary, true)) {
+                $item['secondary'] = true;
             }
 
             $items[] = $item;
