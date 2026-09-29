@@ -6,7 +6,7 @@
 
 <div class="flex flex-col" data-mapping-root @if ($ready) data-mapping-editor='@json($mappingEditor)' @endif>
     {{-- MAPPING centerpiece (Level 1) --}}
-    <section class="relative flex flex-col gap-4 rounded-card border house-edge bg-paper-raised p-5 sm:p-6" aria-labelledby="mapping-heading" style="--house-edge-surface: var(--color-paper-raised)">
+    <section class="relative flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-5 sm:p-6" aria-labelledby="mapping-heading">
         <p class="flex items-center gap-2.5 font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">
             Mapping
             <span class="house-fill h-0.5 flex-1 rounded-full"></span>
