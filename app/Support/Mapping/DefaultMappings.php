@@ -6,6 +6,8 @@ use Illuminate\Support\Str;
 
 /**
  * Provider-aware default step sequences for common source → destination pairs.
+ * Defaults use Set field templates; legacy multi-step map/add_text/concatenate
+ * sequences are no longer emitted for new mappings.
  */
 final class DefaultMappings
 {
@@ -21,23 +23,32 @@ final class DefaultMappings
     private function rssToTelegram(string $sourceType): MappingDefinition
     {
         return $this->definition($sourceType, 'telegram', [
-            ['map', ['from' => 'title', 'to' => 'text']],
-            ['add_text', ['text' => "\n\n", 'to' => 'text']],
-            ['concatenate', ['value' => 'body', 'to' => 'text']],
-            ['add_text', ['text' => "\n\nRead more: ", 'to' => 'text']],
-            ['concatenate', ['value' => 'link', 'to' => 'text']],
-            ['map', ['from' => 'media', 'to' => 'media']],
+            ['set_field', [
+                'field' => 'text',
+                'value' => "{{title}}\n\n{{body}}\n\nRead more: {{link}}",
+            ]],
+            ['set_field', [
+                'field' => 'media',
+                'value' => '{{media}}',
+            ]],
         ]);
     }
 
     private function rssToRecording(string $sourceType): MappingDefinition
     {
         return $this->definition($sourceType, 'recording', [
-            ['map', ['from' => 'title', 'to' => 'text']],
-            ['add_text', ['text' => "\n\n", 'to' => 'text']],
-            ['concatenate', ['value' => 'body', 'to' => 'text']],
-            ['map', ['from' => 'link', 'to' => 'link']],
-            ['map', ['from' => 'media', 'to' => 'media']],
+            ['set_field', [
+                'field' => 'text',
+                'value' => "{{title}}\n\n{{body}}",
+            ]],
+            ['set_field', [
+                'field' => 'link',
+                'value' => '{{link}}',
+            ]],
+            ['set_field', [
+                'field' => 'media',
+                'value' => '{{media}}',
+            ]],
         ]);
     }
 

@@ -13,7 +13,7 @@ use Tests\TestCase;
 class AutoMapperTest extends TestCase
 {
     #[Test]
-    public function it_maps_exact_compatible_names_only(): void
+    public function it_maps_exact_compatible_names_only_as_set_field(): void
     {
         $source = new ContentSchema(1, [
             new SchemaField('title', 'Title', FieldType::Text),
@@ -31,12 +31,17 @@ class AutoMapperTest extends TestCase
 
         $definition = (new AutoMapper)->suggest($source, $destination);
 
-        $targets = array_map(fn ($step) => $step->config['to'] ?? null, $definition->steps);
+        $this->assertSame('set_field', $definition->steps[0]->operation);
+
+        $targets = array_map(fn ($step) => $step->config['field'] ?? null, $definition->steps);
 
         $this->assertContains('title', $targets);
         $this->assertContains('body', $targets);
         $this->assertContains('media', $targets);
         $this->assertNotContains('text', $targets);
+
+        $titleStep = collect($definition->steps)->first(fn ($s) => ($s->config['field'] ?? null) === 'title');
+        $this->assertSame('{{title}}', $titleStep->config['value']);
     }
 
     #[Test]

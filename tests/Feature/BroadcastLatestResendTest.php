@@ -82,13 +82,17 @@ class BroadcastLatestResendTest extends TestCase
         $this->assertStringContainsString('var(--color-house-2)', $html);
         $this->assertStringContainsString('data-pipeline-empty="source"', $html);
 
-        // Highlight + rainbow ears belong on the Overview card, before the Pipeline stack.
+        // Highlight + rainbow ears belong on the Overview card, before the pipeline Source card - not on Source/Mapping.
         $this->assertMatchesRegularExpression(
-            '/house-edge[\s\S]+linearGradient[\s\S]+Overview[\s\S]+Pipeline[\s\S]+data-pipeline-empty="source"/',
+            '/house-edge[\s\S]+linearGradient[\s\S]+Overview[\s\S]+data-mapping-pipeline[\s\S]+data-pipeline-empty="source"/',
             $html
         );
         $this->assertSame(1, substr_count($html, 'house-edge'));
         $this->assertSame(1, substr_count($html, 'viewBox="0 0 64 10"'));
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-mapping-pipeline[\s\S]*house-edge/',
+            $html
+        );
     }
 
     public function test_allow_resend_of_latest_clears_delivery_without_publishing(): void

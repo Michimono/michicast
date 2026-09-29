@@ -11,11 +11,13 @@ use App\Support\Mapping\Operations\LastItem;
 use App\Support\Mapping\Operations\MapField;
 use App\Support\Mapping\Operations\MappingOperation;
 use App\Support\Mapping\Operations\ReplaceText;
+use App\Support\Mapping\Operations\SetField;
 use App\Support\Mapping\Operations\TrimText;
 use InvalidArgumentException;
 
 /**
  * Allowlisted mapping operations. Adding a new op means registering it here.
+ * Set field is primary; legacy ops remain for saved mappings.
  */
 class OperationRegistry
 {
@@ -25,6 +27,7 @@ class OperationRegistry
     public function __construct()
     {
         foreach ([
+            new SetField,
             new MapField,
             new AddText,
             new Concatenate,
@@ -59,17 +62,26 @@ class OperationRegistry
     }
 
     /**
-     * @return list<array{id: string, label: string}>
+     * @return list<array{id: string, label: string, primary?: bool, secondary?: bool}>
      */
     public function catalog(): array
     {
+        $secondary = ['map', 'add_text', 'concatenate'];
         $items = [];
 
         foreach ($this->operations as $operation) {
-            $items[] = [
+            $item = [
                 'id' => $operation->id(),
                 'label' => $operation->label(),
             ];
+
+            if ($operation->id() === 'set_field') {
+                $item['primary'] = true;
+            } elseif (in_array($operation->id(), $secondary, true)) {
+                $item['secondary'] = true;
+            }
+
+            $items[] = $item;
         }
 
         return $items;

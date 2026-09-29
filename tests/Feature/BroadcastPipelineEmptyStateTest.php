@@ -102,7 +102,7 @@ class BroadcastPipelineEmptyStateTest extends TestCase
             ->assertDontSee('No mapping yet')
             ->assertDontSee('No destination yet')
             ->assertSee('Add step')
-            ->assertSee('Build the message with simple steps.')
+            ->assertSee('Build the destination data step by step.')
             ->assertSee('Feed')
             ->assertSee('Recorder');
     }

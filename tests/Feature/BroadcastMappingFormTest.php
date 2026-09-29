@@ -27,7 +27,7 @@ class BroadcastMappingFormTest extends TestCase
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Mapping', false)
-            ->assertSee('Build the message with simple steps.', false)
+            ->assertSee('Build the destination data step by step.', false)
             ->assertSee('Add step', false)
             ->assertSee('Nothing will be sent.', false)
             ->assertSee('Source', false)
@@ -49,7 +49,7 @@ class BroadcastMappingFormTest extends TestCase
             ->assertJsonPath('ok', true);
 
         $this->assertNotNull($broadcast->refresh()->mapping);
-        $this->assertSame('map', $broadcast->mapping['steps'][0]['operation']);
+        $this->assertSame('set_field', $broadcast->mapping['steps'][0]['operation']);
     }
 
     #[Test]

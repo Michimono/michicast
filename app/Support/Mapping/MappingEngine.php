@@ -7,7 +7,9 @@ use Throwable;
 /**
  * Shared evaluation service for mapping preview and production publishes.
  *
- * Steps mutate an intermediate destination-shaped state; source data is read-only.
+ * MappingContext starts from source fields. Each step mutates the context
+ * (Set field resolves templates against the current context; last write wins).
+ * Destination output is the destination-schema projection of the final context.
  */
 class MappingEngine
 {
@@ -33,7 +35,7 @@ class MappingEngine
             $sources[$sourceKey] = $sourceData;
         }
 
-        $state = [];
+        $context = MappingContext::fromSource($sourceData);
         $errors = [];
         $steps = $definition->stepsUpTo($throughStepId);
 
@@ -63,8 +65,8 @@ class MappingEngine
             }
 
             try {
-                $result = $operation->apply($state, $sources, $step->config);
-                $state = $result['state'];
+                $result = $operation->apply($context->all(), $sources, $step->config);
+                $context->replace($result['state']);
                 foreach ($result['errors'] as $error) {
                     $errors[] = new MappingError(
                         field: $error->field,
@@ -83,11 +85,15 @@ class MappingEngine
             }
         }
 
+        $data = $throughStepId === null
+            ? $context->project($destinationSchema)
+            : $context->all();
+
         if ($throughStepId === null) {
-            array_push($errors, ...$this->validateDestination($destinationSchema, $state));
+            array_push($errors, ...$this->validateDestination($destinationSchema, $data));
         }
 
-        return new MappingResult($state, $errors);
+        return new MappingResult($data, $errors);
     }
 
     /**

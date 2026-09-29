@@ -64,6 +64,7 @@ class MappingEngineTest extends TestCase
     {
         $definition = (new DefaultMappings)->for('rss', 'telegram');
         $this->assertNotNull($definition);
+        $this->assertSame('set_field', $definition->steps[0]->operation);
 
         $result = (new MappingEngine)->evaluate(
             TelegramDestinationSchema::make(),
@@ -120,5 +121,22 @@ class MappingEngineTest extends TestCase
 
         $this->assertCount(count($original->steps), $restored->steps);
         $this->assertSame($original->steps[0]->operation, $restored->steps[0]->operation);
+    }
+
+    #[Test]
+    public function preview_and_production_share_engine_results(): void
+    {
+        $definition = (new DefaultMappings)->for('rss', 'telegram');
+        $engine = new MappingEngine;
+        $source = RssSourceSchema::sample();
+
+        $a = $engine->evaluate(TelegramDestinationSchema::make(), $definition, $source, sourceSchema: RssSourceSchema::make());
+        $b = $engine->evaluate(TelegramDestinationSchema::make(), $definition, $source, sourceSchema: RssSourceSchema::make());
+
+        $this->assertSame($a->data, $b->data);
+        $this->assertSame(
+            array_map(fn ($e) => $e->toArray(), $a->errors),
+            array_map(fn ($e) => $e->toArray(), $b->errors),
+        );
     }
 }
