@@ -56,14 +56,7 @@
                 ></div>
             </div>
 
-            {{-- Inline editor: expands only while editing (Level 3 inputs inside) --}}
-            <div hidden data-mapping-step-editor class="rounded-lg border border-line bg-paper p-4">
-                <div class="flex flex-col gap-3" data-mapping-step-editor-fields></div>
-                <div class="mt-4 flex flex-wrap gap-2">
-                    <button type="button" class="cursor-pointer rounded-md border border-line bg-paper-raised px-3 py-1.5 text-sm text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-mapping-step-cancel>Cancel</button>
-                    <button type="button" class="cursor-pointer rounded-md bg-ink px-3 py-1.5 text-sm text-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-mapping-step-save>Save step</button>
-                </div>
-            </div>
+            {{-- Step editor mounts inline inside the edited step card (see mapping-editor.js). --}}
 
             <div class="flex flex-wrap items-center gap-2 border-t border-line pt-4">
                 <button

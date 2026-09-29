@@ -24,8 +24,9 @@
     const emptyEl = root.querySelector('[data-mapping-empty]');
     const addBtn = root.querySelector('[data-mapping-add]');
     const addMenu = root.querySelector('[data-mapping-add-menu]');
-    const editorEl = root.querySelector('[data-mapping-step-editor]');
-    const editorFields = root.querySelector('[data-mapping-step-editor-fields]');
+    let editorEl = null;
+    let editorFields = null;
+    const NEW_STEP_ID = '__new__';
     const autoEl = root.querySelector('[data-mapping-auto]');
     const autoText = root.querySelector('[data-mapping-auto-text]');
     const saveBtn = root.querySelector('[data-mapping-save]');
@@ -149,6 +150,28 @@
         openMenuId = null;
     }
 
+    function refreshEditorMount() {
+        editorEl = root.querySelector('[data-mapping-step-editor]');
+        editorFields = root.querySelector('[data-mapping-step-editor-fields]');
+    }
+
+    function editorShellHtml() {
+        return '<div data-mapping-step-editor class="mt-1 flex flex-col gap-3">' +
+            '<div class="flex flex-col gap-3" data-mapping-step-editor-fields></div>' +
+            '<div class="mt-1 flex flex-wrap gap-2">' +
+            '<button type="button" class="cursor-pointer rounded-md border border-line bg-paper-raised px-3 py-1.5 text-sm text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-mapping-step-cancel>Cancel</button>' +
+            '<button type="button" class="cursor-pointer rounded-md bg-ink px-3 py-1.5 text-sm text-paper focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-mapping-step-save>Save step</button>' +
+            '</div></div>';
+    }
+
+    function closeEditor() {
+        editingId = null;
+        currentOperation = null;
+        editorEl = null;
+        editorFields = null;
+        renderSteps();
+    }
+
     function renderSteps() {
         if (!stepsEl) return;
         stepsEl.innerHTML = '';
@@ -159,6 +182,18 @@
             row.className = 'group relative rounded-lg border border-line bg-paper p-3 sm:p-3.5';
             row.dataset.stepId = step.id;
             row.setAttribute('role', 'listitem');
+
+            const pill = '<span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[0.6875rem] font-medium text-paper" aria-hidden="true">' + (index + 1) + '</span>';
+
+            if (editingId === step.id && currentOperation) {
+                row.innerHTML =
+                    '<div class="flex items-start gap-3">' +
+                    pill +
+                    '<div class="min-w-0 flex-1">' + editorShellHtml() + '</div>' +
+                    '</div>';
+                stepsEl.appendChild(row);
+                return;
+            }
 
             const op = escapeHtml(operationLabel(step.operation));
             let bodyHtml;
@@ -176,7 +211,7 @@
 
             row.innerHTML =
                 '<div class="flex items-start gap-3">' +
-                '<span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[0.6875rem] font-medium text-paper" aria-hidden="true">' + (index + 1) + '</span>' +
+                pill +
                 '<div class="min-w-0 flex-1">' + bodyHtml + '</div>' +
                 '<div class="relative shrink-0">' +
                 '<button type="button" class="cursor-pointer rounded-md p-1.5 text-muted hover:bg-paper-raised hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-step-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Step ' + (index + 1) + ' actions">' +
@@ -198,7 +233,23 @@
                 '</div>';
             stepsEl.appendChild(row);
         });
-        if (emptyEl) emptyEl.hidden = steps.length > 0;
+
+        if (editingId === NEW_STEP_ID && currentOperation) {
+            const draft = document.createElement('article');
+            draft.className = 'group relative rounded-lg border border-line bg-paper p-3 sm:p-3.5';
+            draft.dataset.stepId = NEW_STEP_ID;
+            draft.setAttribute('role', 'listitem');
+            const n = steps.length + 1;
+            draft.innerHTML =
+                '<div class="flex items-start gap-3">' +
+                '<span class="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[0.6875rem] font-medium text-paper" aria-hidden="true">' + n + '</span>' +
+                '<div class="min-w-0 flex-1">' + editorShellHtml() + '</div>' +
+                '</div>';
+            stepsEl.appendChild(draft);
+        }
+
+        if (emptyEl) emptyEl.hidden = steps.length > 0 || editingId === NEW_STEP_ID;
+        refreshEditorMount();
     }
 
     function sourceFields() {
@@ -405,66 +456,79 @@
         }
     }
 
-    function openEditor(operation, step) {
-        editingId = step ? step.id : null;
-        currentOperation = operation;
+    function fillEditorFields(operation, step) {
         const cfg = step ? (step.config || {}) : {};
+        refreshEditorMount();
 
         if (operation === 'set_field') {
             openSetFieldEditor(step);
-        } else {
-            let html = '<p class="text-sm font-medium text-ink">' + escapeHtml(operationLabel(operation)) + '</p>';
-
-            if (operation === 'map') {
-                html += selectHtml('from', sourceOptions(), cfg.from || '', 'From source field');
-                html += selectHtml('to', destinationOptions(), cfg.to || '', 'To destination field');
-            } else if (operation === 'concatenate') {
-                html += selectHtml('value', sourceOptions(), cfg.value || '', 'Value');
-                html += selectHtml('to', destinationOptions(), cfg.to || '', 'To');
-                html += '<p class="text-sm text-muted">Appends the value to the current destination field.</p>';
-            } else if (operation === 'add_text') {
-                html += textareaHtml('text', 'Text', cfg.text || '');
-                html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'To');
-            } else if (operation === 'replace') {
-                html += selectHtml('in', destinationOptions(), cfg.in || 'text', 'Replace in');
-                html += inputHtml('find', 'Find', cfg.find || '');
-                html += inputHtml('replace', 'Replace with', cfg.replace || '');
-            } else if (operation === 'trim') {
-                html += selectHtml('field', destinationOptions(), cfg.field || 'text', 'Field');
-                html += inputHtml('max_length', 'Maximum length', cfg.max_length != null ? cfg.max_length : 1000);
-            } else if (operation === 'format_date') {
-                html += selectHtml('field', sourceOptions(), cfg.field || '', 'Field');
-                const presets = Object.entries(state.date_presets || {}).map(function (pair) {
-                    return { value: pair[0], label: pair[1] };
-                });
-                html += selectHtml('format', presets, cfg.format || 'j M Y', 'Format');
-                html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'To');
-            } else if (operation === 'first' || operation === 'last' || operation === 'join') {
-                html += selectHtml('field', sourceOptions(), cfg.field || '', 'Field');
-                if (operation === 'join') {
-                    html += inputHtml('separator', 'Separator', cfg.separator != null ? cfg.separator : ', ');
-                }
-                html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'Target');
-            }
-
-            if (editorFields) editorFields.innerHTML = html;
-
-            editorFields.querySelectorAll('[data-insert]').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    const ta = editorFields.querySelector('textarea[name="text"]');
-                    if (!ta) return;
-                    const kind = btn.getAttribute('data-insert');
-                    const token = kind === 'lf' ? '\n' : (kind === 'para' ? '\n\n' : ' ');
-                    const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
-                    ta.value = ta.value.slice(0, start) + token + ta.value.slice(start);
-                    ta.focus();
-                });
-            });
+            return;
         }
 
-        if (editorEl) editorEl.hidden = false;
+        let html = '<p class="text-sm font-medium text-ink">' + escapeHtml(operationLabel(operation)) + '</p>';
+
+        if (operation === 'map') {
+            html += selectHtml('from', sourceOptions(), cfg.from || '', 'From source field');
+            html += selectHtml('to', destinationOptions(), cfg.to || '', 'To destination field');
+        } else if (operation === 'concatenate') {
+            html += selectHtml('value', sourceOptions(), cfg.value || '', 'Value');
+            html += selectHtml('to', destinationOptions(), cfg.to || '', 'To');
+            html += '<p class="text-sm text-muted">Appends the value to the current destination field.</p>';
+        } else if (operation === 'add_text') {
+            html += textareaHtml('text', 'Text', cfg.text || '');
+            html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'To');
+        } else if (operation === 'replace') {
+            html += selectHtml('in', destinationOptions(), cfg.in || 'text', 'Replace in');
+            html += inputHtml('find', 'Find', cfg.find || '');
+            html += inputHtml('replace', 'Replace with', cfg.replace || '');
+        } else if (operation === 'trim') {
+            html += selectHtml('field', destinationOptions(), cfg.field || 'text', 'Field');
+            html += inputHtml('max_length', 'Maximum length', cfg.max_length != null ? cfg.max_length : 1000);
+        } else if (operation === 'format_date') {
+            html += selectHtml('field', sourceOptions(), cfg.field || '', 'Field');
+            const presets = Object.entries(state.date_presets || {}).map(function (pair) {
+                return { value: pair[0], label: pair[1] };
+            });
+            html += selectHtml('format', presets, cfg.format || 'j M Y', 'Format');
+            html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'To');
+        } else if (operation === 'first' || operation === 'last' || operation === 'join') {
+            html += selectHtml('field', sourceOptions(), cfg.field || '', 'Field');
+            if (operation === 'join') {
+                html += inputHtml('separator', 'Separator', cfg.separator != null ? cfg.separator : ', ');
+            }
+            html += selectHtml('to', destinationOptions(), cfg.to || 'text', 'Target');
+        }
+
+        if (editorFields) editorFields.innerHTML = html;
+
+        editorFields.querySelectorAll('[data-insert]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const ta = editorFields.querySelector('textarea[name="text"]');
+                if (!ta) return;
+                const kind = btn.getAttribute('data-insert');
+                const token = kind === 'lf' ? '\n' : (kind === 'para' ? '\n\n' : ' ');
+                const start = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+                ta.value = ta.value.slice(0, start) + token + ta.value.slice(start);
+                ta.focus();
+            });
+        });
+    }
+
+    function openEditor(operation, step) {
+        editingId = step ? step.id : NEW_STEP_ID;
+        currentOperation = operation;
+        expandedResultId = null;
+        closeStepMenus();
         if (addMenu) addMenu.hidden = true;
         if (addBtn) addBtn.setAttribute('aria-expanded', 'false');
+
+        renderSteps();
+        fillEditorFields(operation, step);
+
+        const card = stepsEl && stepsEl.querySelector('[data-step-id="' + editingId + '"]');
+        if (card && card.scrollIntoView) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
 
         const focusEl = editorFields && editorFields.querySelector(operation === 'set_field' ? 'textarea[name="value"]' : 'input, select, textarea');
         if (focusEl) focusEl.focus();
@@ -486,8 +550,9 @@
 
     function saveEditor() {
         if (!currentOperation) return;
+        refreshEditorMount();
         const config = readEditorConfig();
-        if (editingId) {
+        if (editingId && editingId !== NEW_STEP_ID) {
             const idx = steps.findIndex(function (s) { return s.id === editingId; });
             if (idx >= 0) {
                 steps[idx] = { id: steps[idx].id, operation: currentOperation, order: idx, config: config };
@@ -497,7 +562,8 @@
         }
         editingId = null;
         currentOperation = null;
-        if (editorEl) editorEl.hidden = true;
+        editorEl = null;
+        editorFields = null;
         renderSteps();
         schedulePreview();
     }
@@ -731,25 +797,21 @@
         });
     }
 
-    const cancelBtn = root.querySelector('[data-mapping-step-cancel]');
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', function () {
-            editingId = null;
-            currentOperation = null;
-            if (editorEl) editorEl.hidden = true;
-        });
-    }
-
-    const stepSaveBtn = root.querySelector('[data-mapping-step-save]');
-    if (stepSaveBtn) {
-        stepSaveBtn.addEventListener('click', saveEditor);
-    }
-
     if (stepsEl) {
         stepsEl.addEventListener('click', function (event) {
+            if (event.target.closest('[data-mapping-step-cancel]')) {
+                closeEditor();
+                return;
+            }
+            if (event.target.closest('[data-mapping-step-save]')) {
+                saveEditor();
+                return;
+            }
+
             const card = event.target.closest('[data-step-id]');
             if (!card) return;
             const id = card.getAttribute('data-step-id');
+            if (id === NEW_STEP_ID) return;
             const index = steps.findIndex(function (s) { return s.id === id; });
             if (index < 0) return;
 
@@ -821,6 +883,10 @@
         resetBtn.addEventListener('click', function () {
             const defaults = state.provider_default || state.default_mapping;
             steps = ((defaults && defaults.steps) ? defaults.steps : []).map(normalizeStep);
+            editingId = null;
+            currentOperation = null;
+            editorEl = null;
+            editorFields = null;
             renderSteps();
             schedulePreview();
             showAutoBanner();
@@ -888,6 +954,9 @@
             if (addMenu && !addMenu.hidden) {
                 addMenu.hidden = true;
                 if (addBtn) addBtn.setAttribute('aria-expanded', 'false');
+            }
+            if (currentOperation) {
+                closeEditor();
             }
         }
     });
