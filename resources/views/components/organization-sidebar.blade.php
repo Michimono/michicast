@@ -10,7 +10,7 @@
 
 {{--
     Contextual two-level rail: organization (Broadcasts / Archived / Members / Settings),
-    then broadcast (Overview / Activity)
+    then broadcast (Overview / Activity / Settings)
     when a broadcast is in scope. Mobile uses the same hierarchy via the header menu.
 --}}
 <aside
@@ -113,7 +113,6 @@
                     Overview
                 </x-sidebar-link>
 
-
                 <x-sidebar-link
                     :href="route('broadcast-runs.index', $project)"
                     :active="request()->routeIs('broadcast-runs.*')"
@@ -121,6 +120,16 @@
                     <x-slot:icon><x-icons.activity class="size-5 shrink-0" /></x-slot:icon>
                     Activity
                 </x-sidebar-link>
+
+                @can('update', $project)
+                    <x-sidebar-link
+                        :href="route('broadcasts.edit', $project)"
+                        :active="request()->routeIs('broadcasts.edit', 'broadcasts.update')"
+                    >
+                        <x-slot:icon><x-icons.cog class="size-5 shrink-0" /></x-slot:icon>
+                        Settings
+                    </x-sidebar-link>
+                @endcan
             </nav>
         </div>
     @endif

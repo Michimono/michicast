@@ -24,12 +24,12 @@ class BroadcastDryRunController extends Controller
             report($e);
 
             return redirect()
-                ->route('broadcasts.show', $project)
+                ->route('broadcasts.edit', $project)
                 ->with('error', 'The dry run could not finish: '.$e->getMessage());
         }
 
         return redirect()
-            ->route('broadcasts.show', $project)
+            ->route('broadcasts.edit', $project)
             ->with('success', 'Dry run finished. Nothing was published.')
             ->with('last_run_id', $run->getKey());
     }

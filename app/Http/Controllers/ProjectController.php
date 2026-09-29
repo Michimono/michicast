@@ -73,12 +73,6 @@ class ProjectController extends Controller
             $destination = $project->destinations()->notArchived()->oldest('id')->first();
         }
 
-        $recentRuns = $project->runs()
-            ->latest('started_at')
-            ->latest('id')
-            ->limit(5)
-            ->get();
-
         $lastLiveRun = $project->runs()
             ->where('is_dry', false)
             ->latest('started_at')
@@ -91,17 +85,22 @@ class ProjectController extends Controller
             ->oldest('id')
             ->get();
 
+        $mappingEditor = ['ready' => false];
+        if ($broadcast !== null && $source !== null && $destination !== null
+            && ! $source->isArchived() && ! $destination->isArchived()) {
+            $mappingEditor = app(BroadcastMappingController::class)->editorPayload($broadcast);
+        }
+
         return view('projects.show', [
             'project' => $project,
             'broadcast' => $broadcast,
             'source' => $source,
             'destination' => $destination,
-            'recentRuns' => $recentRuns,
             'lastLiveRun' => $lastLiveRun,
             'health' => $health->resolve($project, $lastLiveRun, $autoPausedBroadcasts),
             'autoPausedBroadcasts' => $autoPausedBroadcasts,
-            'pipelineEmpty' => $source === null && $destination === null,
             'scheduleSummary' => $scheduleSummary->describe($project->schedule),
+            'mappingEditor' => $mappingEditor,
         ]);
     }
 

@@ -87,6 +87,11 @@ class OrganizationArchivedBroadcastsTest extends TestCase
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Shelved Digest')
+            ->assertDontSee('>Restore</button>', false);
+
+        $this->actingAs($user)
+            ->get(route('broadcasts.edit', [$organization, $project]))
+            ->assertOk()
             ->assertSee('Restore');
 
         $this->actingAs($user)

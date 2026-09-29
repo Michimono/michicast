@@ -41,6 +41,12 @@ class ProjectScheduleTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
+            ->assertSee('Daily at 15:00')
+            ->assertDontSee('Recent activity');
+
+        $this->actingAs($user)
+            ->get(route('broadcasts.edit', [$organization, $project]))
+            ->assertOk()
             ->assertSee('Saturday, March 7, 2026 at 3:00 PM UTC')
             ->assertSee('organization timezone');
     }

@@ -24,6 +24,7 @@ class BroadcastFactory extends Factory
             'enabled' => true,
             'filter' => null,
             'transform' => null,
+            'mapping' => null,
             'archived_at' => null,
         ];
     }
