@@ -17,7 +17,7 @@
                         <p class="text-sm text-muted">{{ $scheduleSummary }}</p>
                     </div>
 
-                    <div class="flex flex-col items-end gap-2">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
                         @can('changeStatus', $project)
                             @if ($project->status === App\Enums\ProjectStatus::Draft)
                                 @if ($project->canActivate())
@@ -44,20 +44,18 @@
                             @endif
                         @endcan
 
-                        <div class="flex flex-wrap items-center justify-end gap-2">
-                            @can('update', $project)
-                                <x-button href="{{ route('broadcasts.edit', $project) }}" variant="ghost" :paw="false">Settings</x-button>
-                            @endcan
+                        @can('update', $project)
+                            <x-button href="{{ route('broadcasts.edit', $project) }}" variant="ghost" :paw="false">Settings</x-button>
+                        @endcan
 
-                            @can('markDue', $project)
-                                @if ($project->canMarkDue())
-                                    <form method="POST" action="{{ route('immediate-broadcast-runs.store', $project) }}" data-run-form>
-                                        @csrf
-                                        <x-button data-run-submit>Run now</x-button>
-                                    </form>
-                                @endif
-                            @endcan
-                        </div>
+                        @can('markDue', $project)
+                            @if ($project->canMarkDue())
+                                <form method="POST" action="{{ route('immediate-broadcast-runs.store', $project) }}" data-run-form>
+                                    @csrf
+                                    <x-button data-run-submit>Run now</x-button>
+                                </form>
+                            @endif
+                        @endcan
                     </div>
                 </div>
 

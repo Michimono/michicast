@@ -284,7 +284,7 @@ class ProjectDashboardTest extends TestCase
             ->assertSee(route('flows.edit', [$organization, $broadcast]), false);
     }
 
-    public function test_overview_puts_status_tags_on_the_kicker_and_play_below_them(): void
+    public function test_overview_puts_status_tags_on_the_kicker_and_play_with_settings(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create(['name' => 'Ready draft']);
@@ -300,25 +300,50 @@ class ProjectDashboardTest extends TestCase
             ->assertDontSee('A project cannot be activated until it has at least one enabled broadcast.', false)
             ->getContent();
 
-        // Tags stay on the Overview kicker line (Play lives below in the actions column).
+        // Tags stay alone on the Overview kicker line; Play shares one button row with Settings.
         $this->assertMatchesRegularExpression(
             '/<div\b[^>]*font-mono[^>]*>\s*Overview[\s\S]*house-fill[\s\S]*Draft[\s\S]*Never run/i',
             $html,
         );
 
         libxml_use_internal_errors(true);
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
 
         $playInKicker = $xpath->query('//div[contains(@class, "font-mono")][contains(., "Overview")]//form[.//button[contains(normalize-space(.), "Play")]]');
         $this->assertSame(0, $playInKicker->length, 'Play must not sit on the Overview kicker row with the status tags');
 
-        $playInActions = $xpath->query('//div[contains(@class, "items-end")]//form[.//button[contains(normalize-space(.), "Play")]]');
-        $this->assertGreaterThan(0, $playInActions->length, 'Play must sit in the right-side actions column below the tags');
+        $buttonRow = $xpath->query('//div[contains(@class, "flex-wrap") and contains(@class, "justify-end") and contains(@class, "gap-2")][.//form[.//button[contains(normalize-space(.), "Play")]] and .//*[contains(normalize-space(.), "Settings")]]');
+        $this->assertGreaterThan(0, $buttonRow->length, 'Play and Settings must share one horizontal button row');
 
-        $settingsAfterPlay = $xpath->query('//div[contains(@class, "items-end")]//form[.//button[contains(normalize-space(.), "Play")]]/following::*[contains(normalize-space(.), "Settings")]');
-        $this->assertGreaterThan(0, $settingsAfterPlay->length, 'Settings should remain with the action buttons below Play');
+        $stackedColumn = $xpath->query('//div[contains(@class, "flex-col") and contains(@class, "items-end")][.//form[.//button[contains(normalize-space(.), "Play")]]]');
+        $this->assertSame(0, $stackedColumn->length, 'Play must not stack alone above Settings in a flex-col column');
+    }
+
+    public function test_overview_keeps_pause_settings_and_run_now_on_one_row(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $project = Project::factory()->for($organization)->active()->create(['name' => 'Live show']);
+        Broadcast::factory()->for($project)->create();
+
+        $html = $this->actingAs($user)
+            ->get(route('broadcasts.show', [$organization, $project]))
+            ->assertOk()
+            ->assertSeeInOrder(['Overview', 'Active', 'Pause', 'Settings', 'Run now'], false)
+            ->assertDontSee('Play')
+            ->getContent();
+
+        libxml_use_internal_errors(true);
+        $dom = new \DOMDocument;
+        $dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+
+        $buttonRow = $xpath->query('//div[contains(@class, "flex-wrap") and contains(@class, "justify-end") and contains(@class, "gap-2")][.//form[.//button[contains(normalize-space(.), "Pause")]] and .//*[contains(normalize-space(.), "Settings")] and .//form[.//button[contains(normalize-space(.), "Run now")]]]');
+        $this->assertGreaterThan(0, $buttonRow->length, 'Pause, Settings, and Run now must share one horizontal button row');
+
+        $stackedColumn = $xpath->query('//div[contains(@class, "flex-col") and contains(@class, "items-end")][.//form[.//button[contains(normalize-space(.), "Pause")]]]');
+        $this->assertSame(0, $stackedColumn->length, 'Pause must not stack alone above Settings in a flex-col column');
     }
 
     public function test_overview_disables_play_with_a_reason_when_pipeline_is_missing(): void
