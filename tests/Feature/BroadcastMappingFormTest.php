@@ -29,9 +29,33 @@ class BroadcastMappingFormTest extends TestCase
             ->assertSee('Mapping', false)
             ->assertSee('Build the destination data step by step.', false)
             ->assertSee('Add step', false)
+            ->assertSee('Step changes save automatically.', false)
             ->assertSee('Nothing will be sent.', false)
             ->assertSee('Source', false)
             ->assertSee('Destination', false);
+    }
+
+    #[Test]
+    public function telegram_editor_payload_includes_parse_mode(): void
+    {
+        [$user, $organization, $project, $broadcast] = $this->broadcastWorkspace(Role::Editor);
+
+        $broadcast->destination->update([
+            'type' => 'telegram',
+            'config' => [
+                'chat_id' => '@pocketnews',
+                'parse_mode' => 'MarkdownV2',
+            ],
+            'credentials' => [
+                'bot_token' => '123:ABC',
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('broadcasts.show', [$organization, $project]))
+            ->assertOk()
+            ->assertSee('MarkdownV2', false)
+            ->assertSee('parse_mode', false);
     }
 
     #[Test]

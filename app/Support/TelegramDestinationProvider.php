@@ -66,7 +66,7 @@ class TelegramDestinationProvider implements DestinationProvider
                 name: 'parse_mode',
                 label: 'Parse mode',
                 type: ConfigurationFieldType::Select,
-                hint: 'How Telegram should interpret formatting in the message.',
+                hint: 'HTML uses tags like <b>bold</b>. Markdown V2 uses *bold* and _italic_ (single markers, not **). Special characters in content are escaped; formatting markers you type are kept.',
                 options: [
                     TelegramMessageFormatter::PARSE_MODE_HTML => 'HTML',
                     TelegramMessageFormatter::PARSE_MODE_MARKDOWN_V2 => 'Markdown V2',
