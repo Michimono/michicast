@@ -10,7 +10,7 @@
     @endif
 
     @if ($kicker)
-        {{-- div, not p: kickerTrailing may include forms (Play/Pause). Browsers close <p> before <form>, which dumps trailing controls out of the flex row and left-aligns them. --}}
+        {{-- div, not p: kickerTrailing may include interactive controls; browsers close <p> before <form>. --}}
         <div class="flex items-center gap-2.5 font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">
             {{ $kicker }}
 
