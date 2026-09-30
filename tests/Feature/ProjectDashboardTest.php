@@ -304,6 +304,23 @@ class ProjectDashboardTest extends TestCase
             '/Overview[\s\S]*Draft[\s\S]*Never run[\s\S]*Play[\s\S]*Settings/i',
             $html,
         );
+
+        // Kicker must be a div (not p): forms inside <p> are closed out of the flex row by HTML parsers.
+        $this->assertDoesNotMatchRegularExpression(
+            '/<p\b[^>]*font-mono[^>]*>\s*Overview/i',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/<div\b[^>]*font-mono[^>]*>\s*Overview[\s\S]*house-fill[\s\S]*active-broadcast[\s\S]*Play[\s\S]*<\/div>/i',
+            $html,
+        );
+
+        libxml_use_internal_errors(true);
+        $dom = new \DOMDocument();
+        $dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+        $playForms = $xpath->query('//div[contains(@class, "font-mono")][contains(., "Overview")]//form[.//button[contains(normalize-space(.), "Play")]]');
+        $this->assertGreaterThan(0, $playForms->length, 'Play form must remain a descendant of the Overview kicker flex row');
     }
 
     public function test_overview_disables_play_with_a_reason_when_pipeline_is_missing(): void
