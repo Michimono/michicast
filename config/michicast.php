@@ -3,6 +3,7 @@
 use App\Support\RecordingDestinationProvider;
 use App\Support\RssSourceProvider;
 use App\Support\TelegramDestinationProvider;
+use App\Support\TwitterSourceProvider;
 
 return [
 
@@ -108,6 +109,7 @@ return [
 
     'sources' => [
         'rss' => RssSourceProvider::class,
+        'twitter' => TwitterSourceProvider::class,
     ],
 
     /*

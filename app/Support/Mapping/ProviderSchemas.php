@@ -5,6 +5,7 @@ namespace App\Support\Mapping;
 use App\Support\Mapping\Schemas\RecordingDestinationSchema;
 use App\Support\Mapping\Schemas\RssSourceSchema;
 use App\Support\Mapping\Schemas\TelegramDestinationSchema;
+use App\Support\Mapping\Schemas\TwitterSourceSchema;
 
 /**
  * Resolves content schemas and sample data for registered providers.
@@ -14,14 +15,14 @@ final class ProviderSchemas
     public function sourceSchema(string $type): ?ContentSchema
     {
         return match ($type) {
-            'rss', 'fake' => $type === 'fake'
-                ? new ContentSchema(
-                    version: RssSourceSchema::make()->version,
-                    fields: RssSourceSchema::make()->fields,
-                    providerType: 'fake',
-                    label: 'Fake source',
-                )
-                : RssSourceSchema::make(),
+            'rss' => RssSourceSchema::make(),
+            'twitter' => TwitterSourceSchema::make(),
+            'fake' => new ContentSchema(
+                version: RssSourceSchema::make()->version,
+                fields: RssSourceSchema::make()->fields,
+                providerType: 'fake',
+                label: 'Fake source',
+            ),
             default => null,
         };
     }
@@ -42,6 +43,7 @@ final class ProviderSchemas
     {
         return match ($type) {
             'rss', 'fake' => RssSourceSchema::sample(),
+            'twitter' => TwitterSourceSchema::sample(),
             default => null,
         };
     }

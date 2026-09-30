@@ -5,7 +5,7 @@ namespace App\Support\Mapping;
 use Illuminate\Support\Str;
 
 /**
- * Provider-aware default step sequences for common source → destination pairs.
+ * Provider-aware default step sequences for common source â†’ destination pairs.
  * Defaults use Set field templates; legacy multi-step map/add_text/concatenate
  * sequences are no longer emitted for new mappings.
  */
@@ -14,8 +14,8 @@ final class DefaultMappings
     public function for(string $sourceType, string $destinationType): ?MappingDefinition
     {
         return match ($sourceType.'->'.$destinationType) {
-            'rss->telegram', 'fake->telegram' => $this->rssToTelegram($sourceType),
-            'rss->recording', 'fake->recording' => $this->rssToRecording($sourceType),
+            'rss->telegram', 'fake->telegram', 'twitter->telegram' => $this->rssToTelegram($sourceType),
+            'rss->recording', 'fake->recording', 'twitter->recording' => $this->rssToRecording($sourceType),
             default => null,
         };
     }
