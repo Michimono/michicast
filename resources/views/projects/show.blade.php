@@ -5,24 +5,35 @@
             <x-slot:kickerTrailing>
                 <x-project-status :status="$project->status" />
                 <x-project-health :health="$health" />
-            </x-slot:kickerTrailing>
 
-            <div class="flex flex-col gap-4">
                 @can('changeStatus', $project)
                     @if ($project->status === App\Enums\ProjectStatus::Draft)
                         @if ($project->canActivate())
-                            <form method="POST" action="{{ route('active-broadcasts.store', $project) }}">
+                            <form method="POST" action="{{ route('active-broadcasts.store', $project) }}" class="inline-flex font-sans normal-case tracking-normal">
                                 @csrf
-                                <x-button>Activate</x-button>
+                                <x-button>Play</x-button>
                             </form>
                         @else
-                            <span class="inline-flex w-fit" title="{{ $project->activationBlockReason() }}">
-                                <x-button disabled :paw="false" type="button">Activate</x-button>
+                            <span class="inline-flex font-sans normal-case tracking-normal" title="{{ $project->activationBlockReason() }}">
+                                <x-button disabled :paw="false" type="button">Play</x-button>
                             </span>
                         @endif
+                    @elseif ($project->canPause())
+                        <form method="POST" action="{{ route('paused-broadcasts.store', $project) }}" class="inline-flex font-sans normal-case tracking-normal">
+                            @csrf
+                            <x-button variant="ghost" :paw="false">Pause</x-button>
+                        </form>
+                    @elseif ($project->canResume())
+                        <form method="POST" action="{{ route('paused-broadcasts.destroy', $project) }}" class="inline-flex font-sans normal-case tracking-normal">
+                            @csrf
+                            @method('DELETE')
+                            <x-button>Play</x-button>
+                        </form>
                     @endif
                 @endcan
+            </x-slot:kickerTrailing>
 
+            <div class="flex flex-col gap-4">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="min-w-0 flex flex-col gap-2">
                         <h1 class="font-display text-2xl tracking-tight">{{ $project->name }}</h1>
@@ -42,23 +53,6 @@
                                 <form method="POST" action="{{ route('immediate-broadcast-runs.store', $project) }}" data-run-form>
                                     @csrf
                                     <x-button data-run-submit>Run now</x-button>
-                                </form>
-                            @endif
-                        @endcan
-
-                        @can('changeStatus', $project)
-                            @if ($project->canPause())
-                                <form method="POST" action="{{ route('paused-broadcasts.store', $project) }}">
-                                    @csrf
-                                    <x-button variant="ghost" :paw="false">Pause</x-button>
-                                </form>
-                            @endif
-
-                            @if ($project->canResume())
-                                <form method="POST" action="{{ route('paused-broadcasts.destroy', $project) }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <x-button>Resume</x-button>
                                 </form>
                             @endif
                         @endcan

@@ -16,7 +16,7 @@
             <span class="house-fill h-0.5 flex-1 rounded-full"></span>
 
             @isset($kickerTrailing)
-                <span class="flex flex-wrap items-center gap-2 normal-case tracking-wide">
+                <span class="flex flex-wrap items-center gap-2 font-sans text-sm font-medium normal-case tracking-normal">
                     {{ $kickerTrailing }}
                 </span>
             @endisset

@@ -85,7 +85,7 @@ class ProjectDashboardTest extends TestCase
         $response->assertSee('Settings');
         $response->assertSee('Run now');
         $response->assertSee('Pause');
-        $response->assertDontSee('Activate');
+        $response->assertDontSee('Play');
         $response->assertSeeInOrder(['Overview', 'Active', 'Attention needed'], false);
         $response->assertDontSee('Dry run');
         $response->assertDontSee('All activity');
@@ -155,7 +155,7 @@ class ProjectDashboardTest extends TestCase
             ->assertSee('Draft')
             ->assertSee('No schedule set')
             ->assertSee('Settings')
-            ->assertSee('Activate')
+            ->assertSee('Play')
             ->assertDontSee('Run now')
             ->assertSee(route('broadcasts.edit', [$organization, $project]), false)
             ->assertDontSee('Recent activity')
@@ -240,7 +240,7 @@ class ProjectDashboardTest extends TestCase
             ->assertDontSee('Run now')
             ->assertDontSee('Dry run')
             ->assertDontSee('Pause')
-            ->assertDontSee('Resume')
+            ->assertDontSee('Play')
             ->assertDontSee(route('broadcasts.edit', [$organization, $project]), false)
             ->assertDontSee('Set schedule')
             ->assertDontSee('Edit schedule')
@@ -284,7 +284,7 @@ class ProjectDashboardTest extends TestCase
             ->assertSee(route('flows.edit', [$organization, $broadcast]), false);
     }
 
-    public function test_overview_puts_status_tags_on_the_kicker_and_activate_when_draft_is_ready(): void
+    public function test_overview_puts_status_tags_on_the_kicker_and_play_when_draft_is_ready(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create(['name' => 'Ready draft']);
@@ -293,20 +293,20 @@ class ProjectDashboardTest extends TestCase
         $html = $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSeeInOrder(['Overview', 'Draft', 'Never run'], false)
-            ->assertSee('Activate')
+            ->assertSeeInOrder(['Overview', 'Draft', 'Never run', 'Play'], false)
+            ->assertSee('Play')
             ->assertSee(route('active-broadcasts.store', [$organization, $project]), false)
             ->assertDontSee('Run now')
             ->assertDontSee('A project cannot be activated until it has at least one enabled broadcast.', false)
             ->getContent();
 
         $this->assertMatchesRegularExpression(
-            '/kickerTrailing[\s\S]*Draft[\s\S]*Never run|Overview[\s\S]*Draft[\s\S]*Never run[\s\S]*Activate/i',
+            '/Overview[\s\S]*Draft[\s\S]*Never run[\s\S]*Play[\s\S]*Settings/i',
             $html,
         );
     }
 
-    public function test_overview_disables_activate_with_a_reason_when_pipeline_is_missing(): void
+    public function test_overview_disables_play_with_a_reason_when_pipeline_is_missing(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
@@ -314,7 +314,7 @@ class ProjectDashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee('Activate')
+            ->assertSee('Play')
             ->assertSee('disabled', false)
             ->assertSee('A project cannot be activated until it has at least one enabled broadcast.', false)
             ->assertDontSee(route('active-broadcasts.store', [$organization, $project]), false);

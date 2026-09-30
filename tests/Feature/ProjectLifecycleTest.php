@@ -157,7 +157,7 @@ class ProjectLifecycleTest extends TestCase
             ->assertOk()
             ->assertSee('Old Pipeline')
             ->assertSee('Archived')
-            ->assertDontSee('Activate')
+            ->assertDontSee('Play')
             ->assertDontSee('Restore');
     }
 
@@ -170,7 +170,7 @@ class ProjectLifecycleTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee('Activate')
+            ->assertSee('Play')
             ->assertSee(route('active-broadcasts.store', [$organization, $project]), false)
             ->assertDontSee('>Archive</button>', false)
             ->assertDontSee('Pause')
