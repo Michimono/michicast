@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectStatus;
 use App\Enums\Role;
 use App\Enums\RunStatus;
 use App\Models\Broadcast;
@@ -38,6 +39,36 @@ class ImmediateProjectRunTest extends TestCase
         $this->assertSame(RunStatus::Completed, $run->status);
     }
 
+    public function test_run_now_works_on_a_draft_broadcast(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
+
+        [$user, $organization, $project] = $this->projectReadyToRun(draft: true);
+        $this->recordingDestination();
+
+        $this->assertSame(ProjectStatus::Draft, $project->status);
+
+        $this->actingAs($user)
+            ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('success');
+
+        $run = ProjectRun::query()->where('project_id', $project->getKey())->where('is_dry', false)->sole();
+        $this->assertSame(RunStatus::Completed, $run->status);
+        $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
+    }
+
+    public function test_run_now_is_rejected_for_a_paused_broadcast(): void
+    {
+        [$user, $organization, $project] = $this->projectReadyToRun();
+        $project->forceFill(['status' => ProjectStatus::Paused])->save();
+
+        $this->actingAs($user)
+            ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('error', 'Only an active or draft broadcast can run now.');
+    }
+
     public function test_a_viewer_cannot_run_now_immediately(): void
     {
         [, $organization, $project] = $this->projectReadyToRun();
@@ -56,11 +87,13 @@ class ImmediateProjectRunTest extends TestCase
     /**
      * @return array{User, Organization, Project}
      */
-    private function projectReadyToRun(): array
+    private function projectReadyToRun(bool $draft = false): array
     {
         $user = User::factory()->create();
         $organization = Organization::factory()->withMember($user, Role::Editor)->create();
-        $project = Project::factory()->for($organization)->active()->create();
+        $project = Project::factory()->for($organization)->state([
+            'status' => $draft ? ProjectStatus::Draft : ProjectStatus::Active,
+        ])->create();
         $source = Source::factory()->create([
             'project_id' => $project->getKey(),
             'config' => [

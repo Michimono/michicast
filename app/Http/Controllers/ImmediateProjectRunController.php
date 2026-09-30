@@ -18,10 +18,10 @@ class ImmediateProjectRunController extends Controller
     ): RedirectResponse {
         Gate::authorize('markDue', $project);
 
-        if (! $project->canMarkDue()) {
+        if (! $project->canRunNow()) {
             return redirect()
                 ->route('broadcasts.show', $project)
-                ->with('error', 'Only an active project can run now.');
+                ->with('error', 'Only an active or draft broadcast can run now.');
         }
 
         try {

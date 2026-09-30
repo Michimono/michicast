@@ -82,6 +82,15 @@ class Project extends Model
         return $this->status === ProjectStatus::Active;
     }
 
+    /**
+     * Immediate Run now: active broadcasts and new drafts (not paused/archived).
+     */
+    public function canRunNow(): bool
+    {
+        return $this->status === ProjectStatus::Active
+            || $this->status === ProjectStatus::Draft;
+    }
+
     public function canActivate(): bool
     {
         return $this->status === ProjectStatus::Draft && $this->hasRequiredBroadcasts();

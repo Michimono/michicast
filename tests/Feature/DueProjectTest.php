@@ -104,7 +104,7 @@ class DueProjectTest extends TestCase
             ->assertSee(route('immediate-broadcast-runs.store', [$organization, $project]), false);
     }
 
-    public function test_a_draft_project_does_not_show_run_now(): void
+    public function test_a_draft_project_shows_run_now_alongside_settings(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
@@ -112,7 +112,9 @@ class DueProjectTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertDontSee('Run now');
+            ->assertSee('Settings')
+            ->assertSee('Run now')
+            ->assertSee(route('immediate-broadcast-runs.store', [$organization, $project]), false);
     }
 
     public function test_a_viewer_cannot_mark_a_project_due(): void

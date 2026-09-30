@@ -118,7 +118,7 @@
                                                 @if ($project->latestRun->is_dry)
                                                     <span class="font-mono text-xs text-muted">(dry run)</span>
                                                 @endif
-                                                Â·
+                                                &middot;
                                                 <span class="font-mono text-xs text-muted">
                                                     {{ ($project->latestRun->finished_at ?? $project->latestRun->started_at)->diffForHumans() }}
                                                 </span>

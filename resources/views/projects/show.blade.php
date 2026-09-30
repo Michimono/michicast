@@ -22,7 +22,7 @@
                         @endcan
 
                         @can('markDue', $project)
-                            @if ($project->canMarkDue())
+                            @if ($project->canRunNow())
                                 <form method="POST" action="{{ route('immediate-broadcast-runs.store', $project) }}" data-run-form>
                                     @csrf
                                     <x-button data-run-submit>Run now</x-button>

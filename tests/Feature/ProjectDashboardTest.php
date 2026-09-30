@@ -152,6 +152,7 @@ class ProjectDashboardTest extends TestCase
             ->assertSee('Never run')
             ->assertSee('No schedule set')
             ->assertSee('Settings')
+            ->assertSee('Run now')
             ->assertSee(route('broadcasts.edit', [$organization, $project]), false)
             ->assertDontSee('Recent activity')
             ->assertDontSee('Dry run')
