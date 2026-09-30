@@ -74,12 +74,35 @@ class TelegramDestinationProviderTest extends TestCase
     public function test_markdown_v2_reserved_characters_are_escaped(): void
     {
         $formatted = (new TelegramMessageFormatter)->format(
-            new PreparedMessage('Hello_world *bold* [link](x)'),
+            new PreparedMessage('Hello_world and 2 * 3'),
             TelegramMessageFormatter::PARSE_MODE_MARKDOWN_V2,
         );
 
-        $this->assertSame('Hello\\_world \\*bold\\* \\[link\\]\\(x\\)', $formatted['text']);
+        $this->assertSame('Hello\\_world and 2 \\* 3', $formatted['text']);
         $this->assertSame('MarkdownV2', $formatted['parse_mode']);
+    }
+
+    public function test_markdown_v2_preserves_bold_and_normalizes_commonmark(): void
+    {
+        $formatter = new TelegramMessageFormatter;
+
+        $single = $formatter->format(
+            new PreparedMessage('*Hello_world*'),
+            TelegramMessageFormatter::PARSE_MODE_MARKDOWN_V2,
+        );
+        $this->assertSame('*Hello\\_world*', $single['text']);
+
+        $double = $formatter->format(
+            new PreparedMessage('**Hello_world**'),
+            TelegramMessageFormatter::PARSE_MODE_MARKDOWN_V2,
+        );
+        $this->assertSame('*Hello\\_world*', $double['text']);
+
+        $mixed = $formatter->format(
+            new PreparedMessage('See **title** and plain_text'),
+            TelegramMessageFormatter::PARSE_MODE_MARKDOWN_V2,
+        );
+        $this->assertSame('See *title* and plain\\_text', $mixed['text']);
     }
 
     public function test_over_long_content_is_truncated_to_telegram_limit(): void

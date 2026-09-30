@@ -183,6 +183,9 @@ class BroadcastMappingController extends Controller
                 'type' => $destinationType,
                 'type_label' => ($destinationSchema !== null && $destinationSchema->label !== '') ? $destinationSchema->label : $destinationType,
                 'schema' => $destinationSchema?->toArray(),
+                'parse_mode' => is_string(data_get($broadcast->destination->config, 'parse_mode'))
+                    ? data_get($broadcast->destination->config, 'parse_mode')
+                    : null,
             ],
             'mapping' => $active->toArray(),
             'steps' => $stepCards,

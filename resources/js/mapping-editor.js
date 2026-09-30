@@ -139,6 +139,25 @@
             .replace(/"/g, '&quot;');
     }
 
+    function destinationParseMode() {
+        const mode = state.destination && state.destination.parse_mode;
+        return typeof mode === 'string' ? mode : '';
+    }
+
+    function formatHintHtml() {
+        if ((state.destination && state.destination.type) !== 'telegram') {
+            return '';
+        }
+        const mode = destinationParseMode();
+        if (mode === 'MarkdownV2') {
+            return '<span class="mt-1 text-xs text-muted">Telegram Markdown V2: wrap with *single asterisks* for bold (not **). Example: *{{title}}*. Special characters inside variables are escaped when sending.</span>';
+        }
+        if (mode === 'HTML') {
+            return '<span class="mt-1 text-xs text-muted">Telegram HTML: use tags such as &lt;b&gt;{{title}}&lt;/b&gt;. Angle brackets in variables are escaped when sending.</span>';
+        }
+        return '<span class="mt-1 text-xs text-muted">Telegram formatting follows the destination parse mode (HTML or Markdown V2).</span>';
+    }
+
     function closeStepMenus() {
         if (!stepsEl) return;
         stepsEl.querySelectorAll('[data-step-menu]').forEach(function (menu) {
@@ -374,7 +393,7 @@
         html += '<label class="flex flex-col gap-1 text-sm"><span class="font-medium">Value</span>' +
             '<textarea name="value" rows="5" class="' + inputClass + ' font-mono" placeholder="Use {{field}} to insert values">' +
             escapeHtml(cfg.value != null ? cfg.value : '') +
-            '</textarea></label>';
+            '</textarea>' + formatHintHtml() + '</label>';
 
         html += '<div class="flex flex-col gap-1.5"><p class="text-xs font-medium text-muted">Insert variable</p>' +
             '<div class="flex flex-wrap gap-1.5" data-insert-chips>' + insertChipsHtml() + '</div></div>';
@@ -566,6 +585,7 @@
         editorFields = null;
         renderSteps();
         schedulePreview();
+        schedulePersist();
     }
 
     function mappingPayload() {
@@ -584,6 +604,15 @@
     function schedulePreview() {
         clearTimeout(previewTimer);
         previewTimer = setTimeout(function () { runPreview(null); }, 200);
+    }
+
+    let persistTimer = null;
+    let persistInFlight = false;
+    let persistQueued = false;
+
+    function schedulePersist() {
+        clearTimeout(persistTimer);
+        persistTimer = setTimeout(function () { saveMapping(); }, 180);
     }
 
     async function runPreview(throughStepId) {
@@ -660,6 +689,11 @@
     }
 
     async function saveMapping() {
+        if (persistInFlight) {
+            persistQueued = true;
+            return;
+        }
+        persistInFlight = true;
         if (saveStatus) saveStatus.textContent = 'Saving…';
         try {
             const response = await fetch(state.urls.update, {
@@ -685,10 +719,17 @@
                 return;
             }
             state.has_stored_mapping = true;
+            state.mapping = mappingPayload();
             if (saveStatus) saveStatus.textContent = 'Saved.';
             if (autoEl) autoEl.hidden = true;
         } catch (e) {
             if (saveStatus) saveStatus.textContent = 'Could not save.';
+        } finally {
+            persistInFlight = false;
+            if (persistQueued) {
+                persistQueued = false;
+                schedulePersist();
+            }
         }
     }
 
@@ -838,6 +879,7 @@
                 steps.splice(index, 1);
                 renderSteps();
                 schedulePreview();
+                schedulePersist();
                 return;
             }
             if (event.target.closest('[data-step-up]') && index > 0) {
@@ -847,6 +889,7 @@
                 steps[index] = tmp;
                 renderSteps();
                 schedulePreview();
+                schedulePersist();
                 return;
             }
             if (event.target.closest('[data-step-down]') && index < steps.length - 1) {
@@ -856,6 +899,7 @@
                 steps[index] = tmp;
                 renderSteps();
                 schedulePreview();
+                schedulePersist();
                 return;
             }
             if (event.target.closest('[data-step-preview]')) {
@@ -889,6 +933,7 @@
             editorFields = null;
             renderSteps();
             schedulePreview();
+            schedulePersist();
             showAutoBanner();
         });
     }
