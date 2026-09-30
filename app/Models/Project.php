@@ -87,6 +87,22 @@ class Project extends Model
         return $this->status === ProjectStatus::Draft && $this->hasRequiredBroadcasts();
     }
 
+    /**
+     * Why Activate is blocked for a draft, or null when activation is allowed / not a draft.
+     */
+    public function activationBlockReason(): ?string
+    {
+        if ($this->status !== ProjectStatus::Draft) {
+            return null;
+        }
+
+        if ($this->hasRequiredBroadcasts()) {
+            return null;
+        }
+
+        return 'A project cannot be activated until it has at least one enabled broadcast.';
+    }
+
     public function canPause(): bool
     {
         return $this->status === ProjectStatus::Active;

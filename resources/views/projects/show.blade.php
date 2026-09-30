@@ -2,6 +2,11 @@
     <div class="flex flex-col gap-8">
         {{-- 1. Header: read-only identity + sparse actions --}}
         <x-card highlighted kicker="Overview">
+            <x-slot:kickerTrailing>
+                <x-project-status :status="$project->status" />
+                <x-project-health :health="$health" />
+            </x-slot:kickerTrailing>
+
             <div class="flex flex-col gap-4">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="min-w-0 flex flex-col gap-2">
@@ -9,14 +14,36 @@
                         @if ($project->description)
                             <p class="max-w-2xl text-sm text-ink">{{ $project->description }}</p>
                         @endif
-                        <div class="flex flex-wrap items-center gap-2">
-                            <x-project-status :status="$project->status" />
-                            <x-project-health :health="$health" />
-                        </div>
                         <p class="text-sm text-muted">{{ $scheduleSummary }}</p>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        @can('changeStatus', $project)
+                            @if ($project->status === App\Enums\ProjectStatus::Draft)
+                                @if ($project->canActivate())
+                                    <form method="POST" action="{{ route('active-broadcasts.store', $project) }}" class="inline-flex">
+                                        @csrf
+                                        <x-button>Play</x-button>
+                                    </form>
+                                @else
+                                    <span class="inline-flex" title="{{ $project->activationBlockReason() }}">
+                                        <x-button disabled :paw="false" type="button">Play</x-button>
+                                    </span>
+                                @endif
+                            @elseif ($project->canPause())
+                                <form method="POST" action="{{ route('paused-broadcasts.store', $project) }}" class="inline-flex">
+                                    @csrf
+                                    <x-button variant="ghost" :paw="false">Pause</x-button>
+                                </form>
+                            @elseif ($project->canResume())
+                                <form method="POST" action="{{ route('paused-broadcasts.destroy', $project) }}" class="inline-flex">
+                                    @csrf
+                                    @method('DELETE')
+                                    <x-button>Play</x-button>
+                                </form>
+                            @endif
+                        @endcan
+
                         @can('update', $project)
                             <x-button href="{{ route('broadcasts.edit', $project) }}" variant="ghost" :paw="false">Settings</x-button>
                         @endcan
@@ -26,23 +53,6 @@
                                 <form method="POST" action="{{ route('immediate-broadcast-runs.store', $project) }}" data-run-form>
                                     @csrf
                                     <x-button data-run-submit>Run now</x-button>
-                                </form>
-                            @endif
-                        @endcan
-
-                        @can('changeStatus', $project)
-                            @if ($project->canPause())
-                                <form method="POST" action="{{ route('paused-broadcasts.store', $project) }}">
-                                    @csrf
-                                    <x-button variant="ghost" :paw="false">Pause</x-button>
-                                </form>
-                            @endif
-
-                            @if ($project->canResume())
-                                <form method="POST" action="{{ route('paused-broadcasts.destroy', $project) }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <x-button>Resume</x-button>
                                 </form>
                             @endif
                         @endcan

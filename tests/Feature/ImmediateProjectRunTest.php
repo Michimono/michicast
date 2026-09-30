@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ProjectStatus;
 use App\Enums\Role;
 use App\Enums\RunStatus;
 use App\Models\Broadcast;
@@ -38,6 +39,32 @@ class ImmediateProjectRunTest extends TestCase
         $this->assertSame(RunStatus::Completed, $run->status);
     }
 
+    public function test_run_now_is_rejected_for_a_draft_broadcast(): void
+    {
+        [$user, $organization, $project] = $this->projectReadyToRun(draft: true);
+
+        $this->assertSame(ProjectStatus::Draft, $project->status);
+
+        $this->actingAs($user)
+            ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('error', 'Only an active broadcast can run now.');
+
+        $this->assertSame(0, ProjectRun::query()->where('project_id', $project->getKey())->count());
+        $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
+    }
+
+    public function test_run_now_is_rejected_for_a_paused_broadcast(): void
+    {
+        [$user, $organization, $project] = $this->projectReadyToRun();
+        $project->forceFill(['status' => ProjectStatus::Paused])->save();
+
+        $this->actingAs($user)
+            ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
+            ->assertRedirect(route('broadcasts.show', [$organization, $project]))
+            ->assertSessionHas('error', 'Only an active broadcast can run now.');
+    }
+
     public function test_a_viewer_cannot_run_now_immediately(): void
     {
         [, $organization, $project] = $this->projectReadyToRun();
@@ -56,11 +83,13 @@ class ImmediateProjectRunTest extends TestCase
     /**
      * @return array{User, Organization, Project}
      */
-    private function projectReadyToRun(): array
+    private function projectReadyToRun(bool $draft = false): array
     {
         $user = User::factory()->create();
         $organization = Organization::factory()->withMember($user, Role::Editor)->create();
-        $project = Project::factory()->for($organization)->active()->create();
+        $project = Project::factory()->for($organization)->state([
+            'status' => $draft ? ProjectStatus::Draft : ProjectStatus::Active,
+        ])->create();
         $source = Source::factory()->create([
             'project_id' => $project->getKey(),
             'config' => [

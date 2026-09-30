@@ -21,7 +21,7 @@ class ImmediateProjectRunController extends Controller
         if (! $project->canMarkDue()) {
             return redirect()
                 ->route('broadcasts.show', $project)
-                ->with('error', 'Only an active project can run now.');
+                ->with('error', 'Only an active broadcast can run now.');
         }
 
         try {

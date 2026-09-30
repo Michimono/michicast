@@ -10,11 +10,18 @@
     @endif
 
     @if ($kicker)
-        <p class="flex items-center gap-2.5 font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">
+        {{-- div, not p: kickerTrailing may include interactive controls; browsers close <p> before <form>. --}}
+        <div class="flex items-center gap-2.5 font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">
             {{ $kicker }}
 
-            <span class="house-fill h-0.5 flex-1 rounded-full"></span>
-        </p>
+            <span class="house-fill h-0.5 min-w-0 flex-1 rounded-full" aria-hidden="true"></span>
+
+            @isset($kickerTrailing)
+                <div class="flex shrink-0 flex-wrap items-center justify-end gap-2 font-sans text-sm font-medium normal-case tracking-normal">
+                    {{ $kickerTrailing }}
+                </div>
+            @endisset
+        </div>
     @endif
 
     @if ($heading || isset($actions))

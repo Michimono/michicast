@@ -36,6 +36,19 @@ class BrandComponentTest extends TestCase
         $view->assertSee('house-fill', false);
     }
 
+    public function test_a_card_kicker_can_carry_trailing_status_tags(): void
+    {
+        $view = $this->blade(<<<'BLADE'
+            <x-card kicker="Overview">
+                <x-slot:kickerTrailing>Draft</x-slot:kickerTrailing>
+                Body
+            </x-card>
+            BLADE);
+
+        $view->assertSeeInOrder(['Overview', 'Draft'], false);
+        $view->assertSee('house-fill', false);
+    }
+
     public function test_only_eared_cards_grow_ears(): void
     {
         $this->blade('<x-card heading="Plain" eared>Body</x-card>')

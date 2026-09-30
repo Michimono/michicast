@@ -80,6 +80,8 @@ class OrganizationWorkspaceTest extends TestCase
         $response->assertDontSee('>Broadcasts</dt>', false);
         $response->assertSee('Europe/Madrid');
         $response->assertSee('Failed');
+        $response->assertSee('&middot;', false);
+        $response->assertDontSee('Â·');
         $response->assertSee($finishedAt->diffForHumans());
         $response->assertSee('Never run');
         $response->assertSee(route('broadcasts.show', [$organization, $active]), false);

@@ -61,7 +61,7 @@ class BroadcastLatestResendTest extends TestCase
             ->assertDontSee('>Edit</', false)
             ->assertDontSee('Dry run')
             ->assertDontSee('All activity')
-            ->assertDontSee('Activate')
+            ->assertDontSee('Play')
             ->assertSee(route('broadcasts.edit', [$organization, $project]), false);
     }
 
