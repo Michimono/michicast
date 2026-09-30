@@ -8,6 +8,7 @@ use App\Models\ContentItem;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -23,7 +24,7 @@ class TwitterSourceProvider implements SourceProvider
 
     private const RETRY_TIMES = 2;
 
-    private const RETRY_SLEEP_MS = 200;
+    private const RETRY_SLEEP_MS = 500;
 
     private const DEFAULT_ITEM_LIMIT = 25;
 
@@ -166,7 +167,12 @@ class TwitterSourceProvider implements SourceProvider
         try {
             $response = Http::timeout(self::TIMEOUT_SECONDS)
                 ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
-                ->retry(self::RETRY_TIMES, self::RETRY_SLEEP_MS, throw: false)
+                ->retry(
+                    self::RETRY_TIMES,
+                    fn (int $attempt, Throwable $exception): int => $this->retryDelayMilliseconds($attempt, $exception),
+                    fn (Throwable $exception): bool => $this->shouldRetry($exception),
+                    throw: false,
+                )
                 ->withUserAgent(self::USER_AGENT)
                 ->withHeaders([
                     'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -186,7 +192,7 @@ class TwitterSourceProvider implements SourceProvider
 
         if ($response->failed()) {
             throw new SourceFetchFailedException(
-                $this->httpFailureMessage($response->status()),
+                $this->httpFailureMessage($response),
             );
         }
 
@@ -268,13 +274,98 @@ class TwitterSourceProvider implements SourceProvider
         return 'The X profile could not be reached.';
     }
 
-    private function httpFailureMessage(int $status): string
+    private function shouldRetry(Throwable $exception): bool
     {
+        if ($exception instanceof ConnectionException) {
+            return true;
+        }
+
+        if (! $exception instanceof RequestException) {
+            return false;
+        }
+
+        $status = $exception->response->status();
+
+        // Do not immediately repeat a rate-limited request. X's quota is shared
+        // by the caller's address, so another attempt only makes the window worse.
+        return $status === 408 || $status === 425 || $status >= 500;
+    }
+
+    private function retryDelayMilliseconds(int $attempt, Throwable $exception): int
+    {
+        if ($exception instanceof RequestException) {
+            $retryAfter = $this->retryAfterMilliseconds($exception->response);
+
+            if ($retryAfter !== null) {
+                return $retryAfter;
+            }
+        }
+
+        return self::RETRY_SLEEP_MS * (2 ** max(0, $attempt - 1));
+    }
+
+    private function retryAfterMilliseconds(Response $response): ?int
+    {
+        $value = trim((string) $response->header('Retry-After'));
+
+        if ($value !== '') {
+            if (ctype_digit($value)) {
+                return (int) $value * 1000;
+            }
+
+            try {
+                return max(0, CarbonImmutable::parse($value)->timestamp - now()->timestamp) * 1000;
+            } catch (Throwable) {
+                // Fall through to the normal exponential delay.
+            }
+        }
+
+        return null;
+    }
+
+    private function httpFailureMessage(Response $response): string
+    {
+        $status = $response->status();
+
         return match ($status) {
             403 => 'X refused access (HTTP 403). Unauthenticated profile reads are often blocked; try again later or use another source.',
             404 => 'X returned HTTP 404 for that handle. Check the username or whether the account is public.',
-            429 => 'X rate-limited the request (HTTP 429). Wait a moment and try again.',
+            429 => $this->rateLimitFailureMessage($response),
             default => 'X returned HTTP '.$status.'.',
         };
+    }
+
+    private function rateLimitFailureMessage(Response $response): string
+    {
+        $waitMilliseconds = $this->retryAfterMilliseconds($response);
+
+        if ($waitMilliseconds !== null) {
+            $seconds = (int) ceil($waitMilliseconds / 1000);
+
+            return 'X rate-limited the request (HTTP 429). Wait '.$this->formatWait($seconds).' and try again once.';
+        }
+
+        $reset = trim((string) $response->header('x-rate-limit-reset'));
+
+        if (ctype_digit($reset)) {
+            $seconds = max(0, (int) $reset - now()->timestamp);
+
+            if ($seconds > 0) {
+                return 'X rate-limited the request (HTTP 429). Try again in '.$this->formatWait($seconds).'.';
+            }
+        }
+
+        return 'X rate-limited the request (HTTP 429). Wait a moment and try again once.';
+    }
+
+    private function formatWait(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return $seconds.' seconds';
+        }
+
+        $minutes = (int) ceil($seconds / 60);
+
+        return $minutes.' minute'.($minutes === 1 ? '' : 's');
     }
 }

@@ -168,6 +168,26 @@ class TwitterSourceProviderTest extends TestCase
         $this->assertSame('The X profile could not be reached.', $result->message);
     }
 
+    public function test_a_rate_limited_response_is_not_retried_and_reports_retry_after(): void
+    {
+        Http::fake([
+            'https://syndication.twitter.com/srv/timeline-profile/screen-name/NASA' => Http::response(
+                'Slow down',
+                429,
+                ['Retry-After' => '120'],
+            ),
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition());
+
+        $this->assertFalse($result->successful);
+        $this->assertSame(
+            'X rate-limited the request (HTTP 429). Wait 2 minutes and try again once.',
+            $result->message,
+        );
+        Http::assertSentCount(1);
+    }
+
     public function test_a_forbidden_response_is_an_actionable_failure(): void
     {
         Http::fake([
