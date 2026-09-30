@@ -39,22 +39,18 @@ class ImmediateProjectRunTest extends TestCase
         $this->assertSame(RunStatus::Completed, $run->status);
     }
 
-    public function test_run_now_works_on_a_draft_broadcast(): void
+    public function test_run_now_is_rejected_for_a_draft_broadcast(): void
     {
-        $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
-
         [$user, $organization, $project] = $this->projectReadyToRun(draft: true);
-        $this->recordingDestination();
 
         $this->assertSame(ProjectStatus::Draft, $project->status);
 
         $this->actingAs($user)
             ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
             ->assertRedirect(route('broadcasts.show', [$organization, $project]))
-            ->assertSessionHas('success');
+            ->assertSessionHas('error', 'Only an active broadcast can run now.');
 
-        $run = ProjectRun::query()->where('project_id', $project->getKey())->where('is_dry', false)->sole();
-        $this->assertSame(RunStatus::Completed, $run->status);
+        $this->assertSame(0, ProjectRun::query()->where('project_id', $project->getKey())->count());
         $this->assertSame(ProjectStatus::Draft, $project->refresh()->status);
     }
 
@@ -66,7 +62,7 @@ class ImmediateProjectRunTest extends TestCase
         $this->actingAs($user)
             ->post(route('immediate-broadcast-runs.store', [$organization, $project]))
             ->assertRedirect(route('broadcasts.show', [$organization, $project]))
-            ->assertSessionHas('error', 'Only an active or draft broadcast can run now.');
+            ->assertSessionHas('error', 'Only an active broadcast can run now.');
     }
 
     public function test_a_viewer_cannot_run_now_immediately(): void

@@ -104,7 +104,7 @@ class DueProjectTest extends TestCase
             ->assertSee(route('immediate-broadcast-runs.store', [$organization, $project]), false);
     }
 
-    public function test_a_draft_project_shows_run_now_alongside_settings(): void
+    public function test_a_draft_project_shows_activate_instead_of_run_now(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->create();
@@ -113,8 +113,10 @@ class DueProjectTest extends TestCase
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
             ->assertSee('Settings')
-            ->assertSee('Run now')
-            ->assertSee(route('immediate-broadcast-runs.store', [$organization, $project]), false);
+            ->assertSee('Activate')
+            ->assertSee('A project cannot be activated until it has at least one enabled broadcast.', false)
+            ->assertDontSee('Run now')
+            ->assertDontSee(route('immediate-broadcast-runs.store', [$organization, $project]), false);
     }
 
     public function test_a_viewer_cannot_mark_a_project_due(): void

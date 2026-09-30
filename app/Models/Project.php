@@ -82,18 +82,25 @@ class Project extends Model
         return $this->status === ProjectStatus::Active;
     }
 
-    /**
-     * Immediate Run now: active broadcasts and new drafts (not paused/archived).
-     */
-    public function canRunNow(): bool
-    {
-        return $this->status === ProjectStatus::Active
-            || $this->status === ProjectStatus::Draft;
-    }
-
     public function canActivate(): bool
     {
         return $this->status === ProjectStatus::Draft && $this->hasRequiredBroadcasts();
+    }
+
+    /**
+     * Why Activate is blocked for a draft, or null when activation is allowed / not a draft.
+     */
+    public function activationBlockReason(): ?string
+    {
+        if ($this->status !== ProjectStatus::Draft) {
+            return null;
+        }
+
+        if ($this->hasRequiredBroadcasts()) {
+            return null;
+        }
+
+        return 'A project cannot be activated until it has at least one enabled broadcast.';
     }
 
     public function canPause(): bool
