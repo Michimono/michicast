@@ -9,7 +9,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
@@ -30,11 +29,10 @@ class TwitterSourceProvider implements SourceProvider
 
     private const MAX_ITEM_LIMIT = 100;
 
-    private const USER_AGENT = 'Mozilla/5.0 (compatible; Michicast/1.0; +https://github.com/Michimono/michicast)';
-
-    private const TIMELINE_URL = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/%s';
-
-    public function __construct(private TwitterTimelineParser $parser = new TwitterTimelineParser) {}
+    public function __construct(
+        private TwitterTimelineParser $parser = new TwitterTimelineParser,
+        private TwitterSyndicationClient $http = new TwitterSyndicationClient,
+    ) {}
 
     public function type(): string
     {
@@ -162,10 +160,17 @@ class TwitterSourceProvider implements SourceProvider
             throw new SourceFetchFailedException('The Twitter / X source has no handle to reach.');
         }
 
-        $url = sprintf(self::TIMELINE_URL, rawurlencode($handle));
+        $jar = $this->http->newCookieJar();
+        $this->http->softBootstrap(
+            $jar,
+            $handle,
+            self::TIMEOUT_SECONDS,
+            self::CONNECT_TIMEOUT_SECONDS,
+        );
 
         try {
-            $response = Http::timeout(self::TIMEOUT_SECONDS)
+            $response = $this->http->pendingTimelineRequest($jar, $handle)
+                ->timeout(self::TIMEOUT_SECONDS)
                 ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
                 ->retry(
                     self::RETRY_TIMES,
@@ -173,12 +178,7 @@ class TwitterSourceProvider implements SourceProvider
                     fn (Throwable $exception): bool => $this->shouldRetry($exception),
                     throw: false,
                 )
-                ->withUserAgent(self::USER_AGENT)
-                ->withHeaders([
-                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language' => 'en-US,en;q=0.9',
-                ])
-                ->get($url);
+                ->get($this->http->timelineUrl($handle));
         } catch (ConnectionException $exception) {
             throw new SourceFetchFailedException(
                 $this->connectionFailureMessage($exception),
