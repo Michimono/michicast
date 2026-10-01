@@ -58,16 +58,7 @@
 
             {{-- Step editor mounts inline inside the edited step card (see mapping-editor.js). --}}
 
-            <div class="flex flex-wrap items-center gap-2 border-t border-line pt-4">
-                <p class="text-sm text-muted" data-mapping-save-status aria-live="polite">Step changes save automatically.</p>
-                <button
-                    type="button"
-                    class="cursor-pointer inline-flex items-center rounded-md border border-line bg-paper px-3 py-2 text-sm font-medium text-ink hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent disabled:opacity-50"
-                    data-mapping-save
-                >
-                    Save now
-                </button>
-            </div>
+            <p class="min-h-[1.25rem] text-sm text-muted" data-mapping-save-status aria-live="polite"></p>
         @endunless
     </section>
 

@@ -15,7 +15,6 @@ final class TwitterSourceSchema
             providerType: 'twitter',
             label: 'Twitter / X (public profile)',
             fields: [
-                new SchemaField('title', 'Title', FieldType::Text, 'First line of the post', false),
                 new SchemaField('body', 'Body', FieldType::Text, 'Full post text', false),
                 new SchemaField('link', 'Link', FieldType::Url, 'Canonical post URL', false),
                 new SchemaField('published_at', 'Published', FieldType::Datetime, 'Publication time', false),
@@ -44,7 +43,6 @@ final class TwitterSourceSchema
     public static function sample(): array
     {
         return [
-            'title' => 'We will be at the International Astronautical Congress Oct. 5-9',
             'body' => 'We will be at the International Astronautical Congress Oct. 5-9: https://go.nasa.gov/iac',
             'link' => 'https://x.com/NASA/status/2105369076662960310',
             'published_at' => '2026-09-30T18:47:58+00:00',
