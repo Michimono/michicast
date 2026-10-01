@@ -7,8 +7,9 @@ use Carbon\CarbonImmutable;
 use Throwable;
 
 /**
- * Pulls public posts out of X's unauthenticated timeline embed HTML.
- * The markup and payload shape can change without notice.
+ * Pulls public posts out of X HTML.
+ * Supports the public https://x.com/{handle} profile page (primary) and the
+ * legacy syndication embed __NEXT_DATA__ payload (tests / fallback).
  */
 class TwitterTimelineParser
 {
@@ -30,6 +31,249 @@ class TwitterTimelineParser
      * }
      */
     public function parse(string $html): array
+    {
+        if (str_contains($html, '__NEXT_DATA__')) {
+            return $this->parseSyndicationEmbed($html);
+        }
+
+        return $this->parseProfilePage($html);
+    }
+
+    /**
+     * @return array{
+     *     handle: string|null,
+     *     profile_found: bool,
+     *     entries: list<array<string, mixed>>
+     * }
+     */
+    private function parseProfilePage(string $html): array
+    {
+        $handle = $this->profileHandleFromHtml($html);
+        $displayName = $this->profileDisplayNameFromHtml($html);
+        $ids = $this->matchAll('/entry_id:"tweet-(\d+)"/', $html);
+        $tweetBodies = $this->profileTweetBodies($html);
+
+        if ($ids === [] && $tweetBodies === [] && $handle === null) {
+            throw new SourceFetchFailedException('The X timeline response could not be parsed.');
+        }
+
+        $mediaById = $this->profileMediaByTweetId($html);
+        $count = max(count($ids), count($tweetBodies));
+        $entries = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $bodyMeta = $tweetBodies[$i] ?? null;
+            $body = is_array($bodyMeta) ? (string) $bodyMeta['text'] : '';
+            $externalId = $ids[$i] ?? null;
+
+            if ($externalId === null || $body === '') {
+                continue;
+            }
+
+            $publishedAt = null;
+            if (is_array($bodyMeta) && isset($bodyMeta['created_at_ms'])) {
+                $publishedAt = CarbonImmutable::createFromTimestampMs((int) $bodyMeta['created_at_ms'])->utc();
+            }
+
+            $isRetweet = str_starts_with($body, 'RT @');
+            $entries[] = [
+                'external_id' => $externalId,
+                'canonical_url' => $this->canonicalUrl(null, $handle, $externalId),
+                'title' => $this->titleFromBody($body),
+                'body' => $body,
+                'author' => $displayName ?? ($handle !== null ? '@'.$handle : null),
+                'published_at' => $publishedAt,
+                'media' => $mediaById[$externalId] ?? [],
+                'is_retweet' => $isRetweet,
+                'raw' => [
+                    'source' => 'x.com-profile',
+                    'id_str' => $externalId,
+                    'full_text' => $body,
+                    'created_at_ms' => is_array($bodyMeta) ? ($bodyMeta['created_at_ms'] ?? null) : null,
+                ],
+            ];
+        }
+
+        $profileFound = $handle !== null
+            || $entries !== []
+            || str_contains($html, 'og:type" content="profile"')
+            || str_contains($html, "og:type' content='profile'");
+
+        return [
+            'handle' => $handle,
+            'profile_found' => $profileFound,
+            'entries' => $entries,
+        ];
+    }
+
+    /**
+     * @return list<array{text: string, created_at_ms: int}>
+     */
+    private function profileTweetBodies(string $html): array
+    {
+        if (! preg_match_all(
+            '/created_at_ms:(\d+),display_text_range:\$R\[\d+\]=\[[^\]]*\],full_text:"((?:\\\\.|[^"\\\\])*)"/',
+            $html,
+            $matches,
+            PREG_SET_ORDER,
+        )) {
+            return [];
+        }
+
+        $bodies = [];
+
+        foreach ($matches as $match) {
+            $text = $this->decodeJsString($match[2]);
+
+            if ($text === '') {
+                continue;
+            }
+
+            $bodies[] = [
+                'created_at_ms' => (int) $match[1],
+                'text' => $text,
+            ];
+        }
+
+        return $bodies;
+    }
+
+    /**
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function profileMediaByTweetId(string $html): array
+    {
+        $mediaById = [];
+
+        if (preg_match_all(
+            '/expanded_url:"https:\/\/(?:x|twitter)\.com\/[^"\/]+\/status\/(\d+)\/(?:photo|video)\/\d+".{0,400}?media_url_https:"([^"]+)".{0,200}?type:"(photo|video|animated_gif)"/s',
+            $html,
+            $matches,
+            PREG_SET_ORDER,
+        )) {
+            foreach ($matches as $match) {
+                $mediaById[$match[1]][] = $this->normalizeMediaItem($match[3], $match[2]);
+            }
+        }
+
+        if (preg_match_all(
+            '/expanded_url:"https:\/\/(?:x|twitter)\.com\/[^"\/]+\/status\/(\d+)\/(?:photo|video)\/\d+".{0,500}?type:"(photo|video|animated_gif)".{0,200}?media_url_https:"([^"]+)"/s',
+            $html,
+            $altMatches,
+            PREG_SET_ORDER,
+        )) {
+            foreach ($altMatches as $match) {
+                $mediaById[$match[1]][] = $this->normalizeMediaItem($match[2], $match[3]);
+            }
+        }
+
+        return $this->uniqueMedia($mediaById);
+    }
+
+    /**
+     * @param  array<string, list<array<string, mixed>>>  $mediaById
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function uniqueMedia(array $mediaById): array
+    {
+        foreach ($mediaById as $id => $items) {
+            $seen = [];
+            $unique = [];
+
+            foreach ($items as $item) {
+                $key = ($item['url'] ?? '').'|'.($item['type'] ?? '');
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $unique[] = $item;
+            }
+
+            $mediaById[$id] = $unique;
+        }
+
+        return $mediaById;
+    }
+
+    /**
+     * @return array{type: string|null, url: string|null, width: null, height: null, alt: null}
+     */
+    private function normalizeMediaItem(string $type, string $url): array
+    {
+        $normalizedType = match ($type) {
+            'photo' => 'image',
+            'video', 'animated_gif' => 'video',
+            default => $type,
+        };
+
+        return [
+            'type' => $normalizedType,
+            'url' => $url,
+            'width' => null,
+            'height' => null,
+            'alt' => null,
+        ];
+    }
+
+    private function profileHandleFromHtml(string $html): ?string
+    {
+        if (preg_match('/screen_name:"([A-Za-z0-9_]{1,15})"/', $html, $match)) {
+            return $match[1];
+        }
+
+        if (preg_match('/og:url" content="https:\/\/x\.com\/([A-Za-z0-9_]{1,15})"/', $html, $match)) {
+            return $match[1];
+        }
+
+        return null;
+    }
+
+    private function profileDisplayNameFromHtml(string $html): ?string
+    {
+        if (preg_match('/name:"((?:\\\\.|[^"\\\\])*)",screen_name:"[A-Za-z0-9_]{1,15}"/', $html, $match)) {
+            return $this->decodeJsString($match[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function matchAll(string $pattern, string $html): array
+    {
+        if (! preg_match_all($pattern, $html, $matches)) {
+            return [];
+        }
+
+        return array_values(array_filter($matches[1], static fn ($v) => is_string($v) && $v !== ''));
+    }
+
+    private function decodeJsString(string $value): string
+    {
+        $value = preg_replace_callback(
+            '/\\\\x([0-9A-Fa-f]{2})/',
+            static fn (array $m): string => chr(hexdec($m[1])),
+            $value,
+        ) ?? $value;
+
+        $decoded = json_decode('"'.$value.'"');
+
+        if (is_string($decoded)) {
+            return $decoded;
+        }
+
+        return stripcslashes($value);
+    }
+
+    /**
+     * @return array{
+     *     handle: string|null,
+     *     profile_found: bool,
+     *     entries: list<array<string, mixed>>
+     * }
+     */
+    private function parseSyndicationEmbed(string $html): array
     {
         $payload = $this->decodeNextData($html);
         $pageProps = data_get($payload, 'props.pageProps');

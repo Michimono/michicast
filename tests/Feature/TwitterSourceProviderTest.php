@@ -56,6 +56,20 @@ class TwitterSourceProviderTest extends TestCase
         $this->assertArrayNotHasKey('categories', TwitterSourceSchema::sample());
     }
 
+    public function test_an_x_dot_com_profile_page_is_parsed_without_syndication(): void
+    {
+        $this->fakeProfile('NASA', 'sample-x-profile.html');
+
+        $items = $this->provider()->fetch($this->definition());
+
+        $this->assertCount(3, $items);
+        $this->assertSame('2105369076662960310', $items[0]->external_id);
+        $this->assertSame('NASA', $items[0]->author);
+        $this->assertSame('image', $items[0]->media[0]['type']);
+        $this->assertTrue($items[2]->metadata['is_retweet']);
+        $this->assertCount(0, $this->recordedUrlsMatching('syndication.twitter.com'));
+    }
+
     public function test_a_public_profile_produces_normalized_content_items(): void
     {
         $this->fakeProfile('NASA', 'sample-profile.html');
@@ -135,18 +149,18 @@ class TwitterSourceProviderTest extends TestCase
         ]));
 
         $this->assertTrue($result->successful);
-        Http::assertSent(fn (Request $request) => $request->url() === 'https://syndication.twitter.com/srv/timeline-profile/screen-name/NASA');
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://x.com/NASA');
     }
 
-    public function test_requests_use_chrome_like_headers_and_soft_bootstrap(): void
+    public function test_requests_use_chrome_like_headers_against_x_dot_com(): void
     {
-        $this->fakeProfile('NASA', 'sample-profile.html', guestCookie: 'guest_id=v1%3Atest; Domain=.twitter.com; Path=/');
+        $this->fakeProfile('NASA', 'sample-profile.html');
 
         $this->assertTrue($this->provider()->testConnection($this->definition())->successful);
 
         Http::assertSent(function (Request $request) {
-            return $request->url() === 'https://twitter.com/NASA'
-                && $request->hasHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36')
+            return $request->url() === 'https://x.com/NASA'
+                && $request->hasHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36')
                 && $request->hasHeader('Accept-Language', 'en-US,en;q=0.9')
                 && $request->hasHeader('Sec-Fetch-Dest', 'document')
                 && $request->hasHeader('Sec-Fetch-Mode', 'navigate')
@@ -155,21 +169,12 @@ class TwitterSourceProviderTest extends TestCase
                 && $request->hasHeader('Sec-CH-UA-Mobile', '?0')
                 && $request->hasHeader('Sec-CH-UA-Platform', '"Windows"')
                 && str_contains((string) $request->header('Sec-CH-UA')[0], 'Google Chrome')
-                && str_contains((string) $request->header('Accept')[0], 'text/html');
-        });
-
-        Http::assertSent(function (Request $request) {
-            return $request->url() === 'https://syndication.twitter.com/srv/timeline-profile/screen-name/NASA'
-                && $request->hasHeader('Referer', 'https://twitter.com/NASA')
-                && $request->hasHeader('Sec-Fetch-Site', 'same-site')
-                && $request->hasHeader('Sec-Fetch-Dest', 'document')
-                && $request->hasHeader('Sec-CH-UA-Mobile', '?0')
-                && $request->hasHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36')
+                && str_contains((string) $request->header('Accept')[0], 'text/html')
                 && $request->hasHeader('Upgrade-Insecure-Requests', '1');
         });
 
-        $this->assertCount(1, $this->recordedUrlsMatching('https://twitter.com/NASA'));
-        $this->assertCount(1, $this->recordedUrlsMatching('syndication.twitter.com'));
+        $this->assertCount(1, $this->recordedUrlsMatching('https://x.com/NASA'));
+        $this->assertCount(0, $this->recordedUrlsMatching('syndication.twitter.com'));
     }
 
     public function test_an_unknown_or_blocked_profile_is_a_structured_failure(): void
@@ -202,8 +207,7 @@ class TwitterSourceProviderTest extends TestCase
     public function test_an_unreachable_profile_is_a_structured_connection_failure(): void
     {
         Http::fake([
-            'https://twitter.com/NASA' => Http::response('<html></html>', 200),
-            'https://syndication.twitter.com/srv/timeline-profile/screen-name/NASA' => function () {
+            'https://x.com/NASA' => function () {
                 throw new ConnectionException('Could not resolve host');
             },
         ]);
@@ -217,8 +221,7 @@ class TwitterSourceProviderTest extends TestCase
     public function test_a_rate_limited_response_is_not_retried_and_reports_retry_after(): void
     {
         Http::fake([
-            'https://twitter.com/NASA' => Http::response('<html></html>', 200),
-            'https://syndication.twitter.com/srv/timeline-profile/screen-name/NASA' => Http::response(
+            'https://x.com/NASA' => Http::response(
                 'Slow down',
                 429,
                 ['Retry-After' => '120'],
@@ -232,14 +235,13 @@ class TwitterSourceProviderTest extends TestCase
             'X rate-limited the request (HTTP 429). Wait 2 minutes and try again once.',
             $result->message,
         );
-        $this->assertCount(1, $this->recordedUrlsMatching('syndication.twitter.com'));
+        $this->assertCount(1, $this->recordedUrlsMatching('https://x.com/NASA'));
     }
 
     public function test_a_forbidden_response_is_an_actionable_failure(): void
     {
         Http::fake([
-            'https://twitter.com/NASA' => Http::response('<html></html>', 200),
-            'https://syndication.twitter.com/srv/timeline-profile/screen-name/NASA' => Http::response('Nope', 403),
+            'https://x.com/NASA' => Http::response('Nope', 403),
         ]);
 
         $result = $this->provider()->testConnection($this->definition());
@@ -289,23 +291,21 @@ class TwitterSourceProviderTest extends TestCase
         $this->assertTrue(Validator::make(['handle' => ''], $rules)->fails());
     }
 
-    public function test_soft_bootstrap_failure_still_attempts_syndication(): void
+    public function test_a_404_profile_is_reported_as_missing(): void
     {
         Http::fake([
-            'https://twitter.com/NASA' => function () {
-                throw new ConnectionException('bootstrap down');
-            },
-            'https://syndication.twitter.com/srv/timeline-profile/screen-name/NASA' => Http::response(
-                $this->fixture('sample-profile.html'),
-                200,
-                ['Content-Type' => 'text/html; charset=utf-8'],
-            ),
+            'https://x.com/nope' => Http::response('missing', 404),
         ]);
 
-        $result = $this->provider()->testConnection($this->definition());
+        $result = $this->provider()->testConnection($this->definition(config: [
+            'handle' => 'nope',
+        ]));
 
-        $this->assertTrue($result->successful);
-        $this->assertCount(1, $this->recordedUrlsMatching('syndication.twitter.com'));
+        $this->assertFalse($result->successful);
+        $this->assertSame(
+            'No public posts were found for @nope. The account may not exist, may be protected, or X may be blocking unauthenticated reads.',
+            $result->message,
+        );
     }
 
     /**
@@ -328,18 +328,17 @@ class TwitterSourceProviderTest extends TestCase
 
     private function fakeProfile(string $handle, string $fixture, ?string $guestCookie = null): void
     {
-        $bootstrapHeaders = ['Content-Type' => 'text/html; charset=utf-8'];
+        $headers = ['Content-Type' => 'text/html; charset=utf-8'];
 
         if ($guestCookie !== null) {
-            $bootstrapHeaders['Set-Cookie'] = $guestCookie;
+            $headers['Set-Cookie'] = $guestCookie;
         }
 
         Http::fake([
-            'https://twitter.com/'.$handle => Http::response('<html></html>', 200, $bootstrapHeaders),
-            'https://syndication.twitter.com/srv/timeline-profile/screen-name/'.$handle => Http::response(
+            'https://x.com/'.$handle => Http::response(
                 $this->fixture($fixture),
                 200,
-                ['Content-Type' => 'text/html; charset=utf-8'],
+                $headers,
             ),
         ]);
     }

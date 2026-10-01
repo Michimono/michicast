@@ -12,12 +12,13 @@ use Illuminate\Http\Client\Response;
 use Throwable;
 
 /**
- * Reads public posts for an X/Twitter handle via the unauthenticated timeline
- * embed endpoint. No API keys and no third-party bridges — best-effort only.
+ * Reads public posts for an X/Twitter handle via the public profile page
+ * (https://x.com/{handle}), the same first-party path that works with curl -L.
+ * No API keys and no third-party bridges — best-effort only.
  */
 class TwitterSourceProvider implements SourceProvider
 {
-    private const TIMEOUT_SECONDS = 10;
+    private const TIMEOUT_SECONDS = 15;
 
     private const CONNECT_TIMEOUT_SECONDS = 5;
 
@@ -66,7 +67,7 @@ class TwitterSourceProvider implements SourceProvider
                 name: 'handle',
                 label: 'Handle',
                 type: ConfigurationFieldType::Text,
-                hint: 'Public @username only. Best-effort scrape of X public embeds — may break when X changes or blocks requests. Private accounts are not supported.',
+                hint: 'Public @username only. Best-effort scrape of the public X profile page — may break when X changes or blocks requests. Private accounts are not supported.',
             ),
             new ConfigurationField(
                 name: 'item_limit',
@@ -160,16 +161,8 @@ class TwitterSourceProvider implements SourceProvider
             throw new SourceFetchFailedException('The Twitter / X source has no handle to reach.');
         }
 
-        $jar = $this->http->newCookieJar();
-        $this->http->softBootstrap(
-            $jar,
-            $handle,
-            self::TIMEOUT_SECONDS,
-            self::CONNECT_TIMEOUT_SECONDS,
-        );
-
         try {
-            $response = $this->http->pendingTimelineRequest($jar, $handle)
+            $response = $this->http->pendingProfileRequest()
                 ->timeout(self::TIMEOUT_SECONDS)
                 ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
                 ->retry(
@@ -178,7 +171,7 @@ class TwitterSourceProvider implements SourceProvider
                     fn (Throwable $exception): bool => $this->shouldRetry($exception),
                     throw: false,
                 )
-                ->get($this->http->timelineUrl($handle));
+                ->get($this->http->profileUrl($handle));
         } catch (ConnectionException $exception) {
             throw new SourceFetchFailedException(
                 $this->connectionFailureMessage($exception),
@@ -188,6 +181,12 @@ class TwitterSourceProvider implements SourceProvider
             throw new SourceFetchFailedException('The X profile could not be reached.', previous: $exception);
         } catch (Throwable $exception) {
             throw new SourceFetchFailedException('The X profile could not be reached.', previous: $exception);
+        }
+
+        if ($response->status() === 404) {
+            throw new SourceFetchFailedException(
+                "No public posts were found for @{$handle}. The account may not exist, may be protected, or X may be blocking unauthenticated reads.",
+            );
         }
 
         if ($response->failed()) {
@@ -286,8 +285,7 @@ class TwitterSourceProvider implements SourceProvider
 
         $status = $exception->response->status();
 
-        // Do not immediately repeat a rate-limited request. X's quota is shared
-        // by the caller's address, so another attempt only makes the window worse.
+        // Do not immediately repeat a rate-limited request.
         return $status === 408 || $status === 425 || $status >= 500;
     }
 
