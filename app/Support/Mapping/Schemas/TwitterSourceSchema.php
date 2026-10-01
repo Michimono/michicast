@@ -20,13 +20,6 @@ final class TwitterSourceSchema
                 new SchemaField('published_at', 'Published', FieldType::Datetime, 'Publication time', false),
                 new SchemaField('author', 'Author', FieldType::Text, 'Display name of the account', false),
                 new SchemaField(
-                    name: 'categories',
-                    label: 'Categories',
-                    type: FieldType::Array,
-                    description: 'Unused for Twitter / X posts',
-                    itemSchema: new SchemaField('item', 'Category', FieldType::Text),
-                ),
-                new SchemaField(
                     name: 'media',
                     label: 'Images',
                     type: FieldType::Array,
@@ -47,7 +40,6 @@ final class TwitterSourceSchema
             'link' => 'https://x.com/NASA/status/2105369076662960310',
             'published_at' => '2026-09-30T18:47:58+00:00',
             'author' => 'NASA',
-            'categories' => [],
             'media' => [
                 [
                     'type' => 'image',

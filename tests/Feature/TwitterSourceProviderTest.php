@@ -6,6 +6,7 @@ use App\Enums\ConfigurationFieldType;
 use App\Exceptions\SourceFetchFailedException;
 use App\Models\ContentItem;
 use App\Models\Project;
+use App\Support\Mapping\Schemas\TwitterSourceSchema;
 use App\Support\SourceDefinition;
 use App\Support\SourceProviderRegistry;
 use App\Support\TwitterSourceProvider;
@@ -42,6 +43,17 @@ class TwitterSourceProviderTest extends TestCase
         $this->assertSame('handle', $fields[0]->name);
         $this->assertSame(ConfigurationFieldType::Text, $fields[0]->type);
         $this->assertStringContainsString('Best-effort', (string) $fields[0]->hint);
+    }
+
+    public function test_twitter_origin_schema_lists_only_populated_fields(): void
+    {
+        $schema = TwitterSourceSchema::make();
+        $names = array_map(static fn ($field) => $field->name, $schema->fields);
+
+        $this->assertSame(['body', 'link', 'published_at', 'author', 'media'], $names);
+        $this->assertSame($names, array_keys(TwitterSourceSchema::sample()));
+        $this->assertArrayNotHasKey('title', TwitterSourceSchema::sample());
+        $this->assertArrayNotHasKey('categories', TwitterSourceSchema::sample());
     }
 
     public function test_a_public_profile_produces_normalized_content_items(): void
