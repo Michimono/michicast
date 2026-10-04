@@ -20,7 +20,8 @@
 
         <link rel="icon" href="/images/brand/logo-day-mark.svg" type="image/svg+xml">
 
-        @fonts
+        @inject('fontStylesheet', App\Support\FontStylesheet::class)
+        {!! $fontStylesheet->render() !!}
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="bg-paper font-sans text-ink antialiased">

@@ -19,6 +19,7 @@ use App\Http\Controllers\DestinationConnectionTestController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
 use App\Http\Controllers\EnabledBroadcastController;
+use App\Http\Controllers\FontStylesheetController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\ImmediateProjectRunController;
 use App\Http\Controllers\InvitationController;
@@ -52,6 +53,8 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'home')->name('home');
 
 Route::get('/up', HealthController::class)->name('health');
+
+Route::get('/fonts.css', FontStylesheetController::class)->name('fonts.stylesheet');
 
 Route::resource('invitation-acceptances', AcceptedInvitationController::class)
     ->only(['edit', 'update'])
