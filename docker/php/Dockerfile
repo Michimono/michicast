@@ -1,0 +1,47 @@
+# Build on a machine with enough RAM. Do not build this on a 1 GB droplet.
+# syntax is unused; two targets: app (php-fpm) and web (nginx + public/).
+
+FROM node:22-bookworm-slim AS assets
+WORKDIR /app
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM php:8.4-fpm-bookworm AS app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu libicu-dev libzip-dev unzip \
+    && docker-php-ext-install -j"$(nproc)" intl pdo_mysql opcache bcmath pcntl zip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
+
+COPY . .
+COPY --from=assets /app/public ./public
+
+RUN mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && composer dump-autoload --optimize --no-dev --no-interaction \
+    && php artisan package:discover --ansi --no-interaction \
+    && rm -f /usr/bin/composer \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R a+rX storage bootstrap/cache
+
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/php/zz-michicast.conf /usr/local/etc/php-fpm.d/zz-michicast.conf
+COPY docker/php/michicast.ini /usr/local/etc/php/conf.d/michicast.ini
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["php-fpm"]
+EXPOSE 9000
+
+FROM nginx:1.28-alpine AS web
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=app /var/www/html/public /var/www/html/public
+RUN mkdir -p /var/www/storage/app/public

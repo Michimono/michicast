@@ -47,6 +47,9 @@ Production uses a single cron entry. The Laravel scheduler ticks every minute an
 * * * * * cd /path/to/michicast && php artisan schedule:run >> /dev/null 2>&1
 ```
 
+That cron entry is the hand-installed path, and it stays. The droplet can instead run the versioned Compose file (`nginx`, PHP, MySQL, a database queue worker, and `schedule:work`). See [docs/deploy.md](docs/deploy.md). `projects:dispatch` still runs inside the scheduler; the worker only drains jobs that were queued.
+
+
 ## Checks
 
 Run these before committing; CI enforces the same three. The workflow in `.github/workflows/ci.yml` runs them on every pull request against a MySQL service container.
