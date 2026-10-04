@@ -1,8 +1,5 @@
-# Michicast on one machine. MySQL data is the mysql-data volume.
-# A 1 GB droplet wants about 1 GB of swap before the first boot. See docs/deploy.md.
-# Images are loaded locally. pull_policy: never so this file never builds or pulls.
-# Redis is not running. Uncomment the redis service later, then point REDIS_HOST=redis
-# and the cache, session, or queue drivers at it. Do not start Redis until then.
+# MySQL data is the mysql-data volume.
+# Redis is not running. Uncomment the redis service later and point REDIS_HOST=redis.
 
 name: michicast
 
@@ -14,7 +11,6 @@ x-logging: &logging
 
 x-php: &php
   image: michicast:local
-  pull_policy: never
   restart: unless-stopped
   env_file:
     - deploy/.env
@@ -28,11 +24,18 @@ x-php: &php
 services:
   app:
     <<: *php
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: app
     command: ["php-fpm"]
 
   web:
     image: michicast-web:local
-    pull_policy: never
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: web
     restart: unless-stopped
     depends_on:
       - app

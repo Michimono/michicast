@@ -1,5 +1,4 @@
-# Build on a machine with enough RAM. Do not build this on a 1 GB droplet.
-# syntax is unused; two targets: app (php-fpm) and web (nginx + public/).
+# Targets: app (php-fpm) and web (nginx + public/).
 
 FROM node:22-bookworm-slim AS assets
 WORKDIR /app
