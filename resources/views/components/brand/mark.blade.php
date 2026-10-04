@@ -7,15 +7,15 @@
         'cat' => ['src' => '/images/brand/logo-day-full.svg', 'aspect' => 'aspect-[47/52]'],
     ];
 
-    $mark = $marks[$variant] ?? $marks['face'];
+    $variant = array_key_exists($variant, $marks) ? $variant : 'face';
+    $mark = $marks[$variant];
 @endphp
 
 @if ($gradient)
     <span
         role="img"
         aria-label="{{ config('app.name') }}"
-        style="-webkit-mask-image: url('{{ $mark['src'] }}'); -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; -webkit-mask-size: contain; -webkit-mask-source-type: alpha; mask-image: url('{{ $mark['src'] }}'); mask-repeat: no-repeat; mask-position: center; mask-size: contain; mask-mode: alpha"
-        {{ $attributes->class(['house-mark block', $mark['aspect']]) }}
+        {{ $attributes->class(['house-mark block', 'house-mark-'.$variant, $mark['aspect']]) }}
     ></span>
 @else
     <img src="{{ $mark['src'] }}" alt="{{ config('app.name') }}" {{ $attributes->class('block') }}>

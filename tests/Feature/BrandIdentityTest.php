@@ -53,7 +53,12 @@ class BrandIdentityTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Nothing to chase yet');
-        $response->assertSee('/images/brand/logo-day-full.svg', false);
+        $response->assertSee('house-mark-cat', false);
+        $response->assertDontSee('style=', false);
+        $this->assertStringContainsString(
+            "url('/images/brand/logo-day-full.svg')",
+            (string) file_get_contents(resource_path('css/app.css')),
+        );
     }
 
     public function test_the_current_page_is_marked_in_the_navigation_for_assistive_technology(): void

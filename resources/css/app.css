@@ -102,9 +102,10 @@
 
 /*
  * Fills a logo silhouette with the gradient, for the moments the mark needs to
- * pop. The mask image itself is set inline on the mark so the SVG URL resolves
- * against the page origin (not the Vite stylesheet origin during `npm run
- * dev`). Alpha mode keeps the black artwork visible as a silhouette.
+ * pop. The mask URL lives in a class, not a style attribute: style attributes
+ * need 'unsafe-inline', which the production CSP does not allow. Root-relative
+ * urls resolve against the page origin once the stylesheet is built and served
+ * from that origin. Alpha mode keeps the black artwork visible as a silhouette.
  */
 @utility house-mark {
     background-image: var(--house-gradient);
@@ -116,4 +117,19 @@
     mask-position: center;
     mask-size: contain;
     mask-mode: alpha;
+}
+
+@utility house-mark-mark {
+    -webkit-mask-image: url('/images/brand/logo-day-mark.svg');
+    mask-image: url('/images/brand/logo-day-mark.svg');
+}
+
+@utility house-mark-face {
+    -webkit-mask-image: url('/images/brand/logo-day-face.svg');
+    mask-image: url('/images/brand/logo-day-face.svg');
+}
+
+@utility house-mark-cat {
+    -webkit-mask-image: url('/images/brand/logo-day-full.svg');
+    mask-image: url('/images/brand/logo-day-full.svg');
 }
