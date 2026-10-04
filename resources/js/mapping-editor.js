@@ -29,7 +29,6 @@
     const NEW_STEP_ID = '__new__';
     const autoEl = root.querySelector('[data-mapping-auto]');
     const autoText = root.querySelector('[data-mapping-auto-text]');
-    const saveBtn = root.querySelector('[data-mapping-save]');
     const saveStatus = root.querySelector('[data-mapping-save-status]');
     const previewText = root.querySelector('[data-mapping-preview-text]');
     const previewMediaWrap = root.querySelector('[data-mapping-preview-media-wrap]');
@@ -678,13 +677,6 @@
                 p.textContent = err.message;
                 previewErrors.appendChild(p);
             });
-            if (saveBtn) {
-                const blocking = (data.errors || []).some(function (e) {
-                    return e.type === 'required' || e.type === 'type' || e.type === 'config';
-                });
-                saveBtn.disabled = blocking && steps.length > 0;
-                saveBtn.title = blocking ? 'Fix mapping problems before saving.' : '';
-            }
         }
     }
 
@@ -919,8 +911,6 @@
             }
         });
     }
-
-    if (saveBtn) saveBtn.addEventListener('click', saveMapping);
 
     const resetBtn = root.querySelector('[data-mapping-reset-defaults]');
     if (resetBtn) {

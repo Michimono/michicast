@@ -29,7 +29,8 @@ class BroadcastMappingFormTest extends TestCase
             ->assertSee('Mapping', false)
             ->assertSee('Build the destination data step by step.', false)
             ->assertSee('Add step', false)
-            ->assertSee('Step changes save automatically.', false)
+            ->assertDontSee('Step changes save automatically.', false)
+            ->assertDontSee('Save now', false)
             ->assertSee('Nothing will be sent.', false)
             ->assertSee('Source', false)
             ->assertSee('Destination', false);
