@@ -6,9 +6,7 @@ Ubuntu 26.04. As root:
 bash ~/michicast/deploy/setup-droplet.sh
 ```
 
-Log in as `michicast` (same SSH key as root). Repo is `~/michicast`.
-
-Edit `deploy/.env` once (copy `deploy/.env.example`). Set `APP_KEY` and the passwords. `DB_PASSWORD` and `MYSQL_PASSWORD` must match.
+Answer the prompts (Ubuntu user, login password, MySQL user, MySQL password, database name). Then log in as that user:
 
 ```sh
 bash ~/michicast/deploy/deploy.sh
