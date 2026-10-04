@@ -71,8 +71,8 @@ class TwitterTimelineParser
             }
 
             $publishedAt = null;
-            if (is_array($bodyMeta) && isset($bodyMeta['created_at_ms'])) {
-                $publishedAt = CarbonImmutable::createFromTimestampMs((int) $bodyMeta['created_at_ms'])->utc();
+            if (is_array($bodyMeta)) {
+                $publishedAt = CarbonImmutable::createFromTimestampMs($bodyMeta['created_at_ms'])->utc();
             }
 
             $isRetweet = str_starts_with($body, 'RT @');
@@ -89,7 +89,7 @@ class TwitterTimelineParser
                     'source' => 'x.com-profile',
                     'id_str' => $externalId,
                     'full_text' => $body,
-                    'created_at_ms' => is_array($bodyMeta) ? ($bodyMeta['created_at_ms'] ?? null) : null,
+                    'created_at_ms' => is_array($bodyMeta) ? $bodyMeta['created_at_ms'] : null,
                 ],
             ];
         }
@@ -246,7 +246,7 @@ class TwitterTimelineParser
             return [];
         }
 
-        return array_values(array_filter($matches[1], static fn ($v) => is_string($v) && $v !== ''));
+        return array_values(array_filter($matches[1], static fn (string $v): bool => $v !== ''));
     }
 
     private function decodeJsString(string $value): string
