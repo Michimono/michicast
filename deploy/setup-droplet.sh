@@ -1,5 +1,5 @@
 #!/bin/sh
-# First boot of an Ubuntu 24.04 droplet. Does not clone the repo.
+# First boot of an Ubuntu 26.04 droplet. Does not clone the repo.
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then

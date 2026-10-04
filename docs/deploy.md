@@ -1,6 +1,6 @@
 # Deploy
 
-Ubuntu 24.04. Repo at `~/michicast`.
+Ubuntu 26.04. Repo at `~/michicast`.
 
 ```sh
 bash ~/michicast/deploy/setup-droplet.sh
