@@ -1,10 +1,10 @@
 #!/bin/sh
-# Run as michicast from ~/michicast.
+# Run as the deploy user.
 set -eu
 cd "$(dirname "$0")/.."
 
 if [ ! -f deploy/.env ]; then
-    echo "Missing deploy/.env. Copy deploy/.env.example and fill it in before deploying." >&2
+    echo "Missing deploy/.env. Run deploy/setup-droplet.sh in an interactive shell first." >&2
     exit 1
 fi
 
