@@ -6,6 +6,7 @@ use App\Http\Controllers\ArchivedBroadcastController;
 use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BroadcastDeliveryController;
+use App\Http\Controllers\BroadcastDeliveryRetryController;
 use App\Http\Controllers\BroadcastDryRunController;
 use App\Http\Controllers\BroadcastFilterController;
 use App\Http\Controllers\BroadcastLatestResendController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\BroadcastTransformController;
 use App\Http\Controllers\BroadcastTransformPreviewController;
 use App\Http\Controllers\ContentPreviewController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeliveryRetryController;
 use App\Http\Controllers\DestinationConnectionTestController;
 use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DueProjectController;
@@ -259,6 +261,19 @@ Route::middleware('auth')->group(function (): void {
                 ->parameters(['flows' => 'broadcast'])
                 ->names([
                     'index' => 'broadcast-deliveries.index',
+                ]);
+
+            Route::singleton('flows.deliveries.retry', DeliveryRetryController::class)
+                ->creatable()
+                ->only(['store'])
+                ->parameters(['flows' => 'broadcast'])
+                ->names(['store' => 'delivery-retries.store']);
+
+            Route::resource('flows.delivery-retries', BroadcastDeliveryRetryController::class)
+                ->only(['store'])
+                ->parameters(['flows' => 'broadcast'])
+                ->names([
+                    'store' => 'broadcast-delivery-retries.store',
                 ]);
 
             Route::singleton('flows.filter', BroadcastFilterController::class)

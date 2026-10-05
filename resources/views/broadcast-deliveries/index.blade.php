@@ -24,6 +24,22 @@
             <x-button href="{{ route('broadcasts.show', $project) }}" variant="ghost" :paw="false">Project</x-button>
         </p>
 
+        @if ($canRetry)
+            @if ($retryableCount > 0)
+                @if ($retryBlockReason === null)
+                    <form class="flex flex-wrap items-center gap-3" method="POST" action="{{ route('broadcast-delivery-retries.store', $broadcast) }}">
+                        @csrf
+                        <x-button variant="ghost" :paw="false">Retry all failed</x-button>
+                        <span class="text-sm text-muted">
+                            {{ $retryableCount }} failed {{ Str::plural('delivery', $retryableCount) }} can be sent again on the next scheduler tick.
+                        </span>
+                    </form>
+                @else
+                    <p class="text-sm text-muted">{{ $retryBlockReason }}</p>
+                @endif
+            @endif
+        @endif
+
         @if ($deliveries->isEmpty())
             <x-empty-state
                 heading="No deliveries yet"
@@ -43,16 +59,40 @@
                                 'text-state-fail' => $delivery->status === App\Enums\DeliveryStatus::Failed,
                                 'text-state-skip' => $delivery->status === App\Enums\DeliveryStatus::Skipped,
                                 'text-muted' => $delivery->status === App\Enums\DeliveryStatus::Pending,
-                            ])>{{ $delivery->status->label() }}</span>
+                            ])>{{ $delivery->status->label() }}@if ($delivery->status === App\Enums\DeliveryStatus::Failed && $delivery->failure) ({{ strtolower($delivery->failure->label()) }})@endif</span>
                         </div>
 
                         <p class="font-mono text-xs text-muted">
                             <x-timestamp :value="$delivery->attempted_at" />
                             · {{ $delivery->destination?->name }}
+                            @if ($delivery->attempts->isNotEmpty())
+                                · {{ $delivery->attempts->count() }} {{ Str::plural('attempt', $delivery->attempts->count()) }}
+                            @endif
                         </p>
 
                         @if ($delivery->error_detail)
                             <p class="text-sm text-muted">{{ $secrets->redact($delivery->error_detail) }}</p>
+                        @endif
+
+                        @if ($delivery->attempts->count() > 1)
+                            <ol class="flex flex-col gap-1 border-l border-line pl-3">
+                                @foreach ($delivery->attempts as $attempt)
+                                    <li class="flex flex-col">
+                                        <span class="font-mono text-xs text-muted">
+                                            Attempt {{ $loop->iteration }}
+                                            · {{ $attempt->is_retry ? 'Retry' : 'Run' }}
+                                            · <x-timestamp :value="$attempt->attempted_at" />
+                                            · <span @class([
+                                                'text-state-ok' => $attempt->status === App\Enums\DeliveryStatus::Delivered,
+                                                'text-state-fail' => $attempt->status === App\Enums\DeliveryStatus::Failed,
+                                            ])>{{ $attempt->status->label() }}@if ($attempt->failure) ({{ strtolower($attempt->failure->label()) }})@endif</span>
+                                        </span>
+                                        @if ($attempt->error_detail)
+                                            <span class="text-sm text-muted">{{ $secrets->redact($attempt->error_detail) }}</span>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ol>
                         @endif
 
                         <div class="flex flex-wrap gap-3 text-xs">
@@ -62,7 +102,17 @@
                             @if ($delivery->external_reference)
                                 <span class="font-mono text-muted">Ref {{ $delivery->external_reference }}</span>
                             @endif
+                            @if ($delivery->isRetryQueued())
+                                <span class="font-mono text-muted">Retry queued</span>
+                            @endif
                         </div>
+
+                        @if ($canRetry && $retryBlockReason === null && ! $delivery->isRetryQueued() && $delivery->isRetryable())
+                            <form method="POST" action="{{ route('delivery-retries.store', [$broadcast, $delivery]) }}">
+                                @csrf
+                                <x-button variant="ghost" :paw="false">Retry</x-button>
+                            </form>
+                        @endif
                     </li>
                 @endforeach
             </ul>

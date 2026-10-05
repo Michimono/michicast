@@ -55,6 +55,17 @@ class ContentDeliveryFactory extends Factory
         ]);
     }
 
+    public function transientlyFailed(string $detail = 'The destination did not answer in time.'): static
+    {
+        return $this->state(fn (): array => [
+            'status' => DeliveryStatus::Failed,
+            'external_reference' => null,
+            'failure' => DeliveryFailure::Transient,
+            'error_detail' => $detail,
+            'finished_at' => now(),
+        ]);
+    }
+
     public function skipped(string $detail = 'Duplicate delivery skipped.'): static
     {
         return $this->state(fn (): array => [

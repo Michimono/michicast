@@ -53,6 +53,28 @@ class Broadcast extends Model
         return $this->enabled && ! $this->isArchived();
     }
 
+    /**
+     * Why failed deliveries on this broadcast cannot be queued for a retry
+     * right now, or null when they can. A retry runs on the next dispatcher
+     * tick, which only picks up active projects and runnable routes.
+     */
+    public function retryBlockReason(): ?string
+    {
+        if (! $this->project->canMarkDue()) {
+            return 'Only an active broadcast can retry deliveries.';
+        }
+
+        if (! $this->isRunnable()) {
+            return 'Enable this broadcast before retrying its deliveries.';
+        }
+
+        if ($this->source?->isRunnable() !== true || $this->destination?->isRunnable() !== true) {
+            return 'The source or destination of this broadcast is archived.';
+        }
+
+        return null;
+    }
+
     public function canEnable(): bool
     {
         return ! $this->enabled && ! $this->isArchived();
