@@ -631,6 +631,10 @@
                 }),
             });
             const data = await response.json();
+            if (response.status === 429) {
+                if (saveStatus) saveStatus.textContent = data.message || 'Too many previews. Try again shortly.';
+                return;
+            }
             if (throughStepId) {
                 const card = stepsEl && stepsEl.querySelector('[data-step-id="' + throughStepId + '"]');
                 const box = card && card.querySelector('[data-step-result]');

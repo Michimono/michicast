@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreArchivedProjectRequest;
 use App\Models\Organization;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
@@ -10,10 +11,8 @@ use Illuminate\Support\Facades\Gate;
 
 class ArchivedProjectController extends Controller
 {
-    public function store(Request $request, Organization $organization, Project $project): RedirectResponse
+    public function store(StoreArchivedProjectRequest $request, Organization $organization, Project $project): RedirectResponse
     {
-        Gate::authorize('changeStatus', $project);
-
         $project->archive();
 
         return redirect()

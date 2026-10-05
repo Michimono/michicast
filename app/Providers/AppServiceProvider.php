@@ -81,22 +81,39 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by($this->emailAndIpKey($request)));
 
+        RateLimiter::for('registration', fn (Request $request) => Limit::perMinute(5)->by((string) $request->ip()));
+
         RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(3)->by($this->emailAndIpKey($request)));
 
-        RateLimiter::for('content-preview', fn (Request $request) => Limit::perMinute(6)
-            ->by($this->userAndRouteKey($request, 'broadcast')));
+        RateLimiter::for('invitation', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'organization', perActor: 10, perOrganization: 30));
 
-        RateLimiter::for('broadcast-dry-run', fn (Request $request) => Limit::perMinute(3)
-            ->by($this->userAndRouteKey($request, 'project')));
+        RateLimiter::for('content-preview', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'broadcast', perActor: 6, perOrganization: 30));
 
-        RateLimiter::for('source-connection-test', fn (Request $request) => Limit::perMinute(6)
-            ->by($this->userAndRouteKey($request, 'source')));
+        RateLimiter::for('mapping-preview', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'broadcast', perActor: 60, perOrganization: 300));
 
-        RateLimiter::for('source-preview', fn (Request $request) => Limit::perMinute(6)
-            ->by($this->userAndRouteKey($request, 'project')));
+        RateLimiter::for('broadcast-dry-run', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'project', perActor: 3, perOrganization: 15));
 
-        RateLimiter::for('destination-connection-test', fn (Request $request) => Limit::perMinute(6)
-            ->by($this->userAndRouteKey($request, 'destination')));
+        RateLimiter::for('source-connection-test', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'source', perActor: 6, perOrganization: 30));
+
+        RateLimiter::for('source-preview', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'project', perActor: 6, perOrganization: 30));
+
+        RateLimiter::for('destination-connection-test', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'destination', perActor: 6, perOrganization: 30));
+    }
+
+    /**
+     * Throttle an expensive action twice: per actor and target, so iterating on
+     * one record does not spend another's allowance, and per organization, so
+     * many members of one tenant cannot flood outbound calls. Each tenant only
+     * ever spends its own organization bucket.
+     *
+     * @return list<Limit>
+     */
+    private function actorAndOrganizationLimits(Request $request, string $parameter, int $perActor, int $perOrganization): array
+    {
+        return [
+            Limit::perMinute($perActor)->by('actor|'.$this->userAndRouteKey($request, $parameter)),
+            Limit::perMinute($perOrganization)->by('organization|'.$this->routeKey($request, 'organization')),
+        ];
     }
 
     /**
@@ -109,15 +126,22 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Throttle a fetch-backed action per actor and per target, so previewing
-     * one broadcast does not spend another's allowance. The route parameter is
-     * already a model once bindings have been substituted.
+     * Key a fetch-backed action per actor and per target, so previewing one
+     * broadcast does not spend another's allowance.
      */
     private function userAndRouteKey(Request $request, string $parameter): string
     {
+        return ($request->user()?->getAuthIdentifier() ?? $request->ip())
+            .'|'.$this->routeKey($request, $parameter);
+    }
+
+    /**
+     * The route parameter is already a model once bindings have been substituted.
+     */
+    private function routeKey(Request $request, string $parameter): string
+    {
         $target = $request->route($parameter);
 
-        return ($request->user()?->getAuthIdentifier() ?? $request->ip())
-            .'|'.($target instanceof Model ? $target->getKey() : $target);
+        return (string) ($target instanceof Model ? $target->getKey() : $target);
     }
 }

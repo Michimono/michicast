@@ -22,9 +22,14 @@
 
                         @can('delete', $member)
                             @unless ($member->isLastOwner())
-                                <form method="POST" action="{{ route('members.destroy', $member) }}">
+                                <form
+                                    method="POST"
+                                    action="{{ route('members.destroy', $member) }}"
+                                    onsubmit="return confirm('{{ $member->user->is(auth()->user()) ? 'Leave this organization? You will lose access to it.' : 'Remove this member from the organization?' }}')"
+                                >
                                     @csrf
                                     @method('DELETE')
+                                    <input type="hidden" name="confirmation" value="1">
 
                                     <button class="text-sm text-accent underline hover:no-underline" type="submit">
                                         {{ $member->user->is(auth()->user()) ? 'Leave' : 'Remove' }}

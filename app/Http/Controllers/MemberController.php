@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Enums\Role;
 use App\Http\Middleware\SetCurrentOrganization;
+use App\Http\Requests\DestroyMemberRequest;
 use App\Models\Organization;
 use App\Models\OrganizationMember;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -25,10 +25,8 @@ class MemberController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, Organization $organization, OrganizationMember $member): RedirectResponse
+    public function destroy(DestroyMemberRequest $request, Organization $organization, OrganizationMember $member): RedirectResponse
     {
-        Gate::authorize('delete', $member);
-
         if ($member->isLastOwner()) {
             return redirect()
                 ->route('members.index')

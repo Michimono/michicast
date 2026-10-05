@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -17,6 +18,20 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         // Destination credentials must never round-trip as old input after a failed save.
         $exceptions->dontFlash(['credentials']);
+
+        // A throttled fetch reads like the HTML page instead of "Too Many Attempts."
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request) {
+            if (! $request->expectsJson()) {
+                return null;
+            }
+
+            $seconds = (int) ($exception->getHeaders()['Retry-After'] ?? 60);
+
+            return response()->json([
+                'message' => 'Too many attempts. Try again in '.$seconds.' '.str('second')->plural($seconds).'.',
+                'retry_after' => $seconds,
+            ], 429, $exception->getHeaders());
+        });
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

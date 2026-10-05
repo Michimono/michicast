@@ -75,7 +75,7 @@ class DropOrgCardCountsAndArchiveChromeTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->delete(route('sources.destroy', [$organization, $source]))
+            ->delete(route('sources.destroy', [$organization, $source]), ['confirmation' => '1'])
             ->assertRedirect(route('broadcasts.show', [$organization, $project]));
 
         $this->actingAs($user)
@@ -85,7 +85,7 @@ class DropOrgCardCountsAndArchiveChromeTest extends TestCase
             ->assertSee('Old channel');
 
         $this->actingAs($user)
-            ->delete(route('destinations.destroy', [$organization, $destination]))
+            ->delete(route('destinations.destroy', [$organization, $destination]), ['confirmation' => '1'])
             ->assertRedirect(route('broadcasts.show', [$organization, $project]));
 
         $this->actingAs($user)

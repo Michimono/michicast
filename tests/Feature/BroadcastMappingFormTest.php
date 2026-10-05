@@ -95,6 +95,26 @@ class BroadcastMappingFormTest extends TestCase
     }
 
     #[Test]
+    public function preview_endpoint_rejects_a_malformed_payload(): void
+    {
+        [$user, $organization, , $broadcast] = $this->broadcastWorkspace(Role::Editor);
+
+        $this->actingAs($user)
+            ->postJson(route('broadcast-mapping-previews.store', [$organization, $broadcast]), [
+                'mapping' => ['steps' => [['id' => 'step-1', 'config' => 'not-an-array']]],
+                'source_data' => 'not-an-array',
+                'through_step_id' => str_repeat('x', 65),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'mapping.steps.0.operation',
+                'mapping.steps.0.config',
+                'source_data',
+                'through_step_id',
+            ]);
+    }
+
+    #[Test]
     public function saved_mapping_is_used_during_a_dry_run(): void
     {
         [$user, $organization, $project, $broadcast] = $this->broadcastWorkspace(Role::Editor);

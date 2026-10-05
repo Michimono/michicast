@@ -29,7 +29,7 @@ class DestinationLifecycleTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->delete(route('destinations.destroy', [$organization, $destination]))
+            ->delete(route('destinations.destroy', [$organization, $destination]), ['confirmation' => '1'])
             ->assertRedirect(route('broadcasts.show', [$organization, $project]))
             ->assertSessionHas('success', 'The destination has been deleted.');
 
@@ -109,7 +109,7 @@ class DestinationLifecycleTest extends TestCase
         $destination = $this->destinationIn($organization);
 
         $this->actingAs($user)
-            ->delete(route('destinations.destroy', [$organization, $destination]))
+            ->delete(route('destinations.destroy', [$organization, $destination]), ['confirmation' => '1'])
             ->assertForbidden();
 
         $this->assertDatabaseHas('destinations', ['id' => $destination->getKey()]);
@@ -122,7 +122,7 @@ class DestinationLifecycleTest extends TestCase
         $destination = $this->destinationIn($organization);
 
         $this->actingAs($outsider)
-            ->delete(route('destinations.destroy', [$organization, $destination]))
+            ->delete(route('destinations.destroy', [$organization, $destination]), ['confirmation' => '1'])
             ->assertNotFound();
 
         $this->assertDatabaseHas('destinations', ['id' => $destination->getKey()]);
