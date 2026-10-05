@@ -51,4 +51,12 @@ class BroadcastPolicy
     {
         return $this->memberIsAtLeast($user, $broadcast->project->organization, Role::Editor);
     }
+
+    /**
+     * Editors and above queue failed deliveries of a broadcast for a retry.
+     */
+    public function retryDeliveries(User $user, Broadcast $broadcast): bool
+    {
+        return $this->memberIsAtLeast($user, $broadcast->project->organization, Role::Editor);
+    }
 }

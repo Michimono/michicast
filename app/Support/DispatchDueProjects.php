@@ -13,6 +13,9 @@ class DispatchDueProjects
 
     /**
      * Claim and run due active projects until the time budget is spent.
+     *
+     * A project stays due when the budget ran out, or when a delivery retry
+     * was requested after this tick claimed it and is still waiting.
      */
     public function handle(): void
     {
@@ -35,19 +38,21 @@ class DispatchDueProjects
             $project->loadMissing('organization');
 
             $completed = true;
+            $failed = false;
 
             try {
                 $completed = $this->runner->run($project, $deadline);
             } catch (Throwable $e) {
                 report($e);
+                $failed = true;
             }
 
             $project->claimed_at = null;
 
-            if ($completed) {
-                $project->refreshNextRunAt();
-            } else {
+            if (! $completed || (! $failed && $project->hasRetriesRequestedSince($startedAt))) {
                 $project->next_run_at = now();
+            } else {
+                $project->refreshNextRunAt();
             }
 
             $project->save();

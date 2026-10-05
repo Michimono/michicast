@@ -214,6 +214,19 @@ class Project extends Model
     }
 
     /**
+     * Whether a runnable broadcast has a delivery retry that was requested at
+     * or after $since and is still waiting. The dispatcher uses this to keep
+     * the project due when a retry arrived while a tick held the claim.
+     */
+    public function hasRetriesRequestedSince(CarbonInterface $since): bool
+    {
+        return ContentDelivery::query()
+            ->where('retry_requested_at', '>=', $since)
+            ->whereIn('broadcast_id', $this->broadcasts()->runnable()->select('id'))
+            ->exists();
+    }
+
+    /**
      * The timezone the schedule is resolved against.
      */
     public function effectiveTimezone(): string

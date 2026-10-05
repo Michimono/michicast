@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\DeliveryStatus;
 use App\Models\Broadcast;
+use App\Models\ContentDelivery;
 use App\Models\Organization;
 use App\Support\SecretRedactor;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class BroadcastDeliveryController extends Controller
         $status = $this->statusFilter($request);
 
         $deliveries = $broadcast->deliveries()
-            ->with(['contentItem', 'destination'])
+            ->with(['contentItem', 'destination', 'attempts'])
             ->when(
                 $status !== null,
                 fn ($query) => $query->where('status', $status->value),
@@ -33,12 +34,22 @@ class BroadcastDeliveryController extends Controller
             ->paginate(30)
             ->withQueryString();
 
+        $deliveries->getCollection()->each(
+            fn (ContentDelivery $delivery) => $delivery->setRelation('broadcast', $broadcast),
+        );
+
         return view('broadcast-deliveries.index', [
             'broadcast' => $broadcast,
             'project' => $broadcast->project,
             'deliveries' => $deliveries,
             'status' => $status,
             'statuses' => DeliveryStatus::cases(),
+            'retryableCount' => ContentDelivery::query()
+                ->retryableOn($broadcast)
+                ->whereNull('retry_requested_at')
+                ->count(),
+            'retryBlockReason' => $broadcast->retryBlockReason(),
+            'canRetry' => $request->user()?->can('retryDeliveries', $broadcast) ?? false,
             'secrets' => $this->secrets,
         ]);
     }

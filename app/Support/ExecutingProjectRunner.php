@@ -18,6 +18,7 @@ use App\Models\Source;
 use App\Support\BroadcastFilters\BroadcastFilterEvaluator;
 use App\Support\Mapping\ContentMapper;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Throwable;
 
@@ -38,6 +39,12 @@ use Throwable;
  *
  * publishSingleItem supports Send latest: one persisted item, no feed walk,
  * optional backfill bypass after the caller clears prior deliveries.
+ *
+ * Retries queued from the delivery history run at the start of each broadcast
+ * on a normal run: transform again with the current configuration, then the
+ * same claim-before-send publish, which reclaims the existing transient
+ * failure row instead of inserting a second one. Every publish outcome is
+ * appended as a ContentDeliveryAttempt so earlier failures stay visible.
  */
 class ExecutingProjectRunner implements ProjectRunner
 {
@@ -358,6 +365,20 @@ class ExecutingProjectRunner implements ProjectRunner
             'dry_report' => $this->dry ? [] : null,
         ]);
 
+        $retriedItemIds = [];
+
+        if (! $this->dry) {
+            $retriedItemIds = $this->retryRequestedDeliveries($project, $broadcastRun, $broadcast, $deadline);
+
+            if ($this->pastDeadline($deadline)) {
+                $broadcastRun->status = RunStatus::Incomplete;
+                $broadcastRun->finished_at = now();
+                $broadcastRun->save();
+
+                return false;
+            }
+        }
+
         try {
             $entries = $this->itemsForSource($broadcast->source);
 
@@ -403,6 +424,13 @@ class ExecutingProjectRunner implements ProjectRunner
 
             if ($entry['isNew']) {
                 $broadcastRun->items_new++;
+            }
+
+            if (in_array((int) $item->getKey(), $retriedItemIds, true)) {
+                $this->recordRunSkip($broadcastRun, $item, 'Retried earlier in this run.');
+                $broadcastRun->items_skipped++;
+
+                continue;
             }
 
             if ($this->isBackfill($item, $broadcast)) {
@@ -487,6 +515,69 @@ class ExecutingProjectRunner implements ProjectRunner
         return true;
     }
 
+    /**
+     * Republish the routes of this broadcast that were queued for a retry.
+     *
+     * Each request is consumed before anything is sent, so a crash cannot
+     * leave it queued forever. Requests on rows that stopped being retryable
+     * (delivered meanwhile, permanent, or moved to another destination) are
+     * dropped without a publish.
+     *
+     * @return list<int> Content item ids that were republished.
+     */
+    private function retryRequestedDeliveries(
+        Project $project,
+        BroadcastRun $broadcastRun,
+        Broadcast $broadcast,
+        ?CarbonInterface $deadline,
+    ): array {
+        $deliveries = $broadcast->deliveries()
+            ->whereNotNull('retry_requested_at')
+            ->with('contentItem')
+            ->orderBy('retry_requested_at')
+            ->orderBy('id')
+            ->get();
+
+        $destination = $broadcast->destination;
+        $retried = [];
+
+        foreach ($deliveries as $delivery) {
+            if ($this->pastDeadline($deadline)) {
+                break;
+            }
+
+            $delivery->retry_requested_at = null;
+            $delivery->save();
+            $delivery->setRelation('broadcast', $broadcast);
+
+            $item = $delivery->contentItem;
+
+            if ($item === null || ! $delivery->isRetryable()) {
+                continue;
+            }
+
+            $message = $this->mapper->prepare($broadcast, $item, $broadcast->source->name);
+            $this->advanceLifecycle($item, ContentItemLifecycle::Transformed);
+
+            $this->publish(
+                $project,
+                $broadcastRun,
+                $broadcast,
+                $destination,
+                $item,
+                $this->destinations->get($destination->type),
+                $destination->toDefinition(),
+                $message,
+                $deadline,
+                isRetry: true,
+            );
+
+            $retried[] = (int) $item->getKey();
+        }
+
+        return $retried;
+    }
+
     private function publish(
         Project $project,
         BroadcastRun $broadcastRun,
@@ -497,6 +588,7 @@ class ExecutingProjectRunner implements ProjectRunner
         DestinationDefinition $definition,
         PreparedMessage $message,
         ?CarbonInterface $deadline,
+        bool $isRetry = false,
     ): void {
         $this->advanceLifecycle($item, ContentItemLifecycle::Delivering);
 
@@ -528,6 +620,7 @@ class ExecutingProjectRunner implements ProjectRunner
                     DeliveryFailure::Transient,
                     'The dispatch time budget ran out before the delivery could finish.',
                     null,
+                    $isRetry,
                 );
 
                 return;
@@ -548,6 +641,7 @@ class ExecutingProjectRunner implements ProjectRunner
                 $delivery->retry_after_seconds = null;
                 $delivery->finished_at = now();
                 $delivery->save();
+                $this->recordAttempt($delivery, $isRetry);
                 $this->advanceLifecycle($item, ContentItemLifecycle::Delivered);
                 $broadcastRun->items_delivered++;
                 $destination->recordSuccess();
@@ -568,6 +662,7 @@ class ExecutingProjectRunner implements ProjectRunner
                     $result->failure ?? DeliveryFailure::Permanent,
                     (string) $result->failureReason,
                     $result->retryAfterSeconds,
+                    $isRetry,
                 );
 
                 return;
@@ -584,6 +679,7 @@ class ExecutingProjectRunner implements ProjectRunner
                     DeliveryFailure::Transient,
                     (string) $result->failureReason,
                     $result->retryAfterSeconds,
+                    $isRetry,
                 );
 
                 return;
@@ -602,6 +698,7 @@ class ExecutingProjectRunner implements ProjectRunner
                     DeliveryFailure::Transient,
                     (string) $result->failureReason,
                     $result->retryAfterSeconds,
+                    $isRetry,
                 );
 
                 return;
@@ -621,6 +718,7 @@ class ExecutingProjectRunner implements ProjectRunner
         DeliveryFailure $failure,
         string $reason,
         ?int $retryAfterSeconds,
+        bool $isRetry,
     ): void {
         $delivery->status = DeliveryStatus::Failed;
         $delivery->failure = $failure;
@@ -628,11 +726,30 @@ class ExecutingProjectRunner implements ProjectRunner
         $delivery->retry_after_seconds = $retryAfterSeconds;
         $delivery->finished_at = now();
         $delivery->save();
+        $this->recordAttempt($delivery, $isRetry);
         $this->advanceLifecycle($item, ContentItemLifecycle::Failed);
         $broadcastRun->items_failed++;
         $destination->recordFailure();
         $project->recordFailure();
         $broadcast->recordFailure($reason);
+    }
+
+    /**
+     * Append the finished outcome of the delivery as one attempt. The row
+     * itself only keeps the latest state of the route.
+     */
+    private function recordAttempt(ContentDelivery $delivery, bool $isRetry): void
+    {
+        $delivery->attempts()->create([
+            'broadcast_run_id' => $delivery->broadcast_run_id,
+            'status' => $delivery->status,
+            'failure' => $delivery->failure,
+            'error_detail' => $delivery->error_detail,
+            'external_reference' => $delivery->external_reference,
+            'is_retry' => $isRetry,
+            'attempted_at' => $delivery->attempted_at,
+            'finished_at' => $delivery->finished_at,
+        ]);
     }
 
     private function canWait(int $seconds, ?CarbonInterface $deadline): bool
@@ -651,7 +768,9 @@ class ExecutingProjectRunner implements ProjectRunner
     /**
      * Insert a pending delivery before calling the provider. A unique
      * constraint hit means another claim already owns this route: skip rather
-     * than risk a second publish. Transient failed rows may be reclaimed.
+     * than risk a second publish. Transient failed rows may be reclaimed; the
+     * reclaim is a conditional update, so two claims racing for the same
+     * failed row cannot both win.
      */
     private function claimDelivery(
         BroadcastRun $broadcastRun,
@@ -679,19 +798,30 @@ class ExecutingProjectRunner implements ProjectRunner
                 return null;
             }
 
-            $existing->fill([
-                'broadcast_run_id' => $broadcastRun->getKey(),
-                'status' => DeliveryStatus::Pending,
-                'external_reference' => null,
-                'failure' => null,
-                'error_detail' => null,
-                'retry_after_seconds' => null,
-                'attempted_at' => now(),
-                'finished_at' => null,
-            ]);
-            $existing->save();
+            $reclaimed = ContentDelivery::query()
+                ->whereKey($existing->getKey())
+                ->where('status', DeliveryStatus::Failed->value)
+                ->where(function (Builder $query): void {
+                    $query->whereNull('failure')
+                        ->orWhere('failure', '!=', DeliveryFailure::Permanent->value);
+                })
+                ->update([
+                    'broadcast_run_id' => $broadcastRun->getKey(),
+                    'status' => DeliveryStatus::Pending->value,
+                    'external_reference' => null,
+                    'failure' => null,
+                    'error_detail' => null,
+                    'retry_after_seconds' => null,
+                    'retry_requested_at' => null,
+                    'attempted_at' => now(),
+                    'finished_at' => null,
+                ]);
 
-            return $existing;
+            if ($reclaimed !== 1) {
+                return null;
+            }
+
+            return $existing->refresh();
         }
     }
 
