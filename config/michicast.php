@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\RecordingDestinationProvider;
+use App\Support\RedditSourceProvider;
 use App\Support\RssSourceProvider;
 use App\Support\TelegramDestinationProvider;
 use App\Support\TwitterSourceProvider;
@@ -110,6 +111,7 @@ return [
 
     'sources' => [
         'rss' => RssSourceProvider::class,
+        'reddit' => RedditSourceProvider::class,
         'twitter' => TwitterSourceProvider::class,
         'web_page' => WebPageSourceProvider::class,
     ],

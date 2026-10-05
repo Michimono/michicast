@@ -1,0 +1,54 @@
+{
+  "kind": "Listing",
+  "data": {
+    "after": null,
+    "dist": 3,
+    "children": [
+      {
+        "kind": "t3",
+        "data": {
+          "id": "abc123",
+          "name": "t3_abc123",
+          "title": "Weekly game discussion thread",
+          "selftext": "Share your decks and questions for this week.",
+          "author": "mod_account",
+          "created_utc": 1728129600,
+          "url": "https://www.reddit.com/r/pokemon/comments/abc123/weekly_game_discussion_thread/",
+          "permalink": "/r/pokemon/comments/abc123/weekly_game_discussion_thread/",
+          "is_self": true,
+          "removed_by_category": null
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "def456",
+          "name": "t3_def456",
+          "title": "Official expansion announcement",
+          "selftext": "",
+          "author": "newsbot",
+          "created_utc": 1728216000,
+          "url": "https://example.com/posts/expansion",
+          "permalink": "/r/pokemon/comments/def456/official_expansion_announcement/",
+          "is_self": false,
+          "removed_by_category": null
+        }
+      },
+      {
+        "kind": "t3",
+        "data": {
+          "id": "gone789",
+          "name": "t3_gone789",
+          "title": "[removed]",
+          "selftext": "[removed]",
+          "author": "[deleted]",
+          "created_utc": 1728302400,
+          "url": "https://www.reddit.com/r/pokemon/comments/gone789/removed/",
+          "permalink": "/r/pokemon/comments/gone789/removed/",
+          "is_self": true,
+          "removed_by_category": "moderator"
+        }
+      }
+    ]
+  }
+}

@@ -3,6 +3,7 @@
 namespace App\Support\Mapping;
 
 use App\Support\Mapping\Schemas\RecordingDestinationSchema;
+use App\Support\Mapping\Schemas\RedditSourceSchema;
 use App\Support\Mapping\Schemas\RssSourceSchema;
 use App\Support\Mapping\Schemas\TelegramDestinationSchema;
 use App\Support\Mapping\Schemas\TwitterSourceSchema;
@@ -17,6 +18,7 @@ final class ProviderSchemas
     {
         return match ($type) {
             'rss' => RssSourceSchema::make(),
+            'reddit' => RedditSourceSchema::make(),
             'twitter' => TwitterSourceSchema::make(),
             'web_page' => WebPageSourceSchema::make(),
             'fake' => new ContentSchema(
@@ -45,6 +47,7 @@ final class ProviderSchemas
     {
         return match ($type) {
             'rss', 'fake' => RssSourceSchema::sample(),
+            'reddit' => RedditSourceSchema::sample(),
             'twitter' => TwitterSourceSchema::sample(),
             'web_page' => WebPageSourceSchema::sample(),
             default => null,
