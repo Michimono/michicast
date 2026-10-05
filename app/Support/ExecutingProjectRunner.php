@@ -65,6 +65,7 @@ class ExecutingProjectRunner implements ProjectRunner
         private BroadcastFilterEvaluator $filters,
         private ContentMapper $mapper,
         private Clock $clock,
+        private SecretRedactor $secrets,
     ) {}
 
     public function run(Project $project, ?CarbonInterface $deadline = null): bool
@@ -391,11 +392,11 @@ class ExecutingProjectRunner implements ProjectRunner
             if (! $this->dry) {
                 $broadcast->source->recordFailure();
                 $project->recordFailure();
-                $broadcast->recordFailure($e->getMessage());
+                $broadcast->recordFailure((string) $this->secrets->redact($e->getMessage()));
             }
 
             $broadcastRun->status = RunStatus::Failed;
-            $broadcastRun->error_detail = $e->getMessage();
+            $broadcastRun->error_detail = $this->secrets->redact($e->getMessage());
             $broadcastRun->finished_at = now();
             $broadcastRun->save();
 
@@ -630,7 +631,7 @@ class ExecutingProjectRunner implements ProjectRunner
                 $result = $provider->publish($definition, $message);
             } catch (Throwable $e) {
                 report($e);
-                $result = DeliveryResult::transientFailure($e->getMessage());
+                $result = DeliveryResult::transientFailure((string) $this->secrets->redact($e->getMessage()));
             }
 
             if ($result->successful) {
@@ -720,6 +721,7 @@ class ExecutingProjectRunner implements ProjectRunner
         ?int $retryAfterSeconds,
         bool $isRetry,
     ): void {
+        $reason = (string) $this->secrets->redact($reason);
         $delivery->status = DeliveryStatus::Failed;
         $delivery->failure = $failure;
         $delivery->error_detail = $reason;

@@ -24,7 +24,10 @@ class TelegramDestinationProvider implements DestinationProvider
 
     private const API_BASE = 'https://api.telegram.org';
 
-    public function __construct(private TelegramMessageFormatter $formatter = new TelegramMessageFormatter) {}
+    public function __construct(
+        private TelegramMessageFormatter $formatter = new TelegramMessageFormatter,
+        private SecretRedactor $secrets = new SecretRedactor,
+    ) {}
 
     public function type(): string
     {
@@ -165,11 +168,11 @@ class TelegramDestinationProvider implements DestinationProvider
             ]);
         } catch (ConnectionException $exception) {
             return DeliveryResult::transientFailure(
-                $this->redact('Telegram did not answer in time.', $token, $exception),
+                $this->failureDetail('Telegram did not answer in time.', $token, $exception),
             );
         } catch (Throwable $exception) {
             return DeliveryResult::transientFailure(
-                $this->redact('Telegram could not be reached.', $token, $exception),
+                $this->failureDetail('Telegram could not be reached.', $token, $exception),
             );
         }
 
@@ -179,7 +182,7 @@ class TelegramDestinationProvider implements DestinationProvider
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function send(string $token, string $method, array $payload): Response
+    private function send(#[\SensitiveParameter] string $token, string $method, array $payload): Response
     {
         return Http::baseUrl(self::API_BASE)
             ->timeout(self::TIMEOUT_SECONDS)
@@ -189,17 +192,17 @@ class TelegramDestinationProvider implements DestinationProvider
             ->post($this->methodPath($token, $method), $payload);
     }
 
-    private function methodPath(string $token, string $method): string
+    private function methodPath(#[\SensitiveParameter] string $token, string $method): string
     {
         return '/bot'.$token.'/'.$method;
     }
 
-    private function deliveryFromResponse(Response $response, string $token): DeliveryResult
+    private function deliveryFromResponse(Response $response, #[\SensitiveParameter] string $token): DeliveryResult
     {
         $status = $response->status();
         $body = $response->json();
         $description = is_array($body) && is_string($body['description'] ?? null)
-            ? $this->redact($body['description'], $token)
+            ? $this->failureDetail($body['description'], $token)
             : null;
 
         if ($response->successful() && is_array($body) && ($body['ok'] ?? false) === true) {
@@ -256,7 +259,11 @@ class TelegramDestinationProvider implements DestinationProvider
         return $chatId === '' ? null : $chatId;
     }
 
-    private function redact(string $message, string $token, ?Throwable $exception = null): string
+    /**
+     * The failed request's URL carries the token, and the HTTP client puts
+     * that URL into its connection error message.
+     */
+    private function failureDetail(string $message, #[\SensitiveParameter] string $token, ?Throwable $exception = null): string
     {
         $detail = $exception?->getMessage();
 
@@ -264,6 +271,6 @@ class TelegramDestinationProvider implements DestinationProvider
             $message .= ' '.$detail;
         }
 
-        return str_replace($token, '[redacted]', $message);
+        return (string) $this->secrets->redact($message, [$token]);
     }
 }

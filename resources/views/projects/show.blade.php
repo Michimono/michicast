@@ -80,7 +80,7 @@
                                         {{ $paused->name }}
                                     </a>
                                     @if ($paused->failure_pause_reason)
-                                        <span class="text-muted"> — {{ $paused->failure_pause_reason }}</span>
+                                        <span class="text-muted"> — {{ $secrets->redact($paused->failure_pause_reason) }}</span>
                                     @endif
                                 </li>
                             @endforeach

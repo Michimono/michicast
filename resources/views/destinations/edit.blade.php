@@ -35,7 +35,7 @@
 
                 <x-provider-fields :fields="$fields" :values="$formConfig" />
 
-                <x-credential-fields :fields="$credentialFields" preserving />
+                <x-credential-fields :fields="$credentialFields" :masks="$credentialMasks" preserving />
 
                 <div class="flex flex-wrap items-center gap-2">
                     <x-button>Save destination</x-button>

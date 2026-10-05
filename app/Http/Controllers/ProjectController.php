@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Support\ProjectHealthResolver;
 use App\Support\ProjectScheduleForm;
 use App\Support\ScheduleSummary;
+use App\Support\SecretRedactor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -56,6 +57,7 @@ class ProjectController extends Controller
         Project $project,
         ProjectHealthResolver $health,
         ScheduleSummary $scheduleSummary,
+        SecretRedactor $secrets,
     ): View {
         Gate::authorize('view', $project);
 
@@ -101,6 +103,7 @@ class ProjectController extends Controller
             'autoPausedBroadcasts' => $autoPausedBroadcasts,
             'scheduleSummary' => $scheduleSummary->describe($project->schedule),
             'mappingEditor' => $mappingEditor,
+            'secrets' => $secrets,
         ]);
     }
 
