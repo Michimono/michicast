@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Example News</title>
+</head>
+<body>
+  <main class="news-list">
+    <article class="news-item">
+      <h2 class="title"><a href="/news/riverside-park">City opens the riverside park</a></h2>
+      <p class="summary">The riverside park opened this morning after two years of work.<script>alert('xss')</script></p>
+      <time class="published" datetime="2026-10-01T09:30:00+00:00">1 Oct 2026</time>
+      <a class="read-more" href="/news/riverside-park">Read more</a>
+    </article>
+    <article class="news-item">
+      <h2 class="title"><a href="library-reopens">Library wing reopens</a></h2>
+      <p class="summary">The west wing of the city library is open again. <b>Bookings</b> start Monday.<style>.x{color:red}</style></p>
+      <time class="published" datetime="2026-10-02T14:00:00+02:00">2 Oct 2026</time>
+      <a class="read-more" href="library-reopens">Read more</a>
+    </article>
+    <article class="news-item">
+      <h2 class="title"><a href="https://example.com/news/tram-line">New tram line approved</a></h2>
+      <p class="summary">Councillors approved the northern tram extension.</p>
+      <time class="published">not-a-real-date</time>
+      <a class="read-more" href="https://example.com/news/tram-line">Read more</a>
+    </article>
+  </main>
+</body>
+</html>
