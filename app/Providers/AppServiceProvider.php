@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Models\User;
 use App\Support\CurrentOrganization;
 use App\Support\DestinationProviderRegistry;
+use App\Support\DomCssHtmlSelectorParser;
 use App\Support\ExecutingProjectRunner;
+use App\Support\HtmlSelectorParser;
 use App\Support\ProjectRunner;
 use App\Support\SourceProviderRegistry;
 use Composer\CaBundle\CaBundle;
@@ -34,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(CurrentOrganization::class);
+
+        $this->app->bind(HtmlSelectorParser::class, DomCssHtmlSelectorParser::class);
 
         $this->app->singleton(SourceProviderRegistry::class, function (Application $app): SourceProviderRegistry {
             $registry = new SourceProviderRegistry($app);

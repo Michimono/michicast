@@ -4,6 +4,7 @@ use App\Support\RecordingDestinationProvider;
 use App\Support\RssSourceProvider;
 use App\Support\TelegramDestinationProvider;
 use App\Support\TwitterSourceProvider;
+use App\Support\WebPageSourceProvider;
 
 return [
 
@@ -110,6 +111,7 @@ return [
     'sources' => [
         'rss' => RssSourceProvider::class,
         'twitter' => TwitterSourceProvider::class,
+        'web_page' => WebPageSourceProvider::class,
     ],
 
     /*
