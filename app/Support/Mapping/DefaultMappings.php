@@ -14,9 +14,9 @@ final class DefaultMappings
     public function for(string $sourceType, string $destinationType): ?MappingDefinition
     {
         return match ($sourceType.'->'.$destinationType) {
-            'rss->telegram', 'fake->telegram', 'web_page->telegram' => $this->rssToTelegram($sourceType),
+            'rss->telegram', 'fake->telegram', 'web_page->telegram', 'reddit->telegram' => $this->rssToTelegram($sourceType),
             'twitter->telegram' => $this->twitterToTelegram(),
-            'rss->recording', 'fake->recording', 'web_page->recording' => $this->rssToRecording($sourceType),
+            'rss->recording', 'fake->recording', 'web_page->recording', 'reddit->recording' => $this->rssToRecording($sourceType),
             'twitter->recording' => $this->twitterToRecording(),
             default => null,
         };
