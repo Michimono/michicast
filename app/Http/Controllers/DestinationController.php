@@ -8,6 +8,7 @@ use App\Models\Destination;
 use App\Models\Organization;
 use App\Support\ConnectionTestOutcome;
 use App\Support\DestinationProviderRegistry;
+use App\Support\SecretRedactor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -15,7 +16,10 @@ use Illuminate\View\View;
 
 class DestinationController extends Controller
 {
-    public function __construct(private DestinationProviderRegistry $providers) {}
+    public function __construct(
+        private DestinationProviderRegistry $providers,
+        private SecretRedactor $secrets,
+    ) {}
 
     public function edit(Organization $organization, Destination $destination): View
     {
@@ -72,6 +76,10 @@ class DestinationController extends Controller
             'typeLabel' => $known ? $this->providers->get($destination->type)->label() : $destination->type,
             'fields' => $known ? $this->providers->configurationFields($destination->type) : [],
             'credentialFields' => $known ? $this->providers->credentialFields($destination->type) : [],
+            'credentialMasks' => array_map(
+                fn (mixed $value): ?string => $this->secrets->mask($value),
+                $destination->credentials ?? [],
+            ),
             'formName' => $name ?? $destination->name,
             'formConfig' => $config ?? ($destination->config ?? []),
             'supportsConnectionTest' => $supports,

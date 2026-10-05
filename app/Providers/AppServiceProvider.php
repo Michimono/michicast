@@ -9,6 +9,7 @@ use App\Support\DomCssHtmlSelectorParser;
 use App\Support\ExecutingProjectRunner;
 use App\Support\HtmlSelectorParser;
 use App\Support\ProjectRunner;
+use App\Support\SecretRedactor;
 use App\Support\SourceProviderRegistry;
 use Composer\CaBundle\CaBundle;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -36,6 +37,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(CurrentOrganization::class);
+
+        $this->app->scoped(SecretRedactor::class);
 
         $this->app->bind(HtmlSelectorParser::class, DomCssHtmlSelectorParser::class);
 
