@@ -35,7 +35,7 @@ class QuotaExceededRunTest extends TestCase
     {
         $this->travelTo(Carbon::parse('2026-10-06 12:00:00', 'UTC'));
         Http::preventStrayRequests();
-        Log::spy();
+        $log = Log::spy();
 
         [$organization, $project, $broadcast] = $this->rssProject();
 
@@ -62,7 +62,7 @@ class QuotaExceededRunTest extends TestCase
         $this->assertTrue($broadcast->fresh()->enabled);
         $this->assertSame(0, ContentDelivery::query()->count());
 
-        Log::shouldHaveReceived('info')->withArgs(function (string $message, array $context) use ($organization, $project, $broadcast): bool {
+        $log->shouldHaveReceived('info')->withArgs(function (string $message, array $context) use ($organization, $project, $broadcast): bool {
             return $message === 'quota.exceeded'
                 && $context['organization_id'] == $organization->getKey()
                 && $context['project_id'] == $project->getKey()
