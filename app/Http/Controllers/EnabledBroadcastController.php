@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreEnabledBroadcastRequest;
 use App\Models\Broadcast;
 use App\Models\Organization;
 use Illuminate\Http\RedirectResponse;
@@ -9,10 +10,8 @@ use Illuminate\Support\Facades\Gate;
 
 class EnabledBroadcastController extends Controller
 {
-    public function store(Organization $organization, Broadcast $broadcast): RedirectResponse
+    public function store(StoreEnabledBroadcastRequest $request, Organization $organization, Broadcast $broadcast): RedirectResponse
     {
-        Gate::authorize('changeStatus', $broadcast);
-
         $broadcast->enable();
 
         return back()->with('success', 'The broadcast has been enabled.');

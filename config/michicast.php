@@ -201,6 +201,8 @@ return [
     */
 
     'quotas' => [
+        // Cap on organizations one non-admin user may own (Role::Owner).
+        'organizations_per_user' => (int) env('QUOTA_ORGANIZATIONS_PER_USER', 3),
         'default_plan' => env('QUOTA_DEFAULT_PLAN', 'free'),
         'plans' => [
             'free' => [

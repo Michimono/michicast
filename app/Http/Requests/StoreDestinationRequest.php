@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\QuotaMetric;
 use App\Http\Requests\Concerns\ValidatesDestinationSettings;
 use App\Models\Destination;
 use App\Models\Project;
 use App\Support\DestinationProviderRegistry;
+use App\Support\ResourceQuotas;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,6 +40,35 @@ class StoreDestinationRequest extends FormRequest
             'credentials' => ['nullable', 'array'],
             ...$this->configurationRules($this->type()),
             ...$this->credentialRules($this->type()),
+        ];
+    }
+
+    /**
+     * @return array<int, callable>
+     */
+    public function after(ResourceQuotas $quotas): array
+    {
+        return [
+            function (Validator $validator) use ($quotas): void {
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $project = $this->route('project');
+
+                if (! $project instanceof Project) {
+                    return;
+                }
+
+                $organization = $project->organization;
+
+                if ($quotas->wouldExceed($organization, QuotaMetric::Destinations)) {
+                    $validator->errors()->add(
+                        'name',
+                        $quotas->message($organization, QuotaMetric::Destinations),
+                    );
+                }
+            },
         ];
     }
 

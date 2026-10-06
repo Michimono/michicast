@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\QuotaMetric;
 use App\Models\Broadcast;
 use App\Models\Destination;
 use App\Models\Project;
 use App\Models\Source;
+use App\Support\ResourceQuotas;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -50,6 +53,37 @@ class StoreBroadcastRequest extends FormRequest
                     ->where('project_id', $projectId)
                     ->whereNull('archived_at'),
             ],
+        ];
+    }
+
+    /**
+     * New broadcasts start enabled, so create counts toward active_broadcasts.
+     *
+     * @return array<int, callable>
+     */
+    public function after(ResourceQuotas $quotas): array
+    {
+        return [
+            function (Validator $validator) use ($quotas): void {
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $project = $this->route('project');
+
+                if (! $project instanceof Project) {
+                    return;
+                }
+
+                $organization = $project->organization;
+
+                if ($quotas->wouldExceed($organization, QuotaMetric::ActiveBroadcasts)) {
+                    $validator->errors()->add(
+                        'name',
+                        $quotas->message($organization, QuotaMetric::ActiveBroadcasts),
+                    );
+                }
+            },
         ];
     }
 

@@ -489,6 +489,8 @@ class OrganizationInvitationTest extends TestCase
         Mail::fake();
 
         [$owner, $organization] = $this->memberHolding(Role::Owner);
+        // Rate-limit coverage needs headroom past the free-plan members cap (#162).
+        $organization->update(['plan' => 'unlimited']);
 
         for ($attempt = 1; $attempt <= 10; $attempt++) {
             $this->actingAs($owner)
