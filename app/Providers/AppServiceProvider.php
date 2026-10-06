@@ -101,6 +101,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('source-preview', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'project', perActor: 6, perOrganization: 30));
 
         RateLimiter::for('destination-connection-test', fn (Request $request) => $this->actorAndOrganizationLimits($request, 'destination', perActor: 6, perOrganization: 30));
+
+        RateLimiter::for('admin', fn (Request $request) => Limit::perMinute(30)->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
     }
 
     /**
