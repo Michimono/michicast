@@ -108,4 +108,14 @@ class Organization extends Model
     {
         return $this->hasManyThrough(Broadcast::class, Project::class);
     }
+
+    /**
+     * Per-metric limit overrides that replace the plan for this organization.
+     *
+     * @return HasMany<OrganizationQuotaOverride, $this>
+     */
+    public function quotaOverrides(): HasMany
+    {
+        return $this->hasMany(OrganizationQuotaOverride::class);
+    }
 }

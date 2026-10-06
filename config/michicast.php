@@ -183,4 +183,45 @@ return [
         'telegram' => TelegramDestinationProvider::class,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Organization Quotas
+    |--------------------------------------------------------------------------
+    |
+    | Named plans are limit sets for each QuotaMetric. New organizations get
+    | default_plan. Null in a plan means unlimited for that metric. Per-
+    | organization exceptions live in organization_quota_overrides, not here.
+    | Free-plan numbers stay modest so a public droplet is not an open relay;
+    | override any of them with the QUOTA_FREE_* env keys below.
+    |
+    | Rate metrics (source_fetches, deliveries) are daily caps. The rest are
+    | caps on how many records may exist at once.
+    |
+    */
+
+    'quotas' => [
+        'default_plan' => env('QUOTA_DEFAULT_PLAN', 'free'),
+        'plans' => [
+            'free' => [
+                // Daily live fetches across every source provider.
+                'source_fetches' => (int) env('QUOTA_FREE_SOURCE_FETCHES', 200),
+                // Daily items published to any destination.
+                'deliveries' => (int) env('QUOTA_FREE_DELIVERIES', 100),
+                // Enabled broadcasts across the organization.
+                'active_broadcasts' => (int) env('QUOTA_FREE_ACTIVE_BROADCASTS', 10),
+                'sources' => (int) env('QUOTA_FREE_SOURCES', 10),
+                'destinations' => (int) env('QUOTA_FREE_DESTINATIONS', 5),
+                'members' => (int) env('QUOTA_FREE_MEMBERS', 5),
+            ],
+            'unlimited' => [
+                'source_fetches' => null,
+                'deliveries' => null,
+                'active_broadcasts' => null,
+                'sources' => null,
+                'destinations' => null,
+                'members' => null,
+            ],
+        ],
+    ],
+
 ];
