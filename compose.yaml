@@ -1,5 +1,6 @@
 # MySQL data is the mysql-data volume.
 # Redis data is the redis-data volume (AOF). REDIS_HOST=redis in deploy/.env.
+# TLS terminates at the caddy service (ports 80/443). nginx stays internal.
 
 name: michicast
 
@@ -24,6 +25,22 @@ x-php: &php
   logging: *logging
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file:
+      - deploy/.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+    logging: *logging
+
   app:
     <<: *php
     build:
@@ -41,8 +58,7 @@ services:
     restart: unless-stopped
     depends_on:
       - app
-    ports:
-      - "80:80"
+    # Internal Compose network only -- caddy publishes 80/443 to the host.
     volumes:
       - app-storage:/var/www/storage:ro
     logging: *logging
@@ -107,3 +123,5 @@ volumes:
   mysql-data:
   redis-data:
   app-storage:
+  caddy-data:
+  caddy-config:

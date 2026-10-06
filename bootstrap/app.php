@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AddStrictTransportSecurityHeader;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,6 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Caddy terminates TLS and forwards X-Forwarded-* on the Compose network.
+        $middleware->trustProxies(at: '*');
+        $middleware->append(AddStrictTransportSecurityHeader::class);
+
         $middleware->redirectGuestsTo(fn () => route('session.create'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));
     })
