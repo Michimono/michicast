@@ -38,7 +38,7 @@ cp deploy/.env.example deploy/.env
 bash ~/michimono/deploy/deploy.sh
 ```
 
-`deploy/deploy.sh` pulls, builds Compose, starts services, and runs migrations.
+`deploy/deploy.sh` pulls, builds Compose, starts services, runs migrations, and terminates Horizon so workers pick up new code.
 
 If the build is killed, it ran out of memory (the Ansible swap role is meant to help).
 

@@ -37,8 +37,9 @@ class OrganizationInvitationTest extends TestCase
         $this->assertSame(Role::Editor, $invitation->role);
         $this->assertTrue($invitation->isPending());
 
-        Mail::assertSent(OrganizationInvitationMail::class, function (OrganizationInvitationMail $mail) use ($invitation): bool {
-            return $mail->hasTo('ada@example.test')
+        Mail::assertQueued(OrganizationInvitationMail::class, function (OrganizationInvitationMail $mail) use ($invitation): bool {
+            return $mail->queue === 'mail'
+                && $mail->hasTo('ada@example.test')
                 && $mail->invitation->is($invitation)
                 && $mail->hasSubject('Join Michimono Labs');
         });
@@ -84,7 +85,7 @@ class OrganizationInvitationTest extends TestCase
             ->post(route('invitations.store', $organization), [])
             ->assertSessionHasErrors(['email', 'role']);
 
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_inviting_an_address_that_already_has_an_account_still_only_sends_the_invitation(): void
@@ -102,7 +103,7 @@ class OrganizationInvitationTest extends TestCase
             ->assertSessionHas('success', 'Invitation sent.');
 
         $this->assertTrue($existing->memberships()->doesntExist());
-        Mail::assertSent(OrganizationInvitationMail::class, 'ada@example.test');
+        Mail::assertQueued(OrganizationInvitationMail::class, 'ada@example.test');
     }
 
     public function test_inviting_a_current_member_is_rejected_without_sending_mail(): void
@@ -121,7 +122,7 @@ class OrganizationInvitationTest extends TestCase
             ->assertSessionHasErrors('email');
 
         $this->assertDatabaseCount('organization_invitations', 0);
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     #[DataProvider('nonAdministrativeRoles')]
@@ -138,7 +139,7 @@ class OrganizationInvitationTest extends TestCase
             ])
             ->assertForbidden();
 
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_an_existing_user_can_accept_an_invitation(): void
@@ -427,7 +428,7 @@ class OrganizationInvitationTest extends TestCase
         $invitation = OrganizationInvitation::query()->sole();
 
         $this->assertSame(Role::Editor, $invitation->role);
-        Mail::assertSent(OrganizationInvitationMail::class, 2);
+        Mail::assertQueued(OrganizationInvitationMail::class, 2);
     }
 
     public function test_the_invitation_mail_names_the_organization_role_and_accept_url(): void
@@ -507,7 +508,7 @@ class OrganizationInvitationTest extends TestCase
             ->assertSee('Too many attempts');
 
         $this->assertDatabaseMissing('organization_invitations', ['email' => 'one-too-many@example.test']);
-        Mail::assertSentCount(10);
+        Mail::assertQueuedCount(10);
     }
 
     /**

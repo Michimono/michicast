@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('projects:dispatch')
     ->everyMinute()
     ->withoutOverlapping(2);
+
+Schedule::command('horizon:snapshot')->everyFiveMinutes();
+
+Schedule::command('queue:prune-failed --hours=48')->daily();

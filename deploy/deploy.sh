@@ -12,3 +12,4 @@ git pull --ff-only
 docker compose build
 docker compose up -d
 docker compose exec -T app php artisan migrate --force
+docker compose exec -T app php artisan horizon:terminate

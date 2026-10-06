@@ -1,14 +1,18 @@
 ---
-description: Cron-only scheduling and project run execution
+description: Scheduling, Horizon, and project run execution
 globs: app/Console/**,routes/console.php
 alwaysApply: false
 ---
 
 # Execution rules
 
-## Cron only, no queue workers
+## Droplet: schedule:work and Horizon
 
-Production is shared hosting with a single cron entry running `php artisan schedule:run` every minute. Do not add a queue worker, a daemon, or code that assumes one is running.
+The Compose droplet runs `php artisan schedule:work` and `php artisan horizon` (Redis queue). Queued mail and other jobs go through Horizon. Keep project dispatch database-driven: the queue is delivery, not the source of truth.
+
+## Hand-installed cron path
+
+A single cron entry running `php artisan schedule:run` every minute still works with `QUEUE_CONNECTION=sync` or the database queue. Do not assume a long-running queue worker on that path.
 
 ## The scheduler is the clock, project schedules are data
 
