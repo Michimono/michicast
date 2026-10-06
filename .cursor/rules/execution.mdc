@@ -1,6 +1,6 @@
 ---
 description: Scheduling, Horizon, and project run execution
-globs: app/Console/**,routes/console.php
+globs: app/Console/**,routes/console.php,app/Jobs/**
 alwaysApply: false
 ---
 
@@ -8,19 +8,19 @@ alwaysApply: false
 
 ## Droplet: schedule:work and Horizon
 
-The Compose droplet runs `php artisan schedule:work` and `php artisan horizon` (Redis queue). Queued mail and other jobs go through Horizon. Keep project dispatch database-driven: the queue is delivery, not the source of truth.
+The Compose droplet runs `php artisan schedule:work` and `php artisan horizon` (Redis queue). Queued mail, broadcast runs, and other jobs go through Horizon. Keep project dispatch database-driven: the queue is delivery, not the source of truth. A lost job is recovered when the stale-claim window reclaims the project.
 
 ## Hand-installed cron path
 
-A single cron entry running `php artisan schedule:run` every minute still works with `QUEUE_CONNECTION=sync` or the database queue. Do not assume a long-running queue worker on that path.
+A single cron entry running `php artisan schedule:run` every minute still works with `QUEUE_CONNECTION=sync` or the database queue and `MICHICAST_RUNS_ON_QUEUE=false` so due projects run inline. Do not assume a long-running queue worker on that path.
 
 ## The scheduler is the clock, project schedules are data
 
-The Laravel scheduler only ticks. A dispatch command queries projects whose `next_run_at` has passed, claims each one atomically, and runs it inline within a time budget. Guard the scheduled entry with `withoutOverlapping()`.
+The Laravel scheduler only ticks. A dispatch command queries projects whose `next_run_at` has passed and claims each one atomically. With `MICHICAST_RUNS_ON_QUEUE` on (droplet default), each claim is handed to a `RunProject` job; otherwise the claim is run inline within a time budget. Guard the scheduled entry with `withoutOverlapping()`.
 
 ## Run now never executes in a web request
 
-A manual run marks the project as due so the next tick picks it up. HTTP requests must not perform provider fetches or publishing.
+With the queue switch on, Run now and Send latest dispatch a job and return immediately. With the switch off (cron host), they may still run inline for compatibility. HTTP requests must not perform provider fetches or publishing when the queue path is enabled. Previews, connection tests and dry runs stay in-request and rate limited.
 
 ## Timezones are domain data
 
