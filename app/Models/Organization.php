@@ -110,6 +110,16 @@ class Organization extends Model
     }
 
     /**
+     * Every project run under this organization's projects.
+     *
+     * @return HasManyThrough<ProjectRun, Project, $this>
+     */
+    public function runs(): HasManyThrough
+    {
+        return $this->hasManyThrough(ProjectRun::class, Project::class);
+    }
+
+    /**
      * Per-metric limit overrides that replace the plan for this organization.
      *
      * @return HasMany<OrganizationQuotaOverride, $this>
