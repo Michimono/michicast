@@ -17,7 +17,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->append(AddStrictTransportSecurityHeader::class);
 
-        $middleware->redirectGuestsTo(fn () => route('session.create'));
+        $middleware->redirectGuestsTo(function () {
+            if (session()->has('login.id')) {
+                return route('two-factor-challenge.create');
+            }
+
+            return route('session.create');
+        });
         $middleware->redirectUsersTo(fn () => route('dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

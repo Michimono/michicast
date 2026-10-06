@@ -16,6 +16,7 @@ use App\Http\Controllers\BroadcastSendLatestController;
 use App\Http\Controllers\BroadcastTransformController;
 use App\Http\Controllers\BroadcastTransformPreviewController;
 use App\Http\Controllers\ConfirmedPasswordController;
+use App\Http\Controllers\ConfirmedTwoFactorAuthenticationController;
 use App\Http\Controllers\ContentPreviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryRetryController;
@@ -48,6 +49,9 @@ use App\Http\Controllers\ProjectSourcePreviewController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SourceConnectionTestController;
 use App\Http\Controllers\SourceController;
+use App\Http\Controllers\TwoFactorAuthenticationController;
+use App\Http\Controllers\TwoFactorChallengeController;
+use App\Http\Controllers\TwoFactorRecoveryCodeController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsurePlatformAdmin;
 use App\Http\Middleware\PreventAdminPageCaching;
@@ -77,6 +81,11 @@ Route::middleware('guest')->group(function (): void {
         ->only(['create', 'store'])
         ->middlewareFor('store', 'throttle:login');
 
+    Route::singleton('two-factor-challenge', TwoFactorChallengeController::class)
+        ->creatable()
+        ->only(['create', 'store'])
+        ->middlewareFor('store', 'throttle:two-factor');
+
     Route::resource('password-reset-links', PasswordResetLinkController::class)
         ->only(['create', 'store'])
         ->middlewareFor('store', 'throttle:password-reset');
@@ -104,6 +113,21 @@ Route::middleware('auth')->group(function (): void {
     Route::singleton('profile/password', ProfilePasswordController::class)
         ->only(['edit', 'update'])
         ->names('profile.password');
+
+    Route::singleton('profile/two-factor-authentication', TwoFactorAuthenticationController::class)
+        ->creatable()
+        ->only(['create', 'store', 'destroy'])
+        ->names('profile.two-factor-authentication');
+
+    Route::singleton('profile/confirmed-two-factor-authentication', ConfirmedTwoFactorAuthenticationController::class)
+        ->creatable()
+        ->only(['store'])
+        ->names('profile.confirmed-two-factor-authentication');
+
+    Route::singleton('profile/two-factor-recovery-codes', TwoFactorRecoveryCodeController::class)
+        ->creatable()
+        ->only(['store'])
+        ->names('profile.two-factor-recovery-codes');
 
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
