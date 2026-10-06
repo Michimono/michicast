@@ -194,8 +194,9 @@ return [
     | Free-plan numbers stay modest so a public droplet is not an open relay;
     | override any of them with the QUOTA_FREE_* env keys below.
     |
-    | Rate metrics (source_fetches, deliveries) are daily caps. The rest are
-    | caps on how many records may exist at once.
+    | Rate metrics (source_fetches, deliveries) are daily caps counted in UTC
+    | (period resets at UTC midnight). The rest are caps on how many records
+    | may exist at once. Usage rows live in organization_usage (#160).
     |
     */
 

@@ -15,3 +15,6 @@ Schedule::command('projects:dispatch')
 Schedule::command('horizon:snapshot')->everyFiveMinutes();
 
 Schedule::command('queue:prune-failed --hours=48')->daily();
+
+// Usage metering periods are UTC calendar days; keep 90 days of history (#160).
+Schedule::command('usage:prune')->daily();

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\QuotaMetric;
 use App\Http\Requests\StoreSourceConnectionTestRequest;
 use App\Models\Organization;
 use App\Models\Source;
 use App\Support\ConnectionTestOutcome;
 use App\Support\ConnectionTestResult;
+use App\Support\QuotaMeter;
 use App\Support\SecretRedactor;
 use App\Support\SourceDefinition;
 use App\Support\SourceProviderRegistry;
@@ -18,6 +20,7 @@ class SourceConnectionTestController extends Controller
     public function __construct(
         private SourceProviderRegistry $providers,
         private SecretRedactor $secrets,
+        private QuotaMeter $meter,
     ) {}
 
     public function store(
@@ -27,7 +30,7 @@ class SourceConnectionTestController extends Controller
         SourceController $form,
     ): View {
         $config = array_merge($source->config ?? [], $request->configuration());
-        $result = $this->runTest($source, $config);
+        $result = $this->runTest($organization, $source, $config);
         $outcome = $this->persistResult($source, $result);
 
         return $form->form(
@@ -42,7 +45,7 @@ class SourceConnectionTestController extends Controller
     /**
      * @param  array<string, mixed>  $config
      */
-    private function runTest(Source $source, array $config): ConnectionTestResult
+    private function runTest(Organization $organization, Source $source, array $config): ConnectionTestResult
     {
         if (! $this->providers->has($source->type)) {
             return ConnectionTestResult::unsupported();
@@ -52,6 +55,13 @@ class SourceConnectionTestController extends Controller
 
         if (! $provider->capabilities()->supportsConnectionTest) {
             return ConnectionTestResult::unsupported();
+        }
+
+        // Meter before the provider call; on denial skip the test (#160).
+        $decision = $this->meter->consume($organization, QuotaMetric::SourceFetches);
+
+        if (! $decision->allowed) {
+            return ConnectionTestResult::failure('Source fetch quota exhausted for this period.');
         }
 
         try {
