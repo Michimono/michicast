@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -49,8 +48,7 @@ class PasswordResetTest extends TestCase
             ->assertSessionHas('success');
 
         Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification): bool {
-            return $notification instanceof ShouldQueue
-                && $notification->queue === 'mail';
+            return $notification->queue === 'mail';
         });
     }
 
