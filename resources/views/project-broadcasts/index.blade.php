@@ -51,6 +51,9 @@
 
                                         <x-button>Enable</x-button>
                                     </form>
+                                    @error('enabled')
+                                        <p class="w-full text-sm text-state-fail">{{ $message }}</p>
+                                    @enderror
                                 @endif
 
                                 <form

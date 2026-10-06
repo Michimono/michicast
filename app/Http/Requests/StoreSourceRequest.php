@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\QuotaMetric;
 use App\Http\Requests\Concerns\ValidatesSourceConfiguration;
 use App\Models\Project;
 use App\Models\Source;
+use App\Support\ResourceQuotas;
 use App\Support\SourceProviderRegistry;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -38,6 +41,35 @@ class StoreSourceRequest extends FormRequest
             'type' => ['required', 'string', Rule::in($registry->types())],
             'config' => ['nullable', 'array'],
             ...$this->configurationRules($this->type()),
+        ];
+    }
+
+    /**
+     * @return array<int, callable>
+     */
+    public function after(ResourceQuotas $quotas): array
+    {
+        return [
+            function (Validator $validator) use ($quotas): void {
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $project = $this->route('project');
+
+                if (! $project instanceof Project) {
+                    return;
+                }
+
+                $organization = $project->organization;
+
+                if ($quotas->wouldExceed($organization, QuotaMetric::Sources)) {
+                    $validator->errors()->add(
+                        'name',
+                        $quotas->message($organization, QuotaMetric::Sources),
+                    );
+                }
+            },
         ];
     }
 

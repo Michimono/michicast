@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\ProjectStatus;
+use App\Enums\QuotaMetric;
 use App\Exceptions\InvalidProjectTransitionException;
 use App\Support\NextRunCalculator;
+use App\Support\ResourceQuotas;
 use Carbon\CarbonInterface;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -365,11 +367,15 @@ class Project extends Model
             return null;
         }
 
+        // Stay under active_broadcasts: create disabled when the org is already at the cap.
+        $quotas = app(ResourceQuotas::class);
+        $enabled = ! $quotas->wouldExceed($this->organization, QuotaMetric::ActiveBroadcasts);
+
         return $this->broadcasts()->create([
             'name' => $this->name,
             'source_id' => $source->getKey(),
             'destination_id' => $destination->getKey(),
-            'enabled' => true,
+            'enabled' => $enabled,
         ]);
     }
 
