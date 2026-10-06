@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -28,13 +28,27 @@ class PasswordResetTest extends TestCase
         $this->post(route('password-reset-links.store'), ['email' => $user->email])
             ->assertSessionHas('success');
 
-        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user): bool {
+        Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification) use ($user): bool {
             $this->assertSame(
                 route('passwords.edit', ['token' => $notification->token, 'email' => $user->email]),
                 $notification->toMail($user)->actionUrl,
             );
 
             return true;
+        });
+    }
+
+    public function test_password_reset_notification_is_queued_on_the_mail_queue(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+
+        $this->post(route('password-reset-links.store'), ['email' => $user->email])
+            ->assertSessionHas('success');
+
+        Notification::assertSentTo($user, ResetPasswordNotification::class, function (ResetPasswordNotification $notification): bool {
+            return $notification->queue === 'mail';
         });
     }
 

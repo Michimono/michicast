@@ -47,10 +47,10 @@ services:
       - app-storage:/var/www/storage:ro
     logging: *logging
 
-  queue:
+  horizon:
     <<: *php
-    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600", "--memory=128"]
-    stop_grace_period: 30s
+    command: ["php", "artisan", "horizon"]
+    stop_grace_period: 90s
     init: true
 
   scheduler:

@@ -41,13 +41,15 @@ git config core.hooksPath .githooks
 
 ## Scheduler
 
-Production uses a single cron entry. The Laravel scheduler ticks every minute and runs due projects inline; there is no queue worker.
+The droplet Compose stack runs `schedule:work` and Horizon (`QUEUE_CONNECTION=redis`). Due projects still dispatch from the scheduler; mail and other queued work run on Redis under Horizon.
+
+The hand-installed cron path remains valid with `QUEUE_CONNECTION=sync` or the database queue:
 
 ```cron
 * * * * * cd /path/to/michicast && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-That cron entry is the hand-installed path, and it stays. Droplet deploy: [docs/deploy.md](docs/deploy.md). Host first-boot (Docker, deploy user, swap, UFW) is in [laravel-droplet-infra](https://github.com/Michimono/laravel-droplet-infra); this repo only covers app clone, `deploy/.env`, and `deploy/deploy.sh`.
+Droplet deploy: [docs/deploy.md](docs/deploy.md). Host first-boot (Docker, deploy user, swap, UFW) is in [laravel-droplet-infra](https://github.com/Michimono/laravel-droplet-infra); this repo only covers app clone, `deploy/.env`, and `deploy/deploy.sh`.
 
 
 ## Checks
