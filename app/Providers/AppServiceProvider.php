@@ -17,6 +17,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -78,6 +79,8 @@ class AppServiceProvider extends ServiceProvider
             'token' => $token,
             'email' => $user->getEmailForPasswordReset(),
         ]));
+
+        Gate::define('accessAdmin', fn (User $user): bool => $user->isPlatformAdmin());
 
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by($this->emailAndIpKey($request)));
 
