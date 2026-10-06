@@ -10,9 +10,12 @@ RUN npm run build
 FROM php:8.4-fpm-bookworm AS app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gosu libicu-dev libzip-dev unzip \
+    && apt-get install -y --no-install-recommends gosu libicu-dev libzip-dev unzip $PHPIZE_DEPS \
     && docker-php-ext-install -j"$(nproc)" intl pdo_mysql opcache bcmath pcntl zip \
-    && rm -rf /var/lib/apt/lists/*
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $PHPIZE_DEPS \
+    && rm -rf /var/lib/apt/lists/* /tmp/pear
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

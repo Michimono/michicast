@@ -32,7 +32,9 @@ git clone https://github.com/Michimono/michicast.git ~/michimono
 
 cd ~/michimono
 cp deploy/.env.example deploy/.env
-# Fill secrets: APP_KEY, APP_URL, DB_*/MYSQL_* passwords, etc.
+# Fill secrets: APP_KEY, APP_URL, DB_*/MYSQL_* passwords, REDIS_PASSWORD, etc.
+# Generate REDIS_PASSWORD (required by the redis Compose service), e.g.:
+#   sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -base64 32)/" deploy/.env
 bash ~/michimono/deploy/deploy.sh
 ```
 
