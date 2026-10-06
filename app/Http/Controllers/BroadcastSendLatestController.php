@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendLatestJob;
+use App\Models\ContentItem;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Support\SecretRedactor;
 use App\Support\SendLatest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -15,6 +18,7 @@ class BroadcastSendLatestController extends Controller
         Organization $organization,
         Project $project,
         SendLatest $sendLatest,
+        SecretRedactor $secrets,
     ): RedirectResponse {
         Gate::authorize('sendLatest', $project);
 
@@ -24,6 +28,24 @@ class BroadcastSendLatestController extends Controller
                 ->with('error', 'Only an active broadcast can send the latest item.');
         }
 
+        if (config('michicast.runs_on_queue')) {
+            $hasItem = ContentItem::query()
+                ->where('project_id', $project->getKey())
+                ->exists();
+
+            if (! $hasItem) {
+                return redirect()
+                    ->route('broadcasts.edit', $project)
+                    ->with('error', 'No received source item to send.');
+            }
+
+            SendLatestJob::dispatch((int) $project->getKey());
+
+            return redirect()
+                ->route('broadcasts.edit', $project)
+                ->with('success', 'Queued');
+        }
+
         try {
             $result = $sendLatest->handle($project);
         } catch (Throwable $e) {
@@ -31,7 +53,7 @@ class BroadcastSendLatestController extends Controller
 
             return redirect()
                 ->route('broadcasts.edit', $project)
-                ->with('error', 'Send latest could not finish: '.$e->getMessage());
+                ->with('error', 'Send latest could not finish: '.$secrets->redact($e->getMessage()));
         }
 
         if ($result === null) {

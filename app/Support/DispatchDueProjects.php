@@ -2,17 +2,20 @@
 
 namespace App\Support;
 
+use App\Jobs\RunProject;
 use App\Models\Project;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Throwable;
 
 class DispatchDueProjects
 {
-    public function __construct(private ProjectRunner $runner) {}
+    public function __construct(private RunClaimedProject $runner) {}
 
     /**
-     * Claim and run due active projects until the time budget is spent.
+     * Claim due active projects until the time budget is spent.
+     *
+     * When runs_on_queue is on, each claim is handed to a RunProject job and
+     * the job releases the claim. Otherwise the claim is run inline here.
      *
      * A project stays due when the budget ran out, or when a delivery retry
      * was requested after this tick claimed it and is still waiting.
@@ -22,6 +25,7 @@ class DispatchDueProjects
         $startedAt = now();
         $deadline = $startedAt->copy()->addSeconds(max(0, (int) config('michicast.dispatch.time_budget')));
         $staleBefore = $startedAt->copy()->subSeconds(max(0, (int) config('michicast.dispatch.stale_claim_after')));
+        $onQueue = (bool) config('michicast.runs_on_queue');
 
         while (now()->lt($deadline)) {
             $project = $this->nextDue($startedAt, $staleBefore);
@@ -34,28 +38,13 @@ class DispatchDueProjects
                 continue;
             }
 
-            $project->refresh();
-            $project->loadMissing('organization');
+            if ($onQueue) {
+                RunProject::dispatch((int) $project->getKey(), $startedAt->toIso8601String());
 
-            $completed = true;
-            $failed = false;
-
-            try {
-                $completed = $this->runner->run($project, $deadline);
-            } catch (Throwable $e) {
-                report($e);
-                $failed = true;
+                continue;
             }
 
-            $project->claimed_at = null;
-
-            if (! $completed || (! $failed && $project->hasRetriesRequestedSince($startedAt))) {
-                $project->next_run_at = now();
-            } else {
-                $project->refreshNextRunAt();
-            }
-
-            $project->save();
+            $this->runner->handle($project, $startedAt, $deadline);
         }
     }
 

@@ -41,9 +41,9 @@ git config core.hooksPath .githooks
 
 ## Scheduler
 
-The droplet Compose stack runs `schedule:work` and Horizon (`QUEUE_CONNECTION=redis`). Due projects still dispatch from the scheduler; mail and other queued work run on Redis under Horizon.
+The droplet Compose stack runs `schedule:work` and Horizon (`QUEUE_CONNECTION=redis`, `MICHICAST_RUNS_ON_QUEUE=true`). Due projects are claimed by the scheduler and each claim becomes a `RunProject` job; Run now and Send latest also queue. Mail and other queued work run on Redis under Horizon.
 
-The hand-installed cron path remains valid with `QUEUE_CONNECTION=sync` or the database queue:
+The hand-installed cron path remains valid with `QUEUE_CONNECTION=sync` or the database queue and `MICHICAST_RUNS_ON_QUEUE=false` so due projects run inline:
 
 ```cron
 * * * * * cd /path/to/michicast && php artisan schedule:run >> /dev/null 2>&1
@@ -63,7 +63,7 @@ composer format    # Pint, fixes style in place
 composer analyse   # PHPStan with the Larastan extension at level 5
 ```
 
-`composer update` does not run `boost:update`. When you deliberately want Boost's stock guidelines or skills refreshed, run `php artisan boost:update` yourself and review the diff before committing. That rewrites only the `<laravel-boost-guidelines>` block at the top of `AGENTS.md`; the house rules below it are preserved. Do not run `php artisan boost:install` — Boost is already installed, and the installer rewrites `AGENTS.md` and the skills under `.cursor/skills/` from scratch.
+`composer update` does not run `boost:update`. When you deliberately want Boost's stock guidelines or skills refreshed, run `php artisan boost:update` yourself and review the diff before committing. That rewrites only the `<laravel-boost-guidelines>` block at the top of `AGENTS.md`; the house rules below it are preserved. Do not run `php artisan boost:install` â€” Boost is already installed, and the installer rewrites `AGENTS.md` and the skills under `.cursor/skills/` from scratch.
 
 ---
 

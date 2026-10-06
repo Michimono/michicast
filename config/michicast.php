@@ -37,12 +37,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Queued Project Runs
+    |--------------------------------------------------------------------------
+    |
+    | When true, projects:dispatch and Run now hand claimed projects to the
+    | RunProject job on the default queue, and Send latest uses SendLatestJob.
+    | The droplet sets this true. The hand-installed cron host can leave it
+    | false so runs stay inline without a long-lived worker.
+    |
+    */
+
+    'runs_on_queue' => filter_var(env('MICHICAST_RUNS_ON_QUEUE', false), FILTER_VALIDATE_BOOL),
+
+    /*
+    |--------------------------------------------------------------------------
     | Due Project Dispatch
     |--------------------------------------------------------------------------
     |
-    | The scheduler ticks every minute and runs due projects inline. The time
-    | budget leaves headroom before the next cron tick. A stale claim is
-    | reclaimed after this many seconds so a crashed run does not stick.
+    | The scheduler ticks every minute and claims due projects. With
+    | runs_on_queue on, each claim becomes a job; otherwise the claim is run
+    | inline within the time budget. A stale claim is reclaimed after this
+    | many seconds so a crashed or lost job does not stick.
     |
     */
 

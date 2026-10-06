@@ -8,7 +8,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('projects:dispatch')]
-#[Description('Claim and run due active projects inline')]
+#[Description('Claim due active projects and run them inline or dispatch RunProject jobs')]
 class DispatchDueProjectsCommand extends Command
 {
     /**
