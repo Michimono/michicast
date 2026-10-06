@@ -49,6 +49,7 @@ class OrganizationController extends Controller
                 'name' => $name,
                 'slug' => Organization::uniqueSlugFrom($name),
                 'timezone' => $request->string('timezone')->toString(),
+                'plan' => config('michicast.quotas.default_plan'),
             ]);
 
             $organization->members()->create([

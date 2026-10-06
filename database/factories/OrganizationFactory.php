@@ -23,7 +23,7 @@ class OrganizationFactory extends Factory
             'name' => fake()->unique()->company(),
             'slug' => fn (array $attributes) => Organization::uniqueSlugFrom((string) $attributes['name']),
             'timezone' => 'UTC',
-            'plan' => null,
+            'plan' => fn () => config('michicast.quotas.default_plan'),
         ];
     }
 

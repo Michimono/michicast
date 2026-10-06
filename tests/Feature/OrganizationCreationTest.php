@@ -80,7 +80,7 @@ class OrganizationCreationTest extends TestCase
         $this->assertSame('Michimono Labs', $organization->name);
         $this->assertSame('michimono-labs', $organization->slug);
         $this->assertSame('Europe/Madrid', $organization->timezone);
-        $this->assertNull($organization->plan);
+        $this->assertSame(config('michicast.quotas.default_plan'), $organization->plan);
         $this->assertSame(Role::Owner, $organization->roleFor($user));
     }
 
