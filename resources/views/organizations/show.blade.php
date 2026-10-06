@@ -84,8 +84,13 @@
                                             @endif
 
                                             @if ($project->canArchive())
-                                                <form method="POST" action="{{ route('archived-broadcasts.store', $project) }}">
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('archived-broadcasts.store', $project) }}"
+                                                    onsubmit="return confirm('Archive this broadcast? Historical activity is kept.')"
+                                                >
                                                     @csrf
+                                                    <input type="hidden" name="confirmation" value="1">
                                                     <input type="hidden" name="return" value="organization">
                                                     <button class="block w-full px-3 py-2 text-left text-sm text-ink hover:bg-paper" type="submit">
                                                         Archive

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DestroySourceRequest;
 use App\Http\Requests\UpdateSourceRequest;
 use App\Models\Broadcast;
 use App\Models\Organization;
@@ -36,10 +37,8 @@ class SourceController extends Controller
             ->with('success', 'The source has been updated.');
     }
 
-    public function destroy(Organization $organization, Source $source): RedirectResponse
+    public function destroy(DestroySourceRequest $request, Organization $organization, Source $source): RedirectResponse
     {
-        Gate::authorize('delete', $source);
-
         $project = $source->project;
 
         DB::transaction(function () use ($source): void {

@@ -88,4 +88,21 @@ class RegistrationTest extends TestCase
         $this->assertGuest();
         $this->assertDatabaseEmpty('users');
     }
+
+    public function test_repeated_registration_attempts_are_throttled(): void
+    {
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->post(route('users.store'), ['email' => 'not-an-email'])->assertRedirect();
+        }
+
+        $this->post(route('users.store'), [
+            'name' => 'Ada Lovelace',
+            'email' => 'ada@example.test',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertTooManyRequests();
+
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['email' => 'ada@example.test']);
+    }
 }

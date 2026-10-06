@@ -63,7 +63,9 @@ Route::resource('invitation-acceptances', AcceptedInvitationController::class)
     ->parameters(['invitation-acceptances' => 'token']);
 
 Route::middleware('guest')->group(function (): void {
-    Route::resource('users', UserController::class)->only(['create', 'store']);
+    Route::resource('users', UserController::class)
+        ->only(['create', 'store'])
+        ->middlewareFor('store', 'throttle:registration');
 
     Route::singleton('session', SessionController::class)
         ->creatable()
@@ -162,7 +164,8 @@ Route::middleware('auth')->group(function (): void {
                 ->creatable()
                 ->only(['store'])
                 ->parameters(['broadcasts' => 'project'])
-                ->names(['store' => 'due-broadcasts.store']);
+                ->names(['store' => 'due-broadcasts.store'])
+                ->middlewareFor('store', 'throttle:broadcast-dry-run');
 
             Route::singleton('broadcasts.immediate-broadcast-run', ImmediateProjectRunController::class)
                 ->creatable()
@@ -300,11 +303,11 @@ Route::middleware('auth')->group(function (): void {
 
             Route::post('flows/{broadcast}/mapping-preview', [BroadcastMappingController::class, 'preview'])
                 ->name('broadcast-mapping-previews.store')
-                ->middleware('throttle:content-preview');
+                ->middleware('throttle:mapping-preview');
 
             Route::post('flows/{broadcast}/mapping-sample', [BroadcastMappingController::class, 'sample'])
                 ->name('broadcast-mapping-samples.store')
-                ->middleware('throttle:content-preview');
+                ->middleware('throttle:mapping-preview');
 
             Route::singleton('flows.enabled-flow', EnabledBroadcastController::class)
                 ->creatable()
@@ -328,7 +331,9 @@ Route::middleware('auth')->group(function (): void {
 
             Route::singleton('members.role', MemberRoleController::class)->only(['edit', 'update']);
 
-            Route::resource('invitations', InvitationController::class)->only(['store', 'destroy']);
+            Route::resource('invitations', InvitationController::class)
+                ->only(['store', 'destroy'])
+                ->middlewareFor('store', 'throttle:invitation');
 
             Route::singleton('organization-settings', OrganizationSettingController::class)->only(['edit', 'update']);
 

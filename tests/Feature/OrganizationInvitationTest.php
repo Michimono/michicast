@@ -483,6 +483,33 @@ class OrganizationInvitationTest extends TestCase
         ];
     }
 
+    public function test_invitations_are_rate_limited_per_member(): void
+    {
+        Mail::fake();
+
+        [$owner, $organization] = $this->memberHolding(Role::Owner);
+
+        for ($attempt = 1; $attempt <= 10; $attempt++) {
+            $this->actingAs($owner)
+                ->post(route('invitations.store', $organization), [
+                    'email' => "guest{$attempt}@example.test",
+                    'role' => Role::Editor->value,
+                ])
+                ->assertRedirect(route('members.index', $organization));
+        }
+
+        $this->actingAs($owner)
+            ->post(route('invitations.store', $organization), [
+                'email' => 'one-too-many@example.test',
+                'role' => Role::Editor->value,
+            ])
+            ->assertTooManyRequests()
+            ->assertSee('Too many attempts');
+
+        $this->assertDatabaseMissing('organization_invitations', ['email' => 'one-too-many@example.test']);
+        Mail::assertSentCount(10);
+    }
+
     /**
      * @return array{User, Organization}
      */

@@ -29,7 +29,7 @@ class SourceLifecycleTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->delete(route('sources.destroy', [$organization, $source]))
+            ->delete(route('sources.destroy', [$organization, $source]), ['confirmation' => '1'])
             ->assertRedirect(route('broadcasts.show', [$organization, $project]))
             ->assertSessionHas('success', 'The source has been deleted.');
 
@@ -105,7 +105,7 @@ class SourceLifecycleTest extends TestCase
         $source = $this->sourceIn($organization);
 
         $this->actingAs($user)
-            ->delete(route('sources.destroy', [$organization, $source]))
+            ->delete(route('sources.destroy', [$organization, $source]), ['confirmation' => '1'])
             ->assertForbidden();
 
         $this->assertDatabaseHas('sources', ['id' => $source->getKey()]);
@@ -118,7 +118,7 @@ class SourceLifecycleTest extends TestCase
         $source = $this->sourceIn($organization);
 
         $this->actingAs($outsider)
-            ->delete(route('sources.destroy', [$organization, $source]))
+            ->delete(route('sources.destroy', [$organization, $source]), ['confirmation' => '1'])
             ->assertNotFound();
 
         $this->assertDatabaseHas('sources', ['id' => $source->getKey()]);

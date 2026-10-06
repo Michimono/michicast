@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DestroyDestinationRequest;
 use App\Http\Requests\UpdateDestinationRequest;
 use App\Models\Broadcast;
 use App\Models\Destination;
@@ -41,10 +42,8 @@ class DestinationController extends Controller
             ->with('success', 'The destination has been updated.');
     }
 
-    public function destroy(Organization $organization, Destination $destination): RedirectResponse
+    public function destroy(DestroyDestinationRequest $request, Organization $organization, Destination $destination): RedirectResponse
     {
-        Gate::authorize('delete', $destination);
-
         $project = $destination->project;
 
         DB::transaction(function () use ($destination): void {

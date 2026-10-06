@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreBroadcastMappingPreviewRequest;
 use App\Http\Requests\UpdateBroadcastMappingRequest;
 use App\Models\Broadcast;
 use App\Models\Organization;
@@ -15,7 +16,6 @@ use App\Support\Mapping\Operations\FormatDate;
 use App\Support\Mapping\ProviderSchemas;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -77,18 +77,13 @@ class BroadcastMappingController extends Controller
             ->with('success', 'The mapping has been saved.');
     }
 
-    public function preview(Request $request, Organization $organization, Broadcast $broadcast): JsonResponse
+    public function preview(StoreBroadcastMappingPreviewRequest $request, Organization $organization, Broadcast $broadcast): JsonResponse
     {
-        Gate::authorize('preview', $broadcast);
-
         $broadcast->loadMissing(['source', 'destination']);
 
-        $payload = $request->input('mapping');
-        $mapping = is_array($payload) ? $payload : null;
-        $sourceData = $request->input('source_data');
-        $sourceData = is_array($sourceData) ? $sourceData : null;
-        $through = $request->input('through_step_id');
-        $through = is_string($through) && $through !== '' ? $through : null;
+        $mapping = $request->mapping();
+        $sourceData = $request->sourceData();
+        $through = $request->throughStepId();
 
         $result = $this->mapper->preview($broadcast, $mapping, $sourceData, $through);
 

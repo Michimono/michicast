@@ -42,7 +42,7 @@ class BroadcastLifecycleTest extends TestCase
         $project = $broadcast->project;
 
         $this->actingAs($user)
-            ->post(route('archived-flows.store', [$organization, $broadcast]))
+            ->post(route('archived-flows.store', [$organization, $broadcast]), ['confirmation' => '1'])
             ->assertRedirect(route('broadcast-pipelines.index', [$organization, $project]))
             ->assertSessionHas('success', 'The broadcast has been archived.');
 

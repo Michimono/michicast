@@ -56,8 +56,13 @@
                         <x-button>Restore</x-button>
                     </form>
                 @else
-                    <form method="POST" action="{{ route('archived-flows.store', $broadcast) }}">
+                    <form
+                        method="POST"
+                        action="{{ route('archived-flows.store', $broadcast) }}"
+                        onsubmit="return confirm('Archive this flow? It stops publishing and its history is kept.')"
+                    >
                         @csrf
+                        <input type="hidden" name="confirmation" value="1">
 
                         <x-button variant="ghost" :paw="false">Archive</x-button>
                     </form>

@@ -67,6 +67,7 @@
             >
                 @csrf
                 @method('DELETE')
+                <input type="hidden" name="confirmation" value="1">
 
                 <x-button variant="ghost" :paw="false">Delete source</x-button>
             </form>

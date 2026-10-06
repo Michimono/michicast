@@ -141,6 +141,7 @@ class OrganizationWorkspaceTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('archived-broadcasts.store', [$organization, $active]), [
+                'confirmation' => '1',
                 'return' => 'organization',
             ])
             ->assertRedirect(route('organizations.show', $organization));

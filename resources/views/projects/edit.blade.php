@@ -123,6 +123,7 @@
                                 onsubmit="return confirm('Archive this broadcast? Historical activity is kept.')"
                             >
                                 @csrf
+                                <input type="hidden" name="confirmation" value="1">
                                 <x-button variant="ghost" :paw="false">Archive</x-button>
                             </form>
                         @endif

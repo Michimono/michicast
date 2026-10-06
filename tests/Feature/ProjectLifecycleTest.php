@@ -99,7 +99,7 @@ class ProjectLifecycleTest extends TestCase
         $previous = $project->status;
 
         $this->actingAs($user)
-            ->post(route('archived-broadcasts.store', [$organization, $project]))
+            ->post(route('archived-broadcasts.store', [$organization, $project]), ['confirmation' => '1'])
             ->assertRedirect(route('broadcasts.show', [$organization, $project]))
             ->assertSessionHas('success', 'The broadcast has been archived.');
 
@@ -234,7 +234,7 @@ class ProjectLifecycleTest extends TestCase
         $status = $project->status;
 
         $this->actingAs($user)
-            ->{$method}(route($route, [$organization, $project]))
+            ->{$method}(route($route, [$organization, $project]), ['confirmation' => '1'])
             ->assertRedirect()
             ->assertSessionHas('error', $message);
 
