@@ -7,7 +7,8 @@
     $organization = $currentOrganization->isResolved() ? $currentOrganization->organization() : null;
     $project = $organization ? $currentProject->project() : null;
     $settings = request()->routeIs('profile.*');
-    $rail = $organization !== null || $settings;
+    $admin = request()->routeIs('admin.*');
+    $rail = $organization !== null || $settings || $admin;
 @endphp
 
 <!DOCTYPE html>
@@ -29,6 +30,8 @@
             <x-organization-sidebar :organization="$organization" :project="$project" />
         @elseif ($settings)
             <x-settings-sidebar />
+        @elseif ($admin)
+            <x-admin-sidebar />
         @endif
 
         <div class="flex min-h-screen flex-col">
@@ -63,6 +66,18 @@
 
                                 <span class="sr-only">Settings menu</span>
                             </button>
+                        @elseif ($admin)
+                            <button
+                                class="rounded-md p-1.5 text-muted transition-colors hover:text-ink lg:hidden"
+                                type="button"
+                                data-sidebar-toggle
+                                aria-controls="admin-sidebar"
+                                aria-expanded="false"
+                            >
+                                <x-icons.menu />
+
+                                <span class="sr-only">Admin menu</span>
+                            </button>
                         @endif
 
                         <a class="flex min-w-0 items-center gap-2.5" href="{{ route('home') }}">
@@ -76,6 +91,13 @@
                         {{ $nav ?? '' }}
 
                         @auth
+                            @can('accessAdmin')
+                                <x-nav-link
+                                    :href="route('admin.overview')"
+                                    :active="request()->routeIs('admin.*')"
+                                >Admin</x-nav-link>
+                            @endcan
+
                             <x-nav-link
                                 :href="route('organizations.index')"
                                 :active="request()->routeIs('organizations.index', 'organizations.create')"

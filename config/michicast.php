@@ -54,6 +54,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Platform Admin Area
+    |--------------------------------------------------------------------------
+    |
+    | Optional IP allowlist for /admin (comma-separated; CIDR allowed). Empty
+    | means no IP restriction. Password confirmation for the admin group
+    | expires sooner than the app-wide auth.password_timeout.
+    |
+    */
+
+    'admin' => [
+        'allowed_ips' => array_values(array_filter(array_map(
+            static fn (string $ip): string => trim($ip),
+            explode(',', (string) env('ADMIN_ALLOWED_IPS', '')),
+        ))),
+        'password_timeout' => (int) env('ADMIN_PASSWORD_TIMEOUT', 900),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Queued Project Runs
     |--------------------------------------------------------------------------
     |

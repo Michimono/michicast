@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
+use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\ArchivedBroadcastController;
 use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\BroadcastController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\BroadcastMappingController;
 use App\Http\Controllers\BroadcastSendLatestController;
 use App\Http\Controllers\BroadcastTransformController;
 use App\Http\Controllers\BroadcastTransformPreviewController;
+use App\Http\Controllers\ConfirmedPasswordController;
 use App\Http\Controllers\ContentPreviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryRetryController;
@@ -47,9 +49,12 @@ use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SourceConnectionTestController;
 use App\Http\Controllers\SourceController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\EnsurePlatformAdmin;
+use App\Http\Middleware\PreventAdminPageCaching;
 use App\Http\Middleware\SetCurrentOrganization;
 use App\Models\Organization;
 use App\Models\Project;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'home')->name('home');
@@ -86,6 +91,13 @@ Route::middleware('auth')->group(function (): void {
     Route::singleton('session', SessionController::class)
         ->destroyable()
         ->only(['destroy']);
+
+    Route::get('confirm-password', [ConfirmedPasswordController::class, 'create'])
+        ->name('password.confirm');
+
+    Route::post('confirm-password', [ConfirmedPasswordController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('password.confirm.store');
 
     Route::singleton('profile', ProfileController::class)->only(['edit', 'update']);
 
@@ -352,4 +364,18 @@ Route::middleware('auth')->group(function (): void {
                 return redirect()->route('broadcasts.edit', [$organization, $project], 301);
             });
         });
+});
+
+Route::middleware([
+    'auth',
+    EnsurePlatformAdmin::class,
+    PreventAdminPageCaching::class,
+    RequirePassword::using('password.confirm', (string) config('michicast.admin.password_timeout', 900)),
+])->prefix('admin')->name('admin.')->group(function (): void {
+    Route::get('/', OverviewController::class)->name('overview');
+
+    /*
+     * Admin writes share a per-user throttle. Apply throttle:admin on
+     * store/update/destroy routes as they land in later issues.
+     */
 });
