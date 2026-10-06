@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Middleware\EnsurePlatformAdmin;
+use App\Http\Middleware\PreventAdminPageCaching;
+use App\Http\Middleware\RecordAdminSignIn;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Str;
 
 return [
@@ -35,13 +39,12 @@ return [
     | Horizon Path
     |--------------------------------------------------------------------------
     |
-    | This is the URI path where Horizon will be accessible from. Feel free
-    | to change this path to anything you like. Note that the URI will not
-    | affect the paths of its internal API that aren't exposed to users.
+    | Mounted under /admin so the dashboard shares the platform-admin gate
+    | (#157). The URI does not affect Horizon's internal API path suffixes.
     |
     */
 
-    'path' => env('HORIZON_PATH', 'horizon'),
+    'path' => env('HORIZON_PATH', 'admin/horizon'),
 
     /*
     |--------------------------------------------------------------------------
@@ -77,13 +80,23 @@ return [
     | Horizon Route Middleware
     |--------------------------------------------------------------------------
     |
-    | These middleware will get attached onto each Horizon route, giving you
-    | the chance to add your own middleware to this list or change any of
-    | the existing middleware. Or, you can simply stick with this list.
+    | Same stack as the /admin group: auth, platform-admin gate (404 + IP
+    | allowlist), short password confirmation, no-store headers, and sign-in
+    | audit. 2FA enrollment is not required (#155 is optional).
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => [
+        'web',
+        'auth',
+        EnsurePlatformAdmin::class,
+        PreventAdminPageCaching::class,
+        RequirePassword::using(
+            'password.confirm',
+            (string) env('ADMIN_PASSWORD_TIMEOUT', 900),
+        ),
+        RecordAdminSignIn::class,
+    ],
 
     /*
     |--------------------------------------------------------------------------
