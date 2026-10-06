@@ -12,9 +12,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property string|null $two_factor_secret
+ * @property list<string>|null $two_factor_recovery_codes
+ * @property Carbon|null $two_factor_confirmed_at
+ */
 #[Fillable(['name', 'email', 'password', 'timezone'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -59,6 +65,72 @@ class User extends Authenticatable
     }
 
     /**
+     * Confirmed TOTP enrollment — login must pass the challenge.
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_secret !== null
+            && $this->two_factor_confirmed_at !== null;
+    }
+
+    /**
+     * Secret stored but not yet confirmed with a valid code.
+     */
+    public function hasTwoFactorPending(): bool
+    {
+        return $this->two_factor_secret !== null
+            && $this->two_factor_confirmed_at === null;
+    }
+
+    /**
+     * Clear secret, recovery codes, and confirmation (server recovery / disable).
+     */
+    public function clearTwoFactorAuthentication(): void
+    {
+        $this->forceFill([
+            'two_factor_secret' => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
+        ])->save();
+    }
+
+    /**
+     * Consume one recovery code (case-insensitive). Returns false when unknown.
+     */
+    public function consumeRecoveryCode(string $code): bool
+    {
+        $codes = $this->two_factor_recovery_codes;
+
+        if (! is_array($codes) || $codes === []) {
+            return false;
+        }
+
+        $needle = strtolower(trim($code));
+        $remaining = [];
+        $matched = false;
+
+        foreach ($codes as $stored) {
+            if (! $matched && hash_equals(strtolower((string) $stored), $needle)) {
+                $matched = true;
+
+                continue;
+            }
+
+            $remaining[] = $stored;
+        }
+
+        if (! $matched) {
+            return false;
+        }
+
+        $this->forceFill([
+            'two_factor_recovery_codes' => $remaining,
+        ])->save();
+
+        return true;
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -68,6 +140,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 }

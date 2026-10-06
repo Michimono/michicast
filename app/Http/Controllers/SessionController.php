@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSessionRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +25,19 @@ class SessionController extends Controller
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);
+        }
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user->hasTwoFactorEnabled()) {
+            Auth::logout();
+
+            $request->session()->put(TwoFactorChallengeController::SESSION_USER_ID, $user->getKey());
+            $request->session()->put('login.remember', $request->boolean('remember'));
+            $request->session()->regenerate();
+
+            return redirect()->route('two-factor-challenge.create');
         }
 
         $request->session()->regenerate();

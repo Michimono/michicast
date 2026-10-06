@@ -30,5 +30,10 @@
             <x-slot:icon><x-icons.lock class="size-5 shrink-0" /></x-slot:icon>
             Password
         </x-sidebar-link>
+
+        <x-sidebar-link href="#two-factor">
+            <x-slot:icon><x-icons.lock class="size-5 shrink-0" /></x-slot:icon>
+            Two-factor
+        </x-sidebar-link>
     </nav>
 </aside>
