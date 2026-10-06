@@ -61,7 +61,7 @@ class SourceConnectionTestController extends Controller
         $decision = $this->meter->consume($organization, QuotaMetric::SourceFetches);
 
         if (! $decision->allowed) {
-            return ConnectionTestResult::failure('Source fetch quota exhausted for this period.');
+            return ConnectionTestResult::failure($decision->message(QuotaMetric::SourceFetches));
         }
 
         try {

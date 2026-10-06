@@ -8,6 +8,7 @@ enum RunStatus: string
     case Completed = 'completed';
     case Failed = 'failed';
     case Incomplete = 'incomplete';
+    case QuotaExceeded = 'quota_exceeded';
 
     public function label(): string
     {
@@ -16,6 +17,21 @@ enum RunStatus: string
             self::Completed => 'Completed',
             self::Failed => 'Failed',
             self::Incomplete => 'Incomplete',
+            self::QuotaExceeded => 'Out of quota',
+        };
+    }
+
+    /**
+     * Visual tone for Activity status chips: ok, fail, warn, skip, or muted.
+     */
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Completed => 'ok',
+            self::Failed => 'fail',
+            self::QuotaExceeded => 'warn',
+            self::Incomplete => 'skip',
+            self::Running => 'muted',
         };
     }
 }

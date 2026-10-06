@@ -23,7 +23,7 @@
             <div>
                 <dt class="text-xs font-medium tracking-wide text-muted uppercase">Status</dt>
                 <dd class="text-sm text-ink">
-                    {{ $run->status->label() }}
+                    <x-run-status :status="$run->status" />
                     @if ($run->is_dry)
                         <span class="font-mono text-xs text-muted">(dry run)</span>
                     @endif
@@ -59,7 +59,7 @@
             kicker="Broadcast run"
         >
             <p class="font-mono text-xs text-muted">
-                {{ $broadcastRun->status->label() }}
+                <x-run-status :status="$broadcastRun->status" class="align-middle" />
                 · found {{ $broadcastRun->items_found }}
                 · new {{ $broadcastRun->items_new }}
                 · skipped {{ $broadcastRun->items_skipped }}
@@ -85,7 +85,11 @@
             @endif
 
             @if ($broadcastRun->error_detail)
-                <p class="rounded-md border border-line bg-paper px-3 py-2 text-sm text-state-fail">
+                <p @class([
+                    'rounded-md border bg-paper px-3 py-2 text-sm',
+                    'border-state-warn/40 text-state-warn' => $broadcastRun->status === \App\Enums\RunStatus::QuotaExceeded,
+                    'border-line text-state-fail' => $broadcastRun->status !== \App\Enums\RunStatus::QuotaExceeded,
+                ])>
                     {{ $secrets->redact($broadcastRun->error_detail) }}
                 </p>
             @endif

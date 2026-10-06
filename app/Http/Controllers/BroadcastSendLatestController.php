@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RunStatus;
 use App\Jobs\SendLatestJob;
 use App\Models\ContentItem;
 use App\Models\Organization;
@@ -62,6 +63,19 @@ class BroadcastSendLatestController extends Controller
                 ->with('error', 'No received source item to send.');
         }
 
+        $projectRun = $result['projectRun'];
+
+        if ($projectRun->status === RunStatus::QuotaExceeded) {
+            $detail = $projectRun->broadcastRuns()
+                ->where('status', RunStatus::QuotaExceeded)
+                ->value('error_detail');
+
+            return redirect()
+                ->route('broadcasts.edit', $project)
+                ->with('error', $detail ?: $projectRun->status->label())
+                ->with('last_run_id', $projectRun->getKey());
+        }
+
         $label = $result['item']->title
             ?? $result['item']->canonical_url
             ?? $result['item']->external_id
@@ -78,6 +92,6 @@ class BroadcastSendLatestController extends Controller
         return redirect()
             ->route('broadcasts.edit', $project)
             ->with('success', $message)
-            ->with('last_run_id', $result['projectRun']->getKey());
+            ->with('last_run_id', $projectRun->getKey());
     }
 }

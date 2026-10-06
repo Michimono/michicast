@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RunStatus;
 use App\Jobs\RunProject;
 use App\Models\Organization;
 use App\Models\Project;
@@ -42,6 +43,17 @@ class ImmediateProjectRunController extends Controller
         }
 
         $run = $project->runs()->where('is_dry', false)->latest('id')->first();
+
+        if ($run !== null && $run->status === RunStatus::QuotaExceeded) {
+            $detail = $run->broadcastRuns()
+                ->where('status', RunStatus::QuotaExceeded)
+                ->value('error_detail');
+
+            return redirect()
+                ->route('broadcasts.show', $project)
+                ->with('error', $detail ?: $run->status->label())
+                ->with('last_run_id', $run->getKey());
+        }
 
         return redirect()
             ->route('broadcasts.show', $project)

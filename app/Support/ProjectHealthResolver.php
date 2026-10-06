@@ -29,7 +29,7 @@ class ProjectHealthResolver
         }
 
         return match ($lastLiveRun->status) {
-            RunStatus::Completed => ProjectHealth::Healthy,
+            RunStatus::Completed, RunStatus::QuotaExceeded => ProjectHealth::Healthy,
             RunStatus::Failed, RunStatus::Incomplete, RunStatus::Running => ProjectHealth::AttentionNeeded,
         };
     }

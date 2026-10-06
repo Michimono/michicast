@@ -42,6 +42,7 @@
 
     --color-state-ok: #1d7a52;
     --color-state-skip: #5a7390;
+    --color-state-warn: #a16207;
     --color-state-fail: #b3261e;
 
     --radius-card: 0.75rem;
@@ -68,6 +69,7 @@
 
     --color-state-ok: #74d3a6;
     --color-state-skip: #9fb0c2;
+    --color-state-warn: #fbbf24;
     --color-state-fail: #f0a19e;
 }
 
