@@ -26,13 +26,13 @@ class Quotas
             return $override->limit;
         }
 
-        return $this->planLimit($this->resolvedPlanName($organization), $metric);
+        return $this->planLimit($this->planName($organization), $metric);
     }
 
     /**
      * Plan name to read limits from: the org's plan when known, else default.
      */
-    private function resolvedPlanName(Organization $organization): string
+    public function planName(Organization $organization): string
     {
         /** @var array<string, array<string, int|null>> $plans */
         $plans = config('michicast.quotas.plans', []);

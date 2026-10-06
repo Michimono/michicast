@@ -14,7 +14,7 @@ class OrganizationSettingController extends Controller
 {
     public function edit(Organization $organization): View
     {
-        Gate::authorize('update', $organization);
+        Gate::authorize('view', $organization);
 
         return view('organization-settings.edit', [
             'organization' => $organization,

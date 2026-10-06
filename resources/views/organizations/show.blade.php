@@ -1,5 +1,6 @@
 <x-layout :title="$organization->name">
     <div class="flex flex-col gap-8">
+        <x-quota-exhausted-banner :organization="$organization" />
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div class="flex flex-col gap-1">
                 <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Workspace</p>
