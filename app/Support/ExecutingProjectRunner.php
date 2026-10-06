@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\ContentItemLifecycle;
 use App\Enums\DeliveryFailure;
 use App\Enums\DeliveryStatus;
+use App\Enums\QuotaMetric;
 use App\Enums\RunStatus;
 use App\Models\Broadcast;
 use App\Models\BroadcastRun;
@@ -12,6 +13,7 @@ use App\Models\BroadcastRunSkip;
 use App\Models\ContentDelivery;
 use App\Models\ContentItem;
 use App\Models\Destination;
+use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectRun;
 use App\Models\Source;
@@ -66,6 +68,7 @@ class ExecutingProjectRunner implements ProjectRunner
         private ContentMapper $mapper,
         private Clock $clock,
         private SecretRedactor $secrets,
+        private QuotaMeter $meter,
     ) {}
 
     public function run(Project $project, ?CarbonInterface $deadline = null): bool
@@ -224,7 +227,21 @@ class ExecutingProjectRunner implements ProjectRunner
     {
         $limit ??= max(1, (int) config('michicast.preview.item_limit', 5));
 
-        $broadcast->loadMissing(['source', 'destination']);
+        $broadcast->loadMissing(['source.project.organization', 'destination']);
+
+        // Meter before the provider call; on denial skip the fetch (#160). Out-of-quota
+        // activity / stop-run behavior is #161.
+        $organization = $this->organizationForSource($broadcast->source);
+        $decision = $this->meter->consume($organization, QuotaMetric::SourceFetches);
+
+        if (! $decision->allowed) {
+            return new BroadcastPreviewResult(
+                items: [],
+                found: 0,
+                wouldPublish: 0,
+                wouldSkip: 0,
+            );
+        }
 
         $fetched = $this->sources->get($broadcast->source->type)->fetch($broadcast->source->toDefinition());
 
@@ -627,6 +644,29 @@ class ExecutingProjectRunner implements ProjectRunner
                 return;
             }
 
+            // Retries count as separate delivery attempts; dry runs never reach publish().
+            // On denial skip the destination call (#160); #161 owns out-of-quota activity.
+            $project->loadMissing('organization');
+            $organization = $project->organization;
+            $decision = $this->meter->consume($organization, QuotaMetric::Deliveries);
+
+            if (! $decision->allowed) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    DeliveryFailure::Transient,
+                    'Delivery quota exhausted for this period.',
+                    null,
+                    $isRetry,
+                );
+
+                return;
+            }
+
             try {
                 $result = $provider->publish($definition, $message);
             } catch (Throwable $e) {
@@ -940,6 +980,15 @@ class ExecutingProjectRunner implements ProjectRunner
             );
         }
 
+        // One consume per live provider fetch (cached per source for the run). On denial
+        // skip the provider call without inventing #161 activity records.
+        $organization = $this->organizationForSource($source);
+        $decision = $this->meter->consume($organization, QuotaMetric::SourceFetches);
+
+        if (! $decision->allowed) {
+            return $this->fetchedBySource[$sourceId] = [];
+        }
+
         $fetched = $this->sources->get($source->type)->fetch($source->toDefinition());
         $entries = [];
 
@@ -1031,5 +1080,18 @@ class ExecutingProjectRunner implements ProjectRunner
     private function itemLabel(ContentItem $item): string
     {
         return $item->title ?: ($item->canonical_url ?: 'Untitled item');
+    }
+
+    private function organizationForSource(Source $source): Organization
+    {
+        $source->loadMissing('project.organization');
+
+        $organization = $source->project?->organization;
+
+        if (! $organization instanceof Organization) {
+            throw new \RuntimeException('Source is missing an organization for quota metering.');
+        }
+
+        return $organization;
     }
 }
