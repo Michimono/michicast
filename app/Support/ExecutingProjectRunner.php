@@ -7,6 +7,7 @@ use App\Enums\DeliveryFailure;
 use App\Enums\DeliveryStatus;
 use App\Enums\QuotaMetric;
 use App\Enums\RunStatus;
+use App\Exceptions\QuotaExceededException;
 use App\Models\Broadcast;
 use App\Models\BroadcastRun;
 use App\Models\BroadcastRunSkip;
@@ -22,6 +23,7 @@ use App\Support\Mapping\ContentMapper;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -128,7 +130,7 @@ class ExecutingProjectRunner implements ProjectRunner
 
         $this->rollUpCounts($projectRun);
 
-        $projectRun->status = RunStatus::Completed;
+        $projectRun->status = $this->rollUpStatus($projectRun, incomplete: false);
         $projectRun->finished_at = now();
         $projectRun->save();
 
@@ -201,21 +203,25 @@ class ExecutingProjectRunner implements ProjectRunner
         $message = $this->mapper->prepare($broadcast, $item, $sourceName);
         $this->advanceLifecycle($item, ContentItemLifecycle::Transformed);
 
-        $this->publish(
-            $project,
-            $broadcastRun,
-            $broadcast,
-            $destination,
-            $item,
-            $provider,
-            $destination->toDefinition(),
-            $message,
-            null,
-        );
+        try {
+            $this->publish(
+                $project,
+                $broadcastRun,
+                $broadcast,
+                $destination,
+                $item,
+                $provider,
+                $destination->toDefinition(),
+                $message,
+                null,
+            );
 
-        $broadcastRun->status = RunStatus::Completed;
-        $broadcastRun->finished_at = now();
-        $broadcastRun->save();
+            $broadcastRun->status = RunStatus::Completed;
+            $broadcastRun->finished_at = now();
+            $broadcastRun->save();
+        } catch (QuotaExceededException $e) {
+            $this->finishBroadcastRunOutOfQuota($broadcastRun, $broadcast, $project, $e);
+        }
     }
 
     /**
@@ -229,18 +235,12 @@ class ExecutingProjectRunner implements ProjectRunner
 
         $broadcast->loadMissing(['source.project.organization', 'destination']);
 
-        // Meter before the provider call; on denial skip the fetch (#160). Out-of-quota
-        // activity / stop-run behavior is #161.
+        // Meter before the provider call; on denial skip the fetch and surface Out of quota.
         $organization = $this->organizationForSource($broadcast->source);
         $decision = $this->meter->consume($organization, QuotaMetric::SourceFetches);
 
         if (! $decision->allowed) {
-            return new BroadcastPreviewResult(
-                items: [],
-                found: 0,
-                wouldPublish: 0,
-                wouldSkip: 0,
-            );
+            throw new QuotaExceededException($decision, QuotaMetric::SourceFetches);
         }
 
         $fetched = $this->sources->get($broadcast->source->type)->fetch($broadcast->source->toDefinition());
@@ -359,7 +359,7 @@ class ExecutingProjectRunner implements ProjectRunner
 
         $this->rollUpCounts($projectRun);
 
-        $projectRun->status = $incomplete ? RunStatus::Incomplete : RunStatus::Completed;
+        $projectRun->status = $this->rollUpStatus($projectRun, $incomplete);
         $projectRun->finished_at = now();
         $projectRun->save();
 
@@ -386,7 +386,13 @@ class ExecutingProjectRunner implements ProjectRunner
         $retriedItemIds = [];
 
         if (! $this->dry) {
-            $retriedItemIds = $this->retryRequestedDeliveries($project, $broadcastRun, $broadcast, $deadline);
+            try {
+                $retriedItemIds = $this->retryRequestedDeliveries($project, $broadcastRun, $broadcast, $deadline);
+            } catch (QuotaExceededException $e) {
+                $this->finishBroadcastRunOutOfQuota($broadcastRun, $broadcast, $project, $e);
+
+                return true;
+            }
 
             if ($this->pastDeadline($deadline)) {
                 $broadcastRun->status = RunStatus::Incomplete;
@@ -403,6 +409,10 @@ class ExecutingProjectRunner implements ProjectRunner
             if (! $this->dry) {
                 $broadcast->source->recordSuccess();
             }
+        } catch (QuotaExceededException $e) {
+            $this->finishBroadcastRunOutOfQuota($broadcastRun, $broadcast, $project, $e);
+
+            return true;
         } catch (Throwable $e) {
             report($e);
 
@@ -513,17 +523,23 @@ class ExecutingProjectRunner implements ProjectRunner
                 continue;
             }
 
-            $this->publish(
-                $project,
-                $broadcastRun,
-                $broadcast,
-                $destination,
-                $item,
-                $provider,
-                $destination->toDefinition(),
-                $message,
-                $deadline,
-            );
+            try {
+                $this->publish(
+                    $project,
+                    $broadcastRun,
+                    $broadcast,
+                    $destination,
+                    $item,
+                    $provider,
+                    $destination->toDefinition(),
+                    $message,
+                    $deadline,
+                );
+            } catch (QuotaExceededException $e) {
+                $this->finishBroadcastRunOutOfQuota($broadcastRun, $broadcast, $project, $e);
+
+                return true;
+            }
         }
 
         $broadcastRun->status = RunStatus::Completed;
@@ -645,26 +661,15 @@ class ExecutingProjectRunner implements ProjectRunner
             }
 
             // Retries count as separate delivery attempts; dry runs never reach publish().
-            // On denial skip the destination call (#160); #161 owns out-of-quota activity.
+            // On denial stop cleanly: no provider call, no failure counter, no hanging pending row.
             $project->loadMissing('organization');
             $organization = $project->organization;
             $decision = $this->meter->consume($organization, QuotaMetric::Deliveries);
 
             if (! $decision->allowed) {
-                $this->markDeliveryFailed(
-                    $delivery,
-                    $item,
-                    $broadcastRun,
-                    $project,
-                    $broadcast,
-                    $destination,
-                    DeliveryFailure::Transient,
-                    'Delivery quota exhausted for this period.',
-                    null,
-                    $isRetry,
-                );
+                $this->abandonDeliveryForQuota($delivery, $item, $decision);
 
-                return;
+                throw new QuotaExceededException($decision, QuotaMetric::Deliveries);
             }
 
             try {
@@ -981,12 +986,12 @@ class ExecutingProjectRunner implements ProjectRunner
         }
 
         // One consume per live provider fetch (cached per source for the run). On denial
-        // skip the provider call without inventing #161 activity records.
+        // skip the provider call and signal Out of quota to the broadcast-run boundary.
         $organization = $this->organizationForSource($source);
         $decision = $this->meter->consume($organization, QuotaMetric::SourceFetches);
 
         if (! $decision->allowed) {
-            return $this->fetchedBySource[$sourceId] = [];
+            throw new QuotaExceededException($decision, QuotaMetric::SourceFetches);
         }
 
         $fetched = $this->sources->get($source->type)->fetch($source->toDefinition());
@@ -1080,6 +1085,67 @@ class ExecutingProjectRunner implements ProjectRunner
     private function itemLabel(ContentItem $item): string
     {
         return $item->title ?: ($item->canonical_url ?: 'Untitled item');
+    }
+
+    private function rollUpStatus(ProjectRun $projectRun, bool $incomplete): RunStatus
+    {
+        if ($incomplete) {
+            return RunStatus::Incomplete;
+        }
+
+        $quotaExceeded = $projectRun->broadcastRuns()
+            ->where('status', RunStatus::QuotaExceeded)
+            ->exists();
+
+        return $quotaExceeded ? RunStatus::QuotaExceeded : RunStatus::Completed;
+    }
+
+    private function finishBroadcastRunOutOfQuota(
+        BroadcastRun $broadcastRun,
+        Broadcast $broadcast,
+        Project $project,
+        QuotaExceededException $exception,
+    ): void {
+        $broadcastRun->status = RunStatus::QuotaExceeded;
+        $broadcastRun->error_detail = $exception->getMessage();
+        $broadcastRun->finished_at = now();
+        $broadcastRun->save();
+
+        Log::info('quota.exceeded', [
+            'organization_id' => $project->organization_id ?? $project->organization?->getKey(),
+            'project_id' => $project->getKey(),
+            'broadcast_id' => $broadcast->getKey(),
+            'metric' => $exception->metric->value,
+            'limit' => $exception->decision->limit,
+            'used' => $exception->decision->used,
+        ]);
+    }
+
+    /**
+     * Drop or soft-restore a pending claim when delivery quota is refused so the
+     * item stays undelivered without feeding consecutive_failures / auto-pause.
+     */
+    private function abandonDeliveryForQuota(
+        ContentDelivery $delivery,
+        ContentItem $item,
+        QuotaDecision $decision,
+    ): void {
+        $hadPriorAttempts = $delivery->attempts()->exists();
+
+        if ($hadPriorAttempts) {
+            $delivery->status = DeliveryStatus::Failed;
+            $delivery->failure = DeliveryFailure::Transient;
+            $delivery->error_detail = $decision->message(QuotaMetric::Deliveries);
+            $delivery->finished_at = now();
+            $delivery->save();
+        } else {
+            $delivery->delete();
+        }
+
+        if ($item->lifecycle === ContentItemLifecycle::Delivering) {
+            $item->lifecycle = ContentItemLifecycle::Transformed;
+            $item->save();
+        }
     }
 
     private function organizationForSource(Source $source): Organization

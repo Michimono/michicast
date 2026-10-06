@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\QuotaExceededException;
 use App\Models\Broadcast;
 use App\Models\Organization;
 use App\Support\ExecutingProjectRunner;
@@ -26,6 +27,8 @@ class ContentPreviewController extends Controller
 
         try {
             $preview = $runner->preview($broadcast);
+        } catch (QuotaExceededException $e) {
+            $previewError = $e->getMessage();
         } catch (Throwable $e) {
             report($e);
             $previewError = $e->getMessage();

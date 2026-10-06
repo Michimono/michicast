@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RunStatus;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Support\ExecutingProjectRunner;
@@ -26,6 +27,17 @@ class BroadcastDryRunController extends Controller
             return redirect()
                 ->route('broadcasts.edit', $project)
                 ->with('error', 'The dry run could not finish: '.$e->getMessage());
+        }
+
+        if ($run->status === RunStatus::QuotaExceeded) {
+            $detail = $run->broadcastRuns()
+                ->where('status', RunStatus::QuotaExceeded)
+                ->value('error_detail');
+
+            return redirect()
+                ->route('broadcasts.edit', $project)
+                ->with('error', $detail ?: $run->status->label())
+                ->with('last_run_id', $run->getKey());
         }
 
         return redirect()

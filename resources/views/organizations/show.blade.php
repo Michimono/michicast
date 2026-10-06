@@ -119,7 +119,7 @@
                                         <p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Last run</p>
                                         <p class="text-sm text-ink">
                                             @if ($project->latestRun)
-                                                {{ $project->latestRun->status->label() }}
+                                                <x-run-status :status="$project->latestRun->status" />
                                                 @if ($project->latestRun->is_dry)
                                                     <span class="font-mono text-xs text-muted">(dry run)</span>
                                                 @endif

@@ -27,7 +27,7 @@
                                 @if ($run->is_dry)
                                     Dry run ·
                                 @endif
-                                {{ $run->status->label() }}
+                                @if ($run->status === \App\Enums\RunStatus::QuotaExceeded)<span class="text-state-warn">{{ $run->status->label() }}</span>@else{{ $run->status->label() }}@endif
                                 · found {{ $run->items_found }}
                                 · new {{ $run->items_new }}
                                 · skipped {{ $run->items_skipped }}

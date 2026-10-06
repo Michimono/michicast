@@ -40,7 +40,7 @@ class ProjectSourcePreviewController extends Controller
             $decision = $this->meter->consume($organization, QuotaMetric::SourceFetches);
 
             if (! $decision->allowed) {
-                $previewError = 'Source fetch quota exhausted for this period.';
+                $previewError = $decision->message(QuotaMetric::SourceFetches);
             } else {
                 $items = $this->providers->get($type)->fetch(new SourceDefinition(
                     type: $type,
