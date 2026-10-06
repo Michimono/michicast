@@ -60,9 +60,17 @@ After DNS points at the droplet and `deploy/.env` has `DOMAIN` + `ACME_EMAIL`:
 
 1. Run `bash ~/michimono/deploy/deploy.sh` (or `docker compose up -d` if images are already built).
 2. Watch Caddy obtain the cert: `docker compose logs -f caddy`.
-3. Open `https://<DOMAIN>` — you should get a valid certificate. `http://<DOMAIN>` should redirect to HTTPS.
+3. Open `https://<DOMAIN>` â€” you should get a valid certificate. `http://<DOMAIN>` should redirect to HTTPS.
 4. Confirm `Strict-Transport-Security` on an HTTPS response and that session cookies include `Secure`.
 
 Renewal is automatic inside the Caddy container (certificates live in the `caddy-data` volume). No cron or certbot step is required on the host.
 
 If the build is killed, it ran out of memory (the Ansible swap role is meant to help).
+
+## Pulse
+
+Pulse is mounted at /admin/pulse behind the platform-admin gate. Ingest uses the storage driver by default (no pulse:work process). Retention is 7 days.
+
+There is no pulse Compose service: pulse:check would cost another ~30–50 MB RSS on the 1 GB droplet, so the Servers card is omitted from the dashboard. To enable it later, add a Compose service running php artisan pulse:check, set PULSE_SERVER_NAME, and restore ` <livewire:pulse.servers /> ` in esources/views/vendor/pulse/dashboard.blade.php.
+
+Optional scale path under load: PULSE_INGEST_DRIVER=redis plus php artisan pulse:work (prefer PULSE_REDIS_CONNECTION on a dedicated Redis DB, not the queue connection).

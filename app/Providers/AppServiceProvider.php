@@ -14,6 +14,7 @@ use App\Support\SourceProviderRegistry;
 use Composer\CaBundle\CaBundle;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\Access\Gate as GateContract;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -81,6 +82,23 @@ class AppServiceProvider extends ServiceProvider
         ]));
 
         Gate::define('accessAdmin', fn (User $user): bool => $user->isPlatformAdmin());
+
+        // Override Pulse's local-env viewPulse bypass so /admin/pulse matches production
+        // gating (#158). callAfterResolving runs after Pulse's own gate registration.
+        $this->callAfterResolving(GateContract::class, function (GateContract $gate): void {
+            $gate->define('viewPulse', fn (?User $user = null): bool => $user instanceof User
+                && $gate->forUser($user)->allows('accessAdmin'));
+        });
+
+        // Livewire is only used by the Pulse vendor dashboard (#158). Disable
+        // auto-injection so normal app pages never ship Livewire assets; Pulse's
+        // own layout pulls in @livewireStyles / @livewireScriptConfig. CSP-safe
+        // mode avoids needing script-src 'unsafe-eval' on /admin/pulse (nginx map
+        // from #157 still allows 'unsafe-inline' for those inline assets).
+        config([
+            'livewire.inject_assets' => false,
+            'livewire.csp_safe' => true,
+        ]);
 
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)->by($this->emailAndIpKey($request)));
 

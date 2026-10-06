@@ -1,5 +1,7 @@
 <?php
 
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 return [
@@ -125,12 +127,18 @@ return [
     | Serializable Classes
     |--------------------------------------------------------------------------
     |
-    | This value determines the classes that can be unserialized from cache
-    | storage. By default, no PHP classes will be unserialized from your
-    | cache to prevent gadget chain attacks if your APP_KEY is leaked.
+    | Laravel 13 defaults this to false so cache payloads cannot unserialize
+    | arbitrary classes if APP_KEY leaks. Pulse caches dashboard aggregates as
+    | stdClass rows, Collections, and CarbonImmutable timestamps (#158 / Pulse
+    | #505). Keep this list minimal and scoped to those three types only;
+    | unexpected nested classes in a crafted payload remain blocked.
     |
     */
 
-    'serializable_classes' => false,
+    'serializable_classes' => [
+        stdClass::class,
+        Collection::class,
+        CarbonImmutable::class,
+    ],
 
 ];
