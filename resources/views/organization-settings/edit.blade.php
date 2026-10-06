@@ -1,24 +1,30 @@
 <x-layout title="Organization settings">
-    <x-card heading="Organization settings" kicker="Settings" eared class="max-w-md">
-        <p class="text-sm text-ink">
-            Name and timezone belong to the organization. They are the same for every member.
-        </p>
+    <div class="mx-auto flex w-full max-w-md flex-col gap-8">
+        <x-organization-usage-card :organization="$organization" />
 
-        <form class="flex flex-col gap-4" method="POST" action="{{ route('organization-settings.update') }}">
-            @csrf
-            @method('PATCH')
+        @can('update', $organization)
+            <x-card id="settings" heading="Organization settings" kicker="Settings" eared class="scroll-mt-8">
+                <p class="text-sm text-ink">
+                    Name and timezone belong to the organization. They are the same for every member.
+                </p>
 
-            <x-input name="name" label="Organization name" :value="$organization->name" autocomplete="organization" required />
+                <form class="flex flex-col gap-4" method="POST" action="{{ route('organization-settings.update') }}">
+                    @csrf
+                    @method('PATCH')
 
-            <x-select
-                name="timezone"
-                label="Organization timezone"
-                :value="$organization->timezone"
-                :options="$timezones"
-                hint="This timezone drives scheduling. Your profile timezone only changes how times appear on screen."
-            />
+                    <x-input name="name" label="Organization name" :value="$organization->name" autocomplete="organization" required />
 
-            <x-button>Save settings</x-button>
-        </form>
-    </x-card>
+                    <x-select
+                        name="timezone"
+                        label="Organization timezone"
+                        :value="$organization->timezone"
+                        :options="$timezones"
+                        hint="This timezone drives scheduling. Your profile timezone only changes how times appear on screen."
+                    />
+
+                    <x-button>Save settings</x-button>
+                </form>
+            </x-card>
+        @endcan
+    </div>
 </x-layout>

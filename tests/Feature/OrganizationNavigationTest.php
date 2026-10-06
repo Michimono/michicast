@@ -45,7 +45,7 @@ class OrganizationNavigationTest extends TestCase
         $this->assertStringContainsString('id="organization-sidebar"', $html);
     }
 
-    public function test_a_viewer_does_not_see_organization_settings_in_the_rail(): void
+    public function test_a_viewer_sees_organization_settings_in_the_rail(): void
     {
         $user = User::factory()->create();
         $organization = Organization::factory()->withMember($user, Role::Viewer)->create();
@@ -53,7 +53,7 @@ class OrganizationNavigationTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.show', $organization))
             ->assertOk()
-            ->assertDontSee(route('organization-settings.edit', $organization), false);
+            ->assertSee(route('organization-settings.edit', $organization), false);
     }
 
     public function test_the_organizations_index_lists_only_memberships(): void

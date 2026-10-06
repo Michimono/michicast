@@ -64,13 +64,15 @@ class OrganizationSettingsTest extends TestCase
     }
 
     #[DataProvider('nonAdministrativeRoles')]
-    public function test_a_non_administrator_cannot_open_the_settings_screen(Role $role): void
+    public function test_a_non_administrator_can_open_settings_to_read_usage(Role $role): void
     {
         [$user, $organization] = $this->memberHolding($role);
 
         $this->actingAs($user)
             ->get(route('organization-settings.edit', $organization))
-            ->assertForbidden();
+            ->assertOk()
+            ->assertSee('Usage')
+            ->assertDontSee('Save settings');
     }
 
     #[DataProvider('nonAdministrativeRoles')]
@@ -94,20 +96,20 @@ class OrganizationSettingsTest extends TestCase
         $this->assertSame('UTC', $organization->timezone);
     }
 
-    public function test_the_settings_link_is_offered_only_to_administrators(): void
+    public function test_the_settings_link_is_offered_to_every_member(): void
     {
         [$owner, $ownersOrganization] = $this->memberHolding(Role::Owner);
-        [$editor, $editorsOrganization] = $this->memberHolding(Role::Editor);
+        [$viewer, $viewersOrganization] = $this->memberHolding(Role::Viewer);
 
         $this->actingAs($owner)
             ->get(route('organizations.show', $ownersOrganization))
             ->assertOk()
             ->assertSee(route('organization-settings.edit', $ownersOrganization), false);
 
-        $this->actingAs($editor)
-            ->get(route('organizations.show', $editorsOrganization))
+        $this->actingAs($viewer)
+            ->get(route('organizations.show', $viewersOrganization))
             ->assertOk()
-            ->assertDontSee(route('organization-settings.edit', $editorsOrganization), false);
+            ->assertSee(route('organization-settings.edit', $viewersOrganization), false);
     }
 
     public function test_an_unknown_timezone_identifier_is_rejected(): void

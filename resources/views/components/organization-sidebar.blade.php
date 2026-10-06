@@ -68,15 +68,13 @@
             Members
         </x-sidebar-link>
 
-        @can('update', $organization)
-            <x-sidebar-link
-                :href="route('organization-settings.edit', $organization)"
-                :active="request()->routeIs('organization-settings.*')"
-            >
-                <x-slot:icon><x-icons.cog class="size-5 shrink-0" /></x-slot:icon>
-                Settings
-            </x-sidebar-link>
-        @endcan
+        <x-sidebar-link
+            :href="route('organization-settings.edit', $organization)"
+            :active="request()->routeIs('organization-settings.*')"
+        >
+            <x-slot:icon><x-icons.cog class="size-5 shrink-0" /></x-slot:icon>
+            Settings
+        </x-sidebar-link>
     </nav>
 
     @if ($inProject)

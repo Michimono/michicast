@@ -1,5 +1,6 @@
 <x-layout :title="$project->name">
     <div class="flex flex-col gap-8">
+        <x-quota-exhausted-banner :organization="$project->organization" />
         {{-- 1. Header: read-only identity + sparse actions --}}
         <x-card highlighted kicker="Overview">
             <x-slot:kickerTrailing>
