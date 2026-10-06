@@ -74,6 +74,11 @@ services:
     command: ["php", "artisan", "schedule:work"]
     init: true
 
+  # No pulse Compose service (#158): pulse:check would add another long-lived PHP
+  # process (~30-50 MB RSS) on the 1 GB droplet. Servers card is omitted from the
+  # Pulse dashboard. To enable later: add a service like horizon running
+  # php artisan pulse:check, set PULSE_SERVER_NAME, and restore <livewire:pulse.servers />.
+
   mysql:
     image: mysql:8.0
     restart: unless-stopped
