@@ -45,6 +45,20 @@ class User extends Authenticatable
     }
 
     /**
+     * Whether this user's email is listed in PLATFORM_ADMIN_EMAILS.
+     *
+     * Comparison is case-insensitive. The list is config-only; there is no
+     * database flag and registration/profile cannot grant this.
+     */
+    public function isPlatformAdmin(): bool
+    {
+        $email = strtolower((string) $this->email);
+        $admins = config('michicast.platform_admin_emails', []);
+
+        return is_array($admins) && in_array($email, $admins, true);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
