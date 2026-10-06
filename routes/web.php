@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
+use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\ArchivedBroadcastController;
 use App\Http\Controllers\ArchivedProjectController;
@@ -55,6 +56,7 @@ use App\Http\Controllers\TwoFactorRecoveryCodeController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsurePlatformAdmin;
 use App\Http\Middleware\PreventAdminPageCaching;
+use App\Http\Middleware\RecordAdminSignIn;
 use App\Http\Middleware\SetCurrentOrganization;
 use App\Models\Organization;
 use App\Models\Project;
@@ -395,8 +397,11 @@ Route::middleware([
     EnsurePlatformAdmin::class,
     PreventAdminPageCaching::class,
     RequirePassword::using('password.confirm', (string) config('michicast.admin.password_timeout', 900)),
+    RecordAdminSignIn::class,
 ])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', OverviewController::class)->name('overview');
+
+    Route::resource('audit', AuditController::class)->only(['index']);
 
     /*
      * Admin writes share a per-user throttle. Apply throttle:admin on
