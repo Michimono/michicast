@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
+use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BannedUserController as AdminBannedUserController;
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
@@ -443,6 +444,8 @@ Route::middleware([
     Route::post('organizations/{organization}/quota-usage-resets', [AdminOrganizationQuotaUsageController::class, 'store'])
         ->middleware('throttle:admin')
         ->name('organizations.quota-usage-resets.store');
+
+    Route::get('activity', ActivityController::class)->name('activity');
 
     Route::resource('audit', AuditController::class)->only(['index']);
 });
