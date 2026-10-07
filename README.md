@@ -51,6 +51,8 @@ The hand-installed cron path remains valid with `QUEUE_CONNECTION=sync` or the d
 
 Droplet deploy: [docs/deploy.md](docs/deploy.md). Host first-boot (Docker, deploy user, swap, UFW) is in [laravel-droplet-infra](https://github.com/Michimono/laravel-droplet-infra); this repo only covers app clone, `deploy/.env`, and `deploy/deploy.sh`.
 
+Droplet operations (admins, 2FA reset, moderation, plans, registration, Horizon, Pulse, backups, Redis outages): [docs/operations.md](docs/operations.md).
+
 
 ## Checks
 
