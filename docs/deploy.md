@@ -1,6 +1,6 @@
 # Deploy
 
-Host setup and app deploy are split. This repo only covers the **app** steps.
+Host setup and app deploy are split. This repo only covers the **app** steps. Day-to-day operation (admins, moderation, dashboards, backups, outages) is in [operations.md](operations.md).
 
 ## 1. Host first-boot (Ansible)
 
@@ -22,6 +22,25 @@ ansible-playbook playbooks/provision.yml
 
 That repo's defaults create user `michimono` and directory `~/michimono`. Ansible does **not** deploy this app, write `deploy/.env`, or run Compose. It does open TCP **80** and **443** in UFW so Caddy can serve HTTP (ACME) and HTTPS.
 
+### Swap
+
+A 1 GB droplet needs swap. The image build (npm and Composer stages) is the memory peak; a build that gets killed has run out of memory. Check that swap exists:
+
+```sh
+swapon --show
+free -h
+```
+
+Keep at least 1 GB of swap (2 GB is safer if you build on the droplet). If the Ansible swap role did not create any:
+
+```sh
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
 ## 2. DNS
 
 Point an **A** (and optional **AAAA**) record for your public hostname at the droplet's IP. Propagation must reach the droplet before the first certificate issuance; Let's Encrypt validates over HTTP on port 80.
@@ -38,21 +57,34 @@ git clone https://github.com/Michimono/michicast.git ~/michimono
 
 cd ~/michimono
 cp deploy/.env.example deploy/.env
-# Fill secrets: APP_KEY, APP_URL, DOMAIN, ACME_EMAIL, DB_*/MYSQL_* passwords, REDIS_PASSWORD, etc.
-# DOMAIN must match the host in APP_URL. ACME_EMAIL is the Let's Encrypt account contact.
-# SESSION_SECURE_COOKIE=true is already set in the example (required behind TLS).
-# Generate REDIS_PASSWORD (required by the redis Compose service), e.g.:
-#   sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -base64 32)/" deploy/.env
+```
+
+Edit `deploy/.env` before the first deploy:
+
+| Key | Value |
+| --- | --- |
+| `APP_KEY` | `base64:` followed by 32 random bytes, e.g. `echo "base64:$(openssl rand -base64 32)"`. Keep it: it decrypts destination credentials and 2FA secrets. |
+| `APP_URL`, `DOMAIN` | `https://<host>` and `<host>`. They must match. |
+| `ACME_EMAIL` | Let's Encrypt account contact. |
+| `DB_PASSWORD`, `MYSQL_PASSWORD` | The same strong password. `MYSQL_*` is only read when the MySQL volume is first created. |
+| `MYSQL_ROOT_PASSWORD` | A different strong password. |
+| `REDIS_PASSWORD` | Required by the `redis` service. Generate it with the command below. |
+| `PLATFORM_ADMIN_EMAILS` | Uncomment and set your own email so you can reach `/admin` after registering. |
+| `MAIL_*` | The example uses `MAIL_MAILER=log`; set a real mailer before inviting users. |
+
+```sh
+sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 32)/" deploy/.env
+```
+
+`SESSION_SECURE_COOKIE=true` is already set in the example (required behind TLS).
+
+Then deploy:
+
+```sh
 bash ~/michimono/deploy/deploy.sh
 ```
 
-`deploy/deploy.sh` pulls, builds Compose, starts services, runs migrations, and terminates Horizon so workers pick up new code.
-
-Compose layout for TLS:
-
-- **caddy** publishes host ports 80 and 443, obtains and renews Let's Encrypt certificates for `DOMAIN`, redirects HTTP to HTTPS (ACME challenge path excepted), and reverse-proxies to **web**.
-- **web** (nginx) stays on the internal Compose network only and keeps the existing CSP header.
-- MySQL and Redis stay unpublished on the host.
+`deploy/deploy.sh` runs `git pull --ff-only`, `docker compose build`, `docker compose up -d`, `php artisan migrate --force` in the `app` container, and `php artisan horizon:terminate` so the Horizon container restarts on the new code. Re-run it for every later deploy.
 
 ### First certificate issuance
 
@@ -60,17 +92,45 @@ After DNS points at the droplet and `deploy/.env` has `DOMAIN` + `ACME_EMAIL`:
 
 1. Run `bash ~/michimono/deploy/deploy.sh` (or `docker compose up -d` if images are already built).
 2. Watch Caddy obtain the cert: `docker compose logs -f caddy`.
-3. Open `https://<DOMAIN>` â€” you should get a valid certificate. `http://<DOMAIN>` should redirect to HTTPS.
+3. Open `https://<DOMAIN>`; you should get a valid certificate. `http://<DOMAIN>` should redirect to HTTPS.
 4. Confirm `Strict-Transport-Security` on an HTTPS response and that session cookies include `Secure`.
 
 Renewal is automatic inside the Caddy container (certificates live in the `caddy-data` volume). No cron or certbot step is required on the host.
 
-If the build is killed, it ran out of memory (the Ansible swap role is meant to help).
+### First admin
 
-## Pulse
+1. Open `https://<DOMAIN>/users/create` and register with the email you put in `PLATFORM_ADMIN_EMAILS`. Registration is open by default.
+2. Open `https://<DOMAIN>/admin` and confirm your password. The admin sidebar should list Overview, Users, Organizations, Activity, Audit, Settings, Horizon and Pulse.
+3. If `/admin` answers 404, your email is not in `PLATFORM_ADMIN_EMAILS` or the app container predates the change; see [Promote or revoke an admin](operations.md#promote-or-revoke-an-admin).
 
-Pulse is mounted at /admin/pulse behind the platform-admin gate. Ingest uses the storage driver by default (no pulse:work process). Retention is 7 days.
+Health check: `curl -fsS https://<DOMAIN>/up`.
 
-There is no pulse Compose service: pulse:check would cost another ~30–50 MB RSS on the 1 GB droplet, so the Servers card is omitted from the dashboard. To enable it later, add a Compose service running php artisan pulse:check, set PULSE_SERVER_NAME, and restore ` <livewire:pulse.servers /> ` in esources/views/vendor/pulse/dashboard.blade.php.
+## Compose stack
 
-Optional scale path under load: PULSE_INGEST_DRIVER=redis plus php artisan pulse:work (prefer PULSE_REDIS_CONNECTION on a dedicated Redis DB, not the queue connection).
+`compose.yaml` defines seven services. Only `caddy` publishes ports to the host.
+
+| Service | What it does | Expected memory |
+| --- | --- | --- |
+| `caddy` | TLS termination and Let's Encrypt on 80/443, reverse proxy to `web`. | ~20-40 MB |
+| `web` | nginx. Serves `public/` and passes PHP to `app`. Sets the CSP header (looser only on `/admin/horizon` and `/admin/pulse`). | ~5-15 MB |
+| `app` | php-fpm, `pm = ondemand`, at most 3 children, `memory_limit = 128M`. Also where `php artisan` commands run. | ~20 MB idle, up to ~150 MB under load |
+| `horizon` | `php artisan horizon`. Queue workers for `default` and `mail` on Redis, at most 2 processes (worker limit 128 MB, master 64 MB). | ~80-150 MB |
+| `scheduler` | `php artisan schedule:work`. Runs `projects:dispatch` every minute plus the daily prunes. | ~30-60 MB, short spikes per tick |
+| `mysql` | MySQL 8.0, `innodb-buffer-pool-size=64M`, performance schema off, 30 connections. Data in the `mysql-data` volume. | ~200-350 MB |
+| `redis` | Redis 7, `maxmemory 64mb`, `noeviction`, AOF on. Holds the queue and Horizon metrics. Data in the `redis-data` volume. | under ~80 MB |
+
+The memory figures are rough expectations from these limits, not guarantees; check the real numbers with `docker stats --no-stream`. Together they leave little headroom on 1 GB, which is why swap matters. There is no Pulse worker service (see [Pulse](operations.md#pulse)).
+
+Volumes: `mysql-data`, `redis-data`, `app-storage` (logs, framework cache, shared by `app`, `horizon`, `scheduler` and read-only by `web`), `caddy-data`, `caddy-config`.
+
+Useful commands, run from `~/michimono`:
+
+```sh
+docker compose ps
+docker compose logs -f app horizon scheduler
+docker compose exec app php artisan about
+```
+
+Application logs go to `storage/logs/laravel.log` in the `app-storage` volume: `docker compose exec app tail -n 100 storage/logs/laravel.log`.
+
+Changing `deploy/.env` needs `docker compose up -d` to recreate the containers. `docker compose restart` does not reload the env file.
