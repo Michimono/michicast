@@ -47,6 +47,12 @@ class AcceptedInvitationController extends Controller
             return redirect()->route('invitation-acceptances.edit', $token);
         }
 
+        if ($user->isBanned()) {
+            return redirect()
+                ->route('invitation-acceptances.edit', $token)
+                ->with('error', 'Unable to accept this invitation.');
+        }
+
         if (! $invitation->isPending()) {
             return redirect()
                 ->route('invitation-acceptances.edit', $token)

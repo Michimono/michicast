@@ -81,7 +81,7 @@ class AppServiceProvider extends ServiceProvider
             'email' => $user->getEmailForPasswordReset(),
         ]));
 
-        Gate::define('accessAdmin', fn (User $user): bool => $user->isPlatformAdmin());
+        Gate::define('accessAdmin', fn (User $user): bool => $user->isPlatformAdmin() && ! $user->isBanned());
 
         // Override Pulse's local-env viewPulse bypass so /admin/pulse matches production
         // gating (#158). callAfterResolving runs after Pulse's own gate registration.

@@ -1,4 +1,4 @@
-<x-layout :title="'Admin · '.$user->name">
+<x-layout :title="'Admin — '.$user->name">
     <x-card :heading="$user->name" kicker="User" eared>
         <p class="font-mono text-sm text-muted">{{ $user->email }}</p>
 
@@ -20,7 +20,11 @@
             <div class="flex flex-col gap-1 rounded-md border border-line bg-paper p-4">
                 <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Status</dt>
                 <dd>
-                    <span class="inline-flex w-fit rounded-full border border-state-ok/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-ok uppercase">Active</span>
+                    @if ($user->isBanned())
+                        <span class="inline-flex w-fit rounded-full border border-state-fail/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-fail uppercase">Banned</span>
+                    @else
+                        <span class="inline-flex w-fit rounded-full border border-state-ok/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-ok uppercase">Active</span>
+                    @endif
                     @if ($user->isPlatformAdmin())
                         <span class="ml-2 inline-flex w-fit rounded-full border border-line px-2 py-0.5 font-mono text-xs tracking-wide text-muted uppercase">Admin</span>
                     @endif
@@ -34,12 +38,112 @@
                 <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Two-factor</dt>
                 <dd class="text-sm text-ink">{{ $user->hasTwoFactorEnabled() ? 'Enabled' : 'Off' }}</dd>
             </div>
+            @if ($user->isBanned())
+                <div class="flex flex-col gap-1 rounded-md border border-line bg-paper p-4 sm:col-span-2 lg:col-span-3">
+                    <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Ban reason</dt>
+                    <dd class="text-sm text-ink">{{ $user->ban_reason }}</dd>
+                    <dd class="font-mono text-xs text-muted">
+                        Banned
+                        @if ($user->banned_at)
+                            <x-timestamp :value="$user->banned_at" />
+                        @endif
+                        @if ($user->bannedBy)
+                            by {{ $user->bannedBy->name }}
+                        @endif
+                    </dd>
+                </div>
+            @endif
         </dl>
 
         <p class="text-sm text-muted">
             <a class="text-accent underline hover:no-underline" href="{{ route('admin.users.index') }}">← All users</a>
         </p>
     </x-card>
+
+    @unless ($user->is(auth()->user()) || $user->isPlatformAdmin())
+        @if ($user->isBanned())
+            <x-card heading="Unban user" kicker="Moderation">
+                <p class="text-sm text-muted">
+                    Clears the ban so they can sign in again. Existing sessions are not restored; they must log in fresh.
+                </p>
+
+                <form
+                    class="flex flex-col gap-4"
+                    method="POST"
+                    action="{{ route('admin.users.ban.destroy', $user) }}"
+                    onsubmit="return confirm('Unban {{ $user->name }}? They will be able to sign in again.')"
+                >
+                    @csrf
+                    @method('DELETE')
+
+                    <x-button variant="ghost">Unban user</x-button>
+                </form>
+            </x-card>
+        @else
+            <x-card heading="Ban user" kicker="Moderation">
+                <p class="text-sm text-muted">
+                    Signs them out everywhere, blocks login and password reset, and prevents invitation acceptance.
+                    This does not delete their account, organizations, or broadcasts.
+                </p>
+
+                <form
+                    class="flex flex-col gap-4"
+                    method="POST"
+                    action="{{ route('admin.users.ban.store', $user) }}"
+                    onsubmit="return confirm('Ban {{ $user->name }}? They will be signed out everywhere.')"
+                >
+                    @csrf
+
+                    <x-textarea
+                        name="reason"
+                        label="Reason"
+                        rows="3"
+                        required
+                        hint="Stored on the user and in the audit log. Not shown to the banned user."
+                    />
+
+                    <label class="flex items-start gap-3 text-sm text-ink">
+                        <input
+                            class="mt-1 size-4 rounded border-line-strong text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                            type="checkbox"
+                            name="confirmation"
+                            value="1"
+                            required
+                            @checked(old('confirmation'))
+                        >
+                        <span>I confirm this ban signs them out everywhere and blocks sign-in until an admin unbans them.</span>
+                    </label>
+                    @error('confirmation')
+                        <p class="text-sm text-state-fail">{{ $message }}</p>
+                    @enderror
+
+                    <label class="flex items-start gap-3 text-sm text-ink">
+                        <input
+                            class="mt-1 size-4 rounded border-line-strong text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                            type="checkbox"
+                            name="suspend_sole_owned_organizations"
+                            value="1"
+                            @checked(old('suspend_sole_owned_organizations'))
+                        >
+                        <span>
+                            Also suspend every organization where they are the only owner.
+                            <span class="text-muted">Org suspend ships with #166; checking this records the intent in the audit log until then.</span>
+                        </span>
+                    </label>
+
+                    <x-button>Ban user</x-button>
+                </form>
+            </x-card>
+        @endif
+    @else
+        <x-card heading="Ban user" kicker="Moderation">
+            @if ($user->is(auth()->user()))
+                <p class="text-sm text-muted">You cannot ban your own account.</p>
+            @else
+                <p class="text-sm text-muted">Platform admins cannot be banned. Revoke admin access from the CLI first.</p>
+            @endif
+        </x-card>
+    @endunless
 
     <x-card heading="Memberships" kicker="Organizations">
         @if ($memberships->isEmpty())
@@ -107,7 +211,7 @@
                         <div class="flex flex-wrap items-baseline justify-between gap-2">
                             <span class="text-sm text-ink">
                                 <span class="font-medium">{{ $entry->action->label() }}</span>
-                                · {{ $entry->admin?->name ?? 'Unknown admin' }}
+                                — {{ $entry->admin?->name ?? 'Unknown admin' }}
                             </span>
                             <span class="font-mono text-xs text-muted"><x-timestamp :value="$entry->created_at" /></span>
                         </div>

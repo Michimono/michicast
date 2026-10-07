@@ -21,7 +21,12 @@ class SessionController extends Controller
 
     public function store(StoreSessionRequest $request): RedirectResponse
     {
-        if (! Auth::attempt($request->validated())) {
+        $credentials = $request->safe()->only(['email', 'password']);
+
+        if (! Auth::attemptWhen(
+            $credentials,
+            fn (User $user): bool => ! $user->isBanned(),
+        )) {
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);

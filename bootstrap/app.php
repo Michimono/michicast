@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AddStrictTransportSecurityHeader;
+use App\Http\Middleware\EnsureUserIsNotBanned;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Caddy terminates TLS and forwards X-Forwarded-* on the Compose network.
         $middleware->trustProxies(at: '*');
         $middleware->append(AddStrictTransportSecurityHeader::class);
+        $middleware->web(append: [
+            EnsureUserIsNotBanned::class,
+        ]);
 
         $middleware->redirectGuestsTo(function () {
             if (session()->has('login.id')) {

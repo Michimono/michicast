@@ -24,9 +24,24 @@ class PasswordController extends Controller
 
     public function update(UpdatePasswordRequest $request, string $token): RedirectResponse
     {
+        $email = $request->validated('email');
+        $existing = User::query()->where('email', $email)->first();
+
+        if ($existing instanceof User && $existing->isBanned()) {
+            throw ValidationException::withMessages([
+                'email' => __(Password::InvalidToken),
+            ]);
+        }
+
         $status = Password::reset(
             [...$request->validated(), 'token' => $token],
             function (User $user, string $password): void {
+                if ($user->isBanned()) {
+                    throw ValidationException::withMessages([
+                        'email' => __(Password::InvalidToken),
+                    ]);
+                }
+
                 $user->forceFill([
                     'password' => $password,
                     'remember_token' => Str::random(60),

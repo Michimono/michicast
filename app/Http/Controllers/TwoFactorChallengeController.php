@@ -32,7 +32,7 @@ class TwoFactorChallengeController extends Controller
         $userId = $request->session()->get(self::SESSION_USER_ID);
         $user = User::query()->find($userId);
 
-        if (! $user instanceof User || ! $user->hasTwoFactorEnabled() || $user->two_factor_secret === null) {
+        if (! $user instanceof User || ! $user->hasTwoFactorEnabled() || $user->two_factor_secret === null || $user->isBanned()) {
             $request->session()->forget(self::SESSION_USER_ID);
 
             return redirect()->route('session.create');
