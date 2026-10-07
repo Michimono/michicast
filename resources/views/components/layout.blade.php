@@ -118,7 +118,9 @@
                             </form>
                         @else
                             <x-nav-link :href="route('session.create')" :active="request()->routeIs('session.create')">Log in</x-nav-link>
-                            <x-nav-link :href="route('users.create')" :active="request()->routeIs('users.create')">Register</x-nav-link>
+                            @if (app(\App\Support\RegistrationSettings::class)->acceptsRegistrations())
+                                <x-nav-link :href="route('users.create')" :active="request()->routeIs('users.create')">Register</x-nav-link>
+                            @endif
                         @endauth
                     </nav>
                 </div>

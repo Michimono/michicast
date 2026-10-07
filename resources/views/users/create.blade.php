@@ -11,25 +11,44 @@
 
     <x-card eared>
         <div class="flex flex-col gap-6">
-            <form class="flex flex-col gap-5" method="POST" action="{{ route('users.store') }}">
-                @csrf
+            @if ($mode === \App\Enums\RegistrationMode::Closed)
+                <div class="flex flex-col gap-2" role="status">
+                    @if ($capReached)
+                        <p class="text-sm font-medium text-ink">New sign-ups are paused for today.</p>
+                        <p class="text-sm text-muted">We have reached today's limit on new accounts. Please try again tomorrow.</p>
+                    @else
+                        <p class="text-sm font-medium text-ink">Registration is currently closed.</p>
+                        <p class="text-sm text-muted">New accounts are not being accepted right now. If you already have an account, you can still log in.</p>
+                    @endif
+                </div>
+            @else
+                @if ($mode === \App\Enums\RegistrationMode::InviteOnly)
+                    <div class="flex flex-col gap-2" role="status">
+                        <p class="text-sm font-medium text-ink">Registration is by invitation only.</p>
+                        <p class="text-sm text-muted">Use the email address your invitation was sent to.</p>
+                    </div>
+                @endif
 
-                <x-input name="name" label="Name" autocomplete="name" autofocus required />
-                <x-input name="email" label="Email address" type="email" :value="$email" autocomplete="email" required />
-                <x-input
-                    name="password"
-                    label="Password"
-                    type="password"
-                    autocomplete="new-password"
-                    hint="At least 8 characters."
-                    required
-                />
-                <x-input name="password_confirmation" label="Confirm password" type="password" autocomplete="new-password" required />
+                <form class="flex flex-col gap-5" method="POST" action="{{ route('users.store') }}">
+                    @csrf
 
-                <x-button class="w-full">Create account</x-button>
-            </form>
+                    <x-input name="name" label="Name" autocomplete="name" autofocus required />
+                    <x-input name="email" label="Email address" type="email" :value="$email" autocomplete="email" required />
+                    <x-input
+                        name="password"
+                        label="Password"
+                        type="password"
+                        autocomplete="new-password"
+                        hint="At least 8 characters."
+                        required
+                    />
+                    <x-input name="password_confirmation" label="Confirm password" type="password" autocomplete="new-password" required />
 
-            <x-social-auth />
+                    <x-button class="w-full">Create account</x-button>
+                </form>
+
+                <x-social-auth />
+            @endif
         </div>
     </x-card>
 

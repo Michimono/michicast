@@ -79,6 +79,10 @@ class AdminActionLog extends Model
             return $subject->name;
         }
 
+        if ($subject instanceof PlatformSetting) {
+            return 'Platform setting: '.$subject->key;
+        }
+
         if ($subject instanceof Model) {
             $name = $subject->getAttribute('name');
 
