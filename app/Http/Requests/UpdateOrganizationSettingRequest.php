@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Support\CurrentOrganization;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
 
 class UpdateOrganizationSettingRequest extends FormRequest
 {
@@ -13,7 +14,9 @@ class UpdateOrganizationSettingRequest extends FormRequest
      */
     public function authorize(CurrentOrganization $current): bool
     {
-        return $this->user()?->can('update', $current->organization()) ?? false;
+        Gate::authorize('update', $current->organization());
+
+        return true;
     }
 
     /**

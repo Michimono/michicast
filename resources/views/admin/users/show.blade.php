@@ -127,7 +127,7 @@
                         >
                         <span>
                             Also suspend every organization where they are the only owner.
-                            <span class="text-muted">Org suspend ships with #166; checking this records the intent in the audit log until then.</span>
+                            <span class="text-muted">Those organizations stop writing and broadcasting until an admin reinstates them.</span>
                         </span>
                     </label>
 

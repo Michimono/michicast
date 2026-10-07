@@ -20,6 +20,16 @@ class RunClaimedProject
         $project->refresh();
         $project->loadMissing('organization');
 
+        // Suspended after claim (or a race with the dispatcher): release cleanly
+        // and schedule from now so a long suspension does not burst on reinstate.
+        if ($project->organization->isSuspended()) {
+            $project->claimed_at = null;
+            $project->refreshNextRunAt();
+            $project->save();
+
+            return;
+        }
+
         $completed = true;
         $failed = false;
 

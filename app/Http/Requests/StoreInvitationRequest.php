@@ -12,6 +12,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
 class StoreInvitationRequest extends FormRequest
@@ -21,7 +22,9 @@ class StoreInvitationRequest extends FormRequest
      */
     public function authorize(CurrentOrganization $current): bool
     {
-        return $this->user()?->can('create', [OrganizationInvitation::class, $current->organization()]) ?? false;
+        Gate::authorize('create', [OrganizationInvitation::class, $current->organization()]);
+
+        return true;
     }
 
     /**

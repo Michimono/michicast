@@ -66,6 +66,8 @@ class OrganizationController extends Controller
 
     public function show(Organization $organization, ProjectHealthResolver $health): View
     {
+        $organization->loadMissing('suspendedBy');
+
         $members = $organization->members()
             ->with('user')
             ->get()

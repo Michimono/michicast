@@ -54,7 +54,11 @@
                                 <td class="py-3 pr-4 font-mono text-xs text-ink">{{ $listedOrganization->runs_last_24h_count }}</td>
                                 <td class="py-3 pr-4 font-mono text-xs text-ink">{{ $listedOrganization->deliveries_last_24h_count }}</td>
                                 <td class="py-3">
-                                    <span class="inline-flex w-fit rounded-full border border-state-ok/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-ok uppercase">Active</span>
+                                    @if ($listedOrganization->isSuspended())
+                                        <span class="inline-flex w-fit rounded-full border border-state-fail/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-fail uppercase">Suspended</span>
+                                    @else
+                                        <span class="inline-flex w-fit rounded-full border border-state-ok/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-ok uppercase">Active</span>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach

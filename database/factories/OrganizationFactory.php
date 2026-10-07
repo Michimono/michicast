@@ -32,6 +32,15 @@ class OrganizationFactory extends Factory
         return $this->withMember($user, Role::Owner);
     }
 
+    public function suspended(?string $reason = 'Suspended for testing'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'suspended_at' => now(),
+            'suspension_reason' => $reason,
+            'suspended_by' => null,
+        ]);
+    }
+
     public function withMember(User $user, Role $role): static
     {
         return $this->afterCreating(function (Organization $organization) use ($user, $role): void {
