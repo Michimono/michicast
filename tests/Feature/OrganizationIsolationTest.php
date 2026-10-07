@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\Role;
+use App\Http\Middleware\EnsurePlatformAdmin;
 use App\Http\Middleware\SetCurrentOrganization;
 use App\Models\Broadcast;
 use App\Models\ContentDelivery;
@@ -99,6 +100,41 @@ class OrganizationIsolationTest extends TestCase
                 in_array(SetCurrentOrganization::class, $middleware, true),
                 sprintf(
                     'Route [%s] %s must use %s so a non-member cannot probe it.',
+                    implode('|', $route->methods()),
+                    $route->uri(),
+                    SetCurrentOrganization::class,
+                ),
+            );
+        }
+    }
+
+    public function test_admin_organization_routes_use_platform_admin_instead_of_set_current_organization(): void
+    {
+        $routes = collect(RouteFacade::getRoutes())
+            ->filter(fn (Route $route): bool => str_contains($route->uri(), 'organizations/{organization}'))
+            ->filter(fn (Route $route): bool => str_starts_with($route->uri(), 'admin/'))
+            ->values()
+            ->all();
+
+        $this->assertNotEmpty($routes, 'Expected admin organization routes to exist.');
+
+        foreach ($routes as $route) {
+            $middleware = $route->gatherMiddleware();
+
+            $this->assertTrue(
+                in_array(EnsurePlatformAdmin::class, $middleware, true),
+                sprintf(
+                    'Route [%s] %s must use %s.',
+                    implode('|', $route->methods()),
+                    $route->uri(),
+                    EnsurePlatformAdmin::class,
+                ),
+            );
+
+            $this->assertFalse(
+                in_array(SetCurrentOrganization::class, $middleware, true),
+                sprintf(
+                    'Route [%s] %s must not use %s (platform admin stays out of tenant context).',
                     implode('|', $route->methods()),
                     $route->uri(),
                     SetCurrentOrganization::class,
@@ -327,6 +363,7 @@ class OrganizationIsolationTest extends TestCase
     {
         return collect(RouteFacade::getRoutes())
             ->filter(fn (Route $route): bool => str_contains($route->uri(), 'organizations/{organization}'))
+            ->reject(fn (Route $route): bool => str_starts_with($route->uri(), 'admin/'))
             ->sortBy(fn (Route $route): string => $route->uri())
             ->values()
             ->all();
