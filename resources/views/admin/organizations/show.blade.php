@@ -109,7 +109,191 @@
         </x-card>
     @endif
 
-    <x-organization-usage-card :organization="$organization" />
+        <x-card id="quotas" heading="Quotas" kicker="Plan & limits" eared class="scroll-mt-8">
+        <p class="text-sm text-muted">
+            Plan limits come from config. Overrides live in the database and win when present (null = unlimited).
+            Daily usage resets at midnight UTC. Changing a plan or override takes effect immediately for the next run.
+        </p>
+
+        <form
+            class="flex flex-col gap-4 rounded-md border border-line bg-paper p-4"
+            method="POST"
+            action="{{ route('admin.organizations.plan.update', $organization) }}"
+        >
+            @csrf
+            @method('PATCH')
+
+            <x-select
+                name="plan"
+                label="Plan"
+                :options="$planOptions"
+                :value="$organization->plan ?? $resolvedPlan"
+                hint="Configured plans only. Plan definitions stay in config."
+                required
+            />
+
+            <x-textarea
+                name="reason"
+                label="Reason"
+                rows="2"
+                required
+                hint="Required. Stored in the audit log with before and after plan values."
+            />
+
+            <x-button>Change plan</x-button>
+        </form>
+
+        <div class="flex flex-col gap-6">
+            @foreach ($quotaRows as $row)
+                @php
+                    $metric = $row['metric'];
+                    $formatLimit = static function (?int $limit): string {
+                        return $limit === null ? 'Unlimited' : number_format($limit);
+                    };
+                @endphp
+
+                <div class="flex flex-col gap-4 rounded-md border border-line bg-paper p-4">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 class="text-sm font-medium text-ink">{{ $row['label'] }}</h3>
+                        @if ($row['is_rate'])
+                            <span class="font-mono text-xs text-muted uppercase">Daily</span>
+                        @else
+                            <span class="font-mono text-xs text-muted uppercase">Stock</span>
+                        @endif
+                    </div>
+
+                    <dl class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div class="flex flex-col gap-1">
+                            <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Plan limit</dt>
+                            <dd class="font-mono text-sm text-ink">{{ $formatLimit($row['plan_limit']) }}</dd>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Override</dt>
+                            <dd class="font-mono text-sm text-ink">
+                                @if ($row['has_override'])
+                                    {{ $formatLimit($row['override_limit']) }}
+                                    @if ($row['override_note'])
+                                        <span class="block text-xs text-muted normal-case tracking-normal">{{ $row['override_note'] }}</span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">None</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Effective</dt>
+                            <dd class="font-mono text-sm text-ink">{{ $formatLimit($row['effective_limit']) }}</dd>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">
+                                {{ $row['is_rate'] ? 'Usage today' : 'Current count' }}
+                            </dt>
+                            <dd class="font-mono text-sm text-ink">{{ number_format($row['used']) }}</dd>
+                        </div>
+                    </dl>
+
+                    <form
+                        class="flex flex-col gap-3 border-t border-line pt-4"
+                        method="POST"
+                        action="{{ route('admin.organizations.quota-overrides.store', $organization) }}"
+                    >
+                        @csrf
+                        <input type="hidden" name="metric" value="{{ $metric->value }}">
+
+                        <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Set override</p>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <x-input
+                                name="limit"
+                                label="Limit"
+                                type="number"
+                                min="0"
+                                :value="$row['has_override'] && $row['override_limit'] !== null ? $row['override_limit'] : null"
+                                hint="Non-negative integer. Leave blank when unlimited is checked."
+                            />
+
+                            <x-input
+                                name="note"
+                                label="Note"
+                                :value="$row['override_note']"
+                                hint="Optional. Shown on this page only."
+                            />
+                        </div>
+
+                        <label class="flex items-start gap-3 text-sm text-ink">
+                            <input
+                                class="mt-1 size-4 rounded border-line-strong text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                                type="checkbox"
+                                name="unlimited"
+                                value="1"
+                                @checked(old('metric') === $metric->value ? old('unlimited') : ($row['has_override'] && $row['override_limit'] === null))
+                            >
+                            <span>Unlimited for this metric</span>
+                        </label>
+
+                        <x-textarea
+                            name="reason"
+                            label="Reason"
+                            rows="2"
+                            required
+                            hint="Required for the audit log."
+                        />
+
+                        <x-button variant="ghost">{{ $row['has_override'] ? 'Update override' : 'Set override' }}</x-button>
+                    </form>
+
+                    @if ($row['has_override'])
+                        <form
+                            class="flex flex-col gap-3 border-t border-line pt-4"
+                            method="POST"
+                            action="{{ route('admin.organizations.quota-overrides.destroy', $organization) }}"
+                            onsubmit="return confirm('Clear the {{ $row['label'] }} override? The plan limit will apply.')"
+                        >
+                            @csrf
+                            @method('DELETE')
+                            <input type="hidden" name="metric" value="{{ $metric->value }}">
+
+                            <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Clear override</p>
+
+                            <x-textarea
+                                name="reason"
+                                label="Reason"
+                                rows="2"
+                                required
+                            />
+
+                            <x-button variant="ghost">Clear override</x-button>
+                        </form>
+                    @endif
+
+                    @if ($row['is_rate'])
+                        <form
+                            class="flex flex-col gap-3 border-t border-line pt-4"
+                            method="POST"
+                            action="{{ route('admin.organizations.quota-usage-resets.store', $organization) }}"
+                            onsubmit="return confirm('Reset this metric usage to zero for the current UTC day?')"
+                        >
+                            @csrf
+                            <input type="hidden" name="metric" value="{{ $metric->value }}">
+
+                            <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Reset today's usage</p>
+
+                            <x-textarea
+                                name="reason"
+                                label="Reason"
+                                rows="2"
+                                required
+                                hint="Zeros the current UTC-day counter only. Stock metrics cannot be reset here."
+                            />
+
+                            <x-button variant="ghost">Reset usage</x-button>
+                        </form>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </x-card>
+
 
     <x-card heading="Members" kicker="People">
         @if ($members->isEmpty())

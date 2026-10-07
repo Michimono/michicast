@@ -114,6 +114,34 @@ class QuotaMeter
         return CarbonImmutable::parse($periodStart->toDateString(), 'UTC')->addDay()->startOfDay();
     }
 
+    /**
+     * Zero the current UTC-day usage counter for a rate metric.
+     *
+     * Returns the previous used value. Creates the period row when missing.
+     */
+    public function resetCurrentPeriod(Organization $organization, QuotaMetric $metric): int
+    {
+        if (! $metric->isRate()) {
+            throw new \InvalidArgumentException('Only rate metrics have a current period to reset.');
+        }
+
+        $periodStart = $this->currentPeriodStart();
+        $previous = $this->used($organization, $metric, $periodStart);
+
+        $this->ensureRow($organization, $metric, $periodStart);
+
+        OrganizationUsage::query()
+            ->where('organization_id', $organization->getKey())
+            ->where('metric', $metric)
+            ->whereDate('period_start', $periodStart->toDateString())
+            ->update([
+                'used' => 0,
+                'updated_at' => now(),
+            ]);
+
+        return $previous;
+    }
+
     private function ensureRow(Organization $organization, QuotaMetric $metric, CarbonInterface $periodStart): void
     {
         OrganizationUsage::query()->insertOrIgnore([

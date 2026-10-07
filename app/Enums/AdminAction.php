@@ -9,6 +9,10 @@ enum AdminAction: string
     case Unbanned = 'unbanned';
     case Suspended = 'suspended';
     case Reinstated = 'reinstated';
+    case PlanChanged = 'plan_changed';
+    case QuotaOverrideSet = 'quota_override_set';
+    case QuotaOverrideCleared = 'quota_override_cleared';
+    case QuotaUsageReset = 'quota_usage_reset';
 
     public function label(): string
     {
@@ -18,6 +22,10 @@ enum AdminAction: string
             self::Unbanned => 'Unbanned',
             self::Suspended => 'Suspended',
             self::Reinstated => 'Reinstated',
+            self::PlanChanged => 'Plan changed',
+            self::QuotaOverrideSet => 'Quota override set',
+            self::QuotaOverrideCleared => 'Quota override cleared',
+            self::QuotaUsageReset => 'Quota usage reset',
         };
     }
 
