@@ -186,8 +186,9 @@ class AdminDirectoryTest extends TestCase
             ->assertSee('owner@example.test', false)
             ->assertSee('Health Broadcast', false)
             ->assertSee('Active', false)
-            ->assertSee('Plan:', false)
-            ->assertSee('Usage', false);
+            ->assertSee('Quotas', false)
+            ->assertSee('Plan limit', false)
+            ->assertSee('Effective', false);
     }
 
     public function test_organization_index_shows_counts_via_with_count(): void

@@ -5,6 +5,9 @@ use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BannedUserController as AdminBannedUserController;
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
+use App\Http\Controllers\Admin\OrganizationPlanController as AdminOrganizationPlanController;
+use App\Http\Controllers\Admin\OrganizationQuotaOverrideController as AdminOrganizationQuotaOverrideController;
+use App\Http\Controllers\Admin\OrganizationQuotaUsageController as AdminOrganizationQuotaUsageController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\SuspendedOrganizationController as AdminSuspendedOrganizationController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -424,6 +427,22 @@ Route::middleware([
     Route::delete('organizations/{organization}/suspend', [AdminSuspendedOrganizationController::class, 'destroy'])
         ->middleware('throttle:admin')
         ->name('organizations.suspend.destroy');
+
+    Route::patch('organizations/{organization}/plan', [AdminOrganizationPlanController::class, 'update'])
+        ->middleware('throttle:admin')
+        ->name('organizations.plan.update');
+
+    Route::post('organizations/{organization}/quota-overrides', [AdminOrganizationQuotaOverrideController::class, 'store'])
+        ->middleware('throttle:admin')
+        ->name('organizations.quota-overrides.store');
+
+    Route::delete('organizations/{organization}/quota-overrides', [AdminOrganizationQuotaOverrideController::class, 'destroy'])
+        ->middleware('throttle:admin')
+        ->name('organizations.quota-overrides.destroy');
+
+    Route::post('organizations/{organization}/quota-usage-resets', [AdminOrganizationQuotaUsageController::class, 'store'])
+        ->middleware('throttle:admin')
+        ->name('organizations.quota-usage-resets.store');
 
     Route::resource('audit', AuditController::class)->only(['index']);
 });

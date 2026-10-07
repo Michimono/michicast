@@ -30,6 +30,14 @@ class Quotas
     }
 
     /**
+     * Plan-configured limit for the organization, ignoring overrides.
+     */
+    public function planLimitFor(Organization $organization, QuotaMetric $metric): ?int
+    {
+        return $this->planLimit($this->planName($organization), $metric);
+    }
+
+    /**
      * Plan name to read limits from: the org's plan when known, else default.
      */
     public function planName(Organization $organization): string
@@ -44,6 +52,35 @@ class Quotas
         }
 
         return $default;
+    }
+
+    /**
+     * Configured plan names for admin selects and validation.
+     *
+     * @return list<string>
+     */
+    public function knownPlanNames(): array
+    {
+        /** @var array<string, array<string, int|null>> $plans */
+        $plans = config('michicast.quotas.plans', []);
+
+        return array_keys($plans);
+    }
+
+    /**
+     * Human labels keyed by plan name for admin selects.
+     *
+     * @return array<string, string>
+     */
+    public function planOptions(): array
+    {
+        $options = [];
+
+        foreach ($this->knownPlanNames() as $name) {
+            $options[$name] = ucfirst($name);
+        }
+
+        return $options;
     }
 
     private function planLimit(string $planName, QuotaMetric $metric): ?int

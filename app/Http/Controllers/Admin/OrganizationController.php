@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ProjectStatus;
+use App\Enums\QuotaMetric;
 use App\Http\Controllers\Controller;
 use App\Models\AdminActionLog;
 use App\Models\Broadcast;
 use App\Models\ContentDelivery;
 use App\Models\Organization;
+use App\Models\OrganizationQuotaOverride;
 use App\Models\Project;
 use App\Models\ProjectRun;
 use App\Support\ProjectHealthResolver;
+use App\Support\QuotaMeter;
+use App\Support\Quotas;
+use App\Support\ResourceQuotas;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -64,8 +69,13 @@ class OrganizationController extends Controller
         ]);
     }
 
-    public function show(Organization $organization, ProjectHealthResolver $health): View
-    {
+    public function show(
+        Organization $organization,
+        ProjectHealthResolver $health,
+        Quotas $quotas,
+        QuotaMeter $meter,
+        ResourceQuotas $resourceQuotas,
+    ): View {
         $organization->loadMissing('suspendedBy');
 
         $members = $organization->members()
@@ -132,12 +142,42 @@ class OrganizationController extends Controller
             ->limit(30)
             ->get();
 
+        $overrides = OrganizationQuotaOverride::query()
+            ->where('organization_id', $organization->getKey())
+            ->get()
+            ->keyBy(fn (OrganizationQuotaOverride $override): string => $override->metric->value);
+
+        $quotaRows = [];
+
+        foreach (QuotaMetric::cases() as $metric) {
+            /** @var OrganizationQuotaOverride|null $override */
+            $override = $overrides->get($metric->value);
+            $used = $metric->isRate()
+                ? $meter->used($organization, $metric)
+                : $resourceQuotas->count($organization, $metric);
+
+            $quotaRows[] = [
+                'metric' => $metric,
+                'label' => $metric->label(),
+                'plan_limit' => $quotas->planLimitFor($organization, $metric),
+                'has_override' => $override !== null,
+                'override_limit' => $override?->limit,
+                'override_note' => $override?->note,
+                'effective_limit' => $quotas->limitFor($organization, $metric),
+                'used' => $used,
+                'is_rate' => $metric->isRate(),
+            ];
+        }
+
         return view('admin.organizations.show', [
             'organization' => $organization,
             'members' => $members,
             'broadcasts' => $broadcasts,
             'recentRuns' => $recentRuns,
             'auditEntries' => $auditEntries,
+            'planOptions' => $quotas->planOptions(),
+            'resolvedPlan' => $quotas->planName($organization),
+            'quotaRows' => $quotaRows,
         ]);
     }
 }
