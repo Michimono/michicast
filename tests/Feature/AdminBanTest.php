@@ -123,15 +123,12 @@ class AdminBanTest extends TestCase
 
         Notification::assertNotSentTo($banned, ResetPasswordNotification::class);
 
-        $activeResponse->assertRedirect(route('password-reset-links.create'))
-            ->assertSessionHas('success');
-        $bannedResponse->assertRedirect(route('password-reset-links.create'))
-            ->assertSessionHas('success');
+        $expectedSuccess = __(Password::ResetLinkSent);
 
-        $this->assertSame(
-            $activeResponse->getSession()->get('success'),
-            $bannedResponse->getSession()->get('success'),
-        );
+        $activeResponse->assertRedirect(route('password-reset-links.create'))
+            ->assertSessionHas('success', $expectedSuccess);
+        $bannedResponse->assertRedirect(route('password-reset-links.create'))
+            ->assertSessionHas('success', $expectedSuccess);
     }
 
     public function test_admin_cannot_ban_self_or_another_admin(): void
