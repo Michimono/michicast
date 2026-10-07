@@ -1,7 +1,6 @@
 {{--
-    Platform admin rail: floating under the full-bleed header. Overview, Audit,
-    Horizon, and Pulse are live; Users and Organizations stay as placeholders
-    until their issues land.
+    Platform admin rail: floating under the full-bleed header. Overview, Users,
+    Organizations, Audit, Horizon, and Pulse are live.
 --}}
 <aside
     id="admin-sidebar"
@@ -21,15 +20,21 @@
             Overview
         </x-sidebar-link>
 
-        <span class="group relative flex items-center gap-3 rounded-md px-3 py-2 text-muted lg:justify-center xl:justify-start" aria-disabled="true">
-            <x-icons.users class="size-5 shrink-0" />
-            <span class="text-sm lg:pointer-events-none lg:absolute lg:left-full lg:z-10 lg:ml-2 lg:w-max lg:rounded-md lg:border lg:border-line lg:bg-paper-raised lg:px-2 lg:py-1 lg:text-ink lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 xl:pointer-events-auto xl:static xl:ml-0 xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:opacity-100">Users</span>
-        </span>
+        <x-sidebar-link
+            :href="route('admin.users.index')"
+            :active="request()->routeIs('admin.users.*')"
+        >
+            <x-slot:icon><x-icons.users class="size-5 shrink-0" /></x-slot:icon>
+            Users
+        </x-sidebar-link>
 
-        <span class="group relative flex items-center gap-3 rounded-md px-3 py-2 text-muted lg:justify-center xl:justify-start" aria-disabled="true">
-            <x-icons.buildings class="size-5 shrink-0" />
-            <span class="text-sm lg:pointer-events-none lg:absolute lg:left-full lg:z-10 lg:ml-2 lg:w-max lg:rounded-md lg:border lg:border-line lg:bg-paper-raised lg:px-2 lg:py-1 lg:text-ink lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100 xl:pointer-events-auto xl:static xl:ml-0 xl:rounded-none xl:border-0 xl:bg-transparent xl:px-0 xl:py-0 xl:opacity-100">Organizations</span>
-        </span>
+        <x-sidebar-link
+            :href="route('admin.organizations.index')"
+            :active="request()->routeIs('admin.organizations.*')"
+        >
+            <x-slot:icon><x-icons.buildings class="size-5 shrink-0" /></x-slot:icon>
+            Organizations
+        </x-sidebar-link>
 
         <x-sidebar-link
             :href="route('admin.audit.index')"

@@ -3,7 +3,9 @@
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
 use App\Http\Controllers\Admin\OverviewController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\ArchivedBroadcastController;
 use App\Http\Controllers\ArchivedProjectController;
 use App\Http\Controllers\BroadcastController;
@@ -400,6 +402,10 @@ Route::middleware([
     RecordAdminSignIn::class,
 ])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', OverviewController::class)->name('overview');
+
+    Route::resource('users', AdminUserController::class)->only(['index', 'show']);
+
+    Route::resource('organizations', AdminOrganizationController::class)->only(['index', 'show']);
 
     Route::resource('audit', AuditController::class)->only(['index']);
 
