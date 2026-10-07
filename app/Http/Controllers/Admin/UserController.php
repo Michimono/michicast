@@ -44,6 +44,8 @@ class UserController extends Controller
 
     public function show(User $user): View
     {
+        $user->loadMissing('bannedBy');
+
         $memberships = $user->memberships()
             ->with('organization')
             ->get()

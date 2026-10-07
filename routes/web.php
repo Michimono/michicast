@@ -3,6 +3,7 @@
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\BannedUserController as AdminBannedUserController;
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -405,12 +406,15 @@ Route::middleware([
 
     Route::resource('users', AdminUserController::class)->only(['index', 'show']);
 
+    Route::post('users/{user}/ban', [AdminBannedUserController::class, 'store'])
+        ->middleware('throttle:admin')
+        ->name('users.ban.store');
+
+    Route::delete('users/{user}/ban', [AdminBannedUserController::class, 'destroy'])
+        ->middleware('throttle:admin')
+        ->name('users.ban.destroy');
+
     Route::resource('organizations', AdminOrganizationController::class)->only(['index', 'show']);
 
     Route::resource('audit', AuditController::class)->only(['index']);
-
-    /*
-     * Admin writes share a per-user throttle. Apply throttle:admin on
-     * store/update/destroy routes as they land in later issues.
-     */
 });

@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -18,6 +19,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $two_factor_secret
  * @property list<string>|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
+ * @property Carbon|null $banned_at
+ * @property string|null $ban_reason
+ * @property int|null $banned_by
  */
 #[Fillable(['name', 'email', 'password', 'timezone'])]
 #[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
@@ -48,6 +52,22 @@ class User extends Authenticatable
     public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
+     * Whether this account is currently banned from signing in.
+     */
+    public function isBanned(): bool
+    {
+        return $this->banned_at !== null;
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function bannedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'banned_by');
     }
 
     /**
@@ -143,6 +163,7 @@ class User extends Authenticatable
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',
             'two_factor_confirmed_at' => 'datetime',
+            'banned_at' => 'datetime',
         ];
     }
 }

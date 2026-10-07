@@ -43,4 +43,16 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Mark the user as banned.
+     */
+    public function banned(?string $reason = 'Banned for testing'): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'banned_at' => now(),
+            'ban_reason' => $reason,
+            'banned_by' => null,
+        ]);
+    }
 }
