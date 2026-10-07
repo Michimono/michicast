@@ -76,7 +76,8 @@ class Project extends Model
      */
     public function isDispatchable(): bool
     {
-        return $this->status === ProjectStatus::Active;
+        return $this->status === ProjectStatus::Active
+            && ! $this->organization->isSuspended();
     }
 
     public function canMarkDue(): bool
@@ -432,7 +433,8 @@ class Project extends Model
     #[Scope]
     protected function dispatchable(Builder $query): Builder
     {
-        return $query->where('status', ProjectStatus::Active);
+        return $query->where('status', ProjectStatus::Active)
+            ->whereHas('organization', fn (Builder $query) => $query->whereNull('suspended_at'));
     }
 
     /**

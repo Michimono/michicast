@@ -2,15 +2,23 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectStatus;
 use App\Enums\Role;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
+/**
+ * @property Carbon|null $suspended_at
+ * @property string|null $suspension_reason
+ * @property int|null $suspended_by
+ */
 #[Fillable(['name', 'slug', 'timezone', 'plan'])]
 class Organization extends Model
 {
@@ -44,11 +52,27 @@ class Organization extends Model
     }
 
     /**
+     * Whether this organization is currently suspended from writes and dispatch.
+     */
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
+    }
+
+    /**
      * The role this user holds here, or null when they are not a member.
      */
     public function roleFor(User $user): ?Role
     {
         return $this->members()->firstWhere('user_id', $user->getKey())?->role;
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function suspendedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'suspended_by');
     }
 
     /**
@@ -127,5 +151,30 @@ class Organization extends Model
     public function quotaOverrides(): HasMany
     {
         return $this->hasMany(OrganizationQuotaOverride::class);
+    }
+
+    /**
+     * Recalculate next_run_at for active projects so a long suspension does
+     * not cause a catch-up burst when the organization is reinstated.
+     */
+    public function recalculateActiveProjectSchedules(): void
+    {
+        $this->projects()
+            ->where('status', ProjectStatus::Active)
+            ->orderBy('id')
+            ->each(function (Project $project): void {
+                $project->refreshNextRunAt();
+                $project->save();
+            });
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'suspended_at' => 'datetime',
+        ];
     }
 }

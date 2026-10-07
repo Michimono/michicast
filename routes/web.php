@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BannedUserController as AdminBannedUserController;
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
 use App\Http\Controllers\Admin\OverviewController;
+use App\Http\Controllers\Admin\SuspendedOrganizationController as AdminSuspendedOrganizationController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\ArchivedBroadcastController;
 use App\Http\Controllers\ArchivedProjectController;
@@ -415,6 +416,14 @@ Route::middleware([
         ->name('users.ban.destroy');
 
     Route::resource('organizations', AdminOrganizationController::class)->only(['index', 'show']);
+
+    Route::post('organizations/{organization}/suspend', [AdminSuspendedOrganizationController::class, 'store'])
+        ->middleware('throttle:admin')
+        ->name('organizations.suspend.store');
+
+    Route::delete('organizations/{organization}/suspend', [AdminSuspendedOrganizationController::class, 'destroy'])
+        ->middleware('throttle:admin')
+        ->name('organizations.suspend.destroy');
 
     Route::resource('audit', AuditController::class)->only(['index']);
 });

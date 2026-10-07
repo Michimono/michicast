@@ -143,6 +143,10 @@
                         </p>
                     @endif
 
+                    @if ($organization?->isSuspended())
+                        <x-organization-suspended-banner :organization="$organization" />
+                    @endif
+
                     {{ $slot }}
                 </main>
             </div>

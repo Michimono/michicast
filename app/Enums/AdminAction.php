@@ -7,6 +7,8 @@ enum AdminAction: string
     case SignedIn = 'signed_in';
     case Banned = 'banned';
     case Unbanned = 'unbanned';
+    case Suspended = 'suspended';
+    case Reinstated = 'reinstated';
 
     public function label(): string
     {
@@ -14,6 +16,8 @@ enum AdminAction: string
             self::SignedIn => 'Signed in',
             self::Banned => 'Banned',
             self::Unbanned => 'Unbanned',
+            self::Suspended => 'Suspended',
+            self::Reinstated => 'Reinstated',
         };
     }
 

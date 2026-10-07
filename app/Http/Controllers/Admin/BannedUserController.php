@@ -6,6 +6,7 @@ use App\Enums\AdminAction;
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreBannedUserRequest;
+use App\Models\Organization;
 use App\Models\User;
 use App\Support\RecordAdminAction;
 use Illuminate\Http\RedirectResponse;
@@ -45,26 +46,58 @@ class BannedUserController extends Controller
 
             DB::table('sessions')->where('user_id', $user->getKey())->delete();
 
-            $soleOwnedOrganizationIds = $user->memberships()
+            $soleOwnedOrganizations = $user->memberships()
                 ->where('role', Role::Owner)
                 ->with('organization.members')
                 ->get()
                 ->filter(fn ($membership): bool => $membership->isLastOwner())
-                ->map(fn ($membership) => $membership->organization->getKey())
-                ->values()
+                ->map(fn ($membership) => $membership->organization)
+                ->values();
+
+            $soleOwnedOrganizationIds = $soleOwnedOrganizations
+                ->map(fn (Organization $organization) => $organization->getKey())
                 ->all();
+
+            $suspendedOrganizationIds = [];
+
+            if ($suspendSoleOwned) {
+                foreach ($soleOwnedOrganizations as $organization) {
+                    if ($organization->isSuspended()) {
+                        continue;
+                    }
+
+                    $suspensionReason = 'Sole owner banned: '.$reason;
+
+                    $organization->forceFill([
+                        'suspended_at' => now(),
+                        'suspension_reason' => $suspensionReason,
+                        'suspended_by' => $admin->getKey(),
+                    ])->save();
+
+                    $record(
+                        AdminAction::Suspended,
+                        $organization,
+                        $suspensionReason,
+                        [
+                            'suspended_at' => [
+                                'before' => null,
+                                'after' => $organization->suspended_at?->toIso8601String(),
+                            ],
+                            'from_user_ban' => $user->getKey(),
+                        ],
+                    );
+
+                    $suspendedOrganizationIds[] = $organization->getKey();
+                }
+            }
 
             $changes = [
                 'banned_at' => ['before' => null, 'after' => $user->banned_at?->toIso8601String()],
                 'remember_token_rotated' => $previousRememberToken !== $user->remember_token,
                 'suspend_sole_owned_organizations' => $suspendSoleOwned,
                 'sole_owned_organization_ids' => $soleOwnedOrganizationIds,
+                'suspended_organization_ids' => $suspendedOrganizationIds,
             ];
-
-            // Organization suspend ships with #166. Record the intent when asked.
-            if ($suspendSoleOwned && $soleOwnedOrganizationIds !== []) {
-                $changes['organization_suspend'] = 'deferred_until_issue_166';
-            }
 
             $record(
                 AdminAction::Banned,
