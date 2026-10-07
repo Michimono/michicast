@@ -32,8 +32,10 @@
         </div>
     </x-card>
 
-    <p class="text-center text-sm text-muted">
-        Need an account?
-        <a class="text-accent underline hover:no-underline" href="{{ route('users.create') }}">Register</a>.
-    </p>
+    @if ($registrationOpen)
+        <p class="text-center text-sm text-muted">
+            Need an account?
+            <a class="text-accent underline hover:no-underline" href="{{ route('users.create') }}">Register</a>.
+        </p>
+    @endif
 </x-layout>

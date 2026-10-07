@@ -87,6 +87,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Registration
+    |--------------------------------------------------------------------------
+    |
+    | Who may create an account: "open", "invite_only" (only emails with a
+    | pending, unexpired invitation) or "closed". The optional daily cap
+    | closes registration once that many accounts were created since
+    | midnight UTC. Both are defaults: an admin can change them at
+    | /admin/settings, which stores rows in platform_settings that win.
+    |
+    */
+
+    'registration' => [
+        'mode' => env('MICHICAST_REGISTRATION', 'open'),
+        'daily_cap' => env('MICHICAST_REGISTRATION_DAILY_CAP'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Due Project Dispatch
     |--------------------------------------------------------------------------
     |

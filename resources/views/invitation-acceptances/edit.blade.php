@@ -27,7 +27,9 @@
 
                 <div class="flex flex-wrap gap-3">
                     <x-button href="{{ route('session.create') }}">Log in</x-button>
-                    <x-button href="{{ route('users.create') }}" variant="ghost" :paw="false">Create account</x-button>
+                    @if (app(\App\Support\RegistrationSettings::class)->acceptsRegistrations())
+                        <x-button href="{{ route('users.create') }}" variant="ghost" :paw="false">Create account</x-button>
+                    @endif
                 </div>
             @endauth
         @endif

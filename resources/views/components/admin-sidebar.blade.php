@@ -1,6 +1,6 @@
 {{--
     Platform admin rail: floating under the full-bleed header. Overview, Users,
-    Organizations, Activity, Audit, Horizon, and Pulse are live.
+    Organizations, Activity, Audit, Settings, Horizon, and Pulse are live.
 --}}
 <aside
     id="admin-sidebar"
@@ -50,6 +50,14 @@
         >
             <x-slot:icon><x-icons.activity class="size-5 shrink-0" /></x-slot:icon>
             Audit
+        </x-sidebar-link>
+
+        <x-sidebar-link
+            :href="route('admin.settings.edit')"
+            :active="request()->routeIs('admin.settings.*')"
+        >
+            <x-slot:icon><x-icons.lock class="size-5 shrink-0" /></x-slot:icon>
+            Settings
         </x-sidebar-link>
 
         <x-sidebar-link

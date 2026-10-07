@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSessionRequest;
 use App\Models\User;
+use App\Support\RegistrationSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,10 +13,11 @@ use Illuminate\View\View;
 
 class SessionController extends Controller
 {
-    public function create(Request $request): View
+    public function create(Request $request, RegistrationSettings $registration): View
     {
         return view('session.create', [
             'email' => $request->session()->get(AcceptedInvitationController::SESSION_EMAIL_KEY),
+            'registrationOpen' => $registration->acceptsRegistrations(),
         ]);
     }
 

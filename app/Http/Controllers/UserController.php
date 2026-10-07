@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
 use App\Models\User;
+use App\Support\RegistrationSettings;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,10 +13,12 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
-    public function create(Request $request): View
+    public function create(Request $request, RegistrationSettings $registration): View
     {
         return view('users.create', [
             'email' => $request->session()->get(AcceptedInvitationController::SESSION_EMAIL_KEY),
+            'mode' => $registration->effectiveMode(),
+            'capReached' => $registration->dailyCapReached(),
         ]);
     }
 

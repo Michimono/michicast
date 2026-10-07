@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\OrganizationPlanController as AdminOrganizationPl
 use App\Http\Controllers\Admin\OrganizationQuotaOverrideController as AdminOrganizationQuotaOverrideController;
 use App\Http\Controllers\Admin\OrganizationQuotaUsageController as AdminOrganizationQuotaUsageController;
 use App\Http\Controllers\Admin\OverviewController;
+use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\SuspendedOrganizationController as AdminSuspendedOrganizationController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\ArchivedBroadcastController;
@@ -448,4 +449,10 @@ Route::middleware([
     Route::get('activity', ActivityController::class)->name('activity');
 
     Route::resource('audit', AuditController::class)->only(['index']);
+
+    Route::get('settings', [AdminSettingController::class, 'edit'])->name('settings.edit');
+
+    Route::patch('settings', [AdminSettingController::class, 'update'])
+        ->middleware('throttle:admin')
+        ->name('settings.update');
 });
