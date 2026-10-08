@@ -10,18 +10,21 @@
                 </p>
             </div>
 
-            @can('create', [App\Models\Project::class, $organization])
-                <x-button href="{{ route('broadcasts.create', $organization) }}">+ New broadcast</x-button>
-            @endcan
+            {{-- An empty workspace has one primary action, in the empty state below. --}}
+            @if ($projects->isNotEmpty())
+                @can('create', [App\Models\Project::class, $organization])
+                    <x-button href="{{ route('broadcasts.create', $organization) }}">+ New broadcast</x-button>
+                @endcan
+            @endif
         </div>
 
         @if ($projects->isEmpty())
             <x-empty-state
-                heading="Nothing to chase yet"
-                message="Create a broadcast and this workspace becomes a row of cards you can scan and steer."
+                heading="Your workspace is ready."
+                message="Create your first broadcast to start connecting your sources to your destinations."
             >
                 @can('create', [App\Models\Project::class, $organization])
-                    <x-button href="{{ route('broadcasts.create', $organization) }}">+ New broadcast</x-button>
+                    <x-button href="{{ route('broadcasts.create', $organization) }}">Create broadcast</x-button>
                 @endcan
             </x-empty-state>
         @else

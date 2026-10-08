@@ -292,6 +292,52 @@ document.addEventListener('submit', (event) => {
 });
 
 /*
+ * Forms that create something once (first organization): swap to the pending
+ * label, announce it, and ignore a second submit while the first is in
+ * flight. Fields stay enabled so their values are posted. The server still
+ * refuses duplicates on its own; this only spares the extra request.
+ */
+function setFormPending(form, pending) {
+    form.toggleAttribute('data-pending', pending);
+
+    form.querySelectorAll('[data-pending-submit]').forEach((button) => {
+        button.disabled = pending;
+        button.toggleAttribute('aria-busy', pending);
+    });
+
+    form.querySelectorAll('[data-pending-idle]').forEach((label) => label.classList.toggle('invisible', pending));
+    form.querySelectorAll('[data-pending-busy]').forEach((label) => label.classList.toggle('invisible', !pending));
+
+    form.querySelectorAll('[data-pending-status]').forEach((status) => {
+        status.textContent = pending ? status.getAttribute('data-pending-status') : '';
+    });
+}
+
+document.addEventListener('submit', (event) => {
+    const form = event.target.closest('[data-pending-form]');
+
+    if (form === null) {
+        return;
+    }
+
+    if (form.hasAttribute('data-pending')) {
+        event.preventDefault();
+
+        return;
+    }
+
+    setFormPending(form, true);
+});
+
+// Coming back from history restores the page as it was left, mid-submit.
+window.addEventListener('pageshow', () => {
+    document.querySelectorAll('[data-pending-form][data-pending]').forEach((form) => setFormPending(form, false));
+});
+
+// A form-level error after a failed submit takes focus so it is announced first.
+document.querySelector('[data-focus-on-load]')?.focus();
+
+/*
  * Native dialogs opened from overview actions (schedule drawer).
  */
 document.addEventListener('click', (event) => {
