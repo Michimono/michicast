@@ -8,26 +8,37 @@
     };
 @endphp
 
-<x-layout title="Create organization">
-    <x-card
-        :heading="$firstOrganization ? 'Create your organization' : 'New organization'"
-        :kicker="$firstOrganization ? 'Welcome to '.config('app.name') : 'Organizations'"
-        eared
-        class="max-w-md"
-    >
+<x-layout title="Create organization" centered :footer="false">
+    <div class="flex flex-col items-center gap-5 text-center">
+        <x-brand.mark variant="cat" class="h-16" />
+
+        <div class="flex flex-col items-center gap-3">
+            @if ($firstOrganization)
+                <p class="text-xs font-medium uppercase tracking-widest text-muted">Welcome to {{ config('app.name') }}</p>
+            @endif
+
+            <h1 class="font-display text-3xl tracking-tight">
+                {{ $firstOrganization ? 'Create your organization' : 'New organization' }}
+            </h1>
+
+            <span class="house-fill h-0.5 w-16 rounded-full"></span>
+        </div>
+
         @if ($firstOrganization)
-            <p class="text-sm text-ink">
+            <p class="text-sm text-muted">
                 {{ config('app.name') }} picks up new posts from your sources and delivers them to your destinations on a schedule.
                 Everything lives inside an organization, so start with one. You can invite your team once it exists.
             </p>
         @else
-            <p class="text-sm text-ink">
+            <p class="text-sm text-muted">
                 Each organization keeps its own broadcasts, members and plan.
             </p>
         @endif
+    </div>
 
+    <x-card eared>
         <form
-            class="flex flex-col gap-4"
+            class="flex flex-col gap-6"
             method="POST"
             action="{{ route('organizations.store') }}"
             data-pending-form
@@ -66,7 +77,7 @@
 
             <p class="sr-only" aria-live="polite" data-pending-status="Creating organization…"></p>
 
-            <x-button class="self-start" data-pending-submit>
+            <x-button class="w-full" data-pending-submit>
                 {{-- Both labels share one grid cell so the button keeps its size while it waits. --}}
                 <span class="grid">
                     <span class="col-start-1 row-start-1" data-pending-idle>Create organization</span>
