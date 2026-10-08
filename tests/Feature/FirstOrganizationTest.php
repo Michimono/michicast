@@ -26,8 +26,17 @@ class FirstOrganizationTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.create'))
             ->assertOk()
-            ->assertSee('Welcome to '.config('app.name'))
-            ->assertSee('picks up new posts from your sources and delivers them to your destinations')
+            ->assertSee('Your workspace starts here')
+            ->assertSee('Good things happen when everything connects.')
+            ->assertSee('Bring your sources together. Shape the content. Send it where it needs to go — automatically.')
+            ->assertSeeInOrder(['Sources', 'Mapping', 'Destinations'])
+            ->assertSee('Create your organization')
+            ->assertSee('Choose a name for the workspace where your broadcasts, sources and destinations will live.')
+            ->assertSee('You can change these details later.')
+            ->assertSee('A simpler way to keep everything connected.')
+            ->assertSee('Signed in as '.$user->email.'.')
+            ->assertSee('action="'.route('session.destroy').'"', false)
+            ->assertDontSee('aria-label="Account"', false)
             ->assertSee('Organization name')
             ->assertSee('placeholder="e.g. Pokémon News"', false)
             ->assertSee('<label class="text-sm font-medium" for="timezone">Timezone</label>', false)
@@ -65,7 +74,9 @@ class FirstOrganizationTest extends TestCase
             ->get(route('organizations.create'))
             ->assertOk()
             ->assertSee('New organization')
-            ->assertDontSee('Welcome to '.config('app.name'));
+            ->assertSee('aria-label="Account"', false)
+            ->assertDontSee('Your workspace starts here')
+            ->assertDontSee('Good things happen when everything connects.');
     }
 
     public function test_an_empty_or_blank_name_is_refused(): void
