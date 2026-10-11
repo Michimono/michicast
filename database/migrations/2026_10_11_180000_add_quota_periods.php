@@ -10,8 +10,9 @@ return new class extends Migration
      * Run the migrations.
      *
      * Existing usage rows were all daily counters, so the new period column
-     * defaults to daily and behaviour is unchanged until an admin picks
-     * another period.
+     * defaults to daily: an old row is never mistaken for a monthly counter
+     * (the 1st's daily row would otherwise read as the month's usage). Plans
+     * now default to monthly, so organizations start a fresh monthly counter.
      */
     public function up(): void
     {

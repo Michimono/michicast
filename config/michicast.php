@@ -215,7 +215,7 @@ return [
     | Rate metrics (source_fetches, deliveries) are caps per UTC calendar
     | period: daily (resets at UTC midnight), weekly (Monday 00:00 UTC) or
     | monthly (the 1st, 00:00 UTC). plan_periods sets each plan's period and
-    | defaults to daily; admins can pick another period per organization
+    | defaults to monthly; admins can pick another period per organization
     | (organization_quota_periods, #196). The rest are caps on how many records
     | may exist at once. Usage rows live in organization_usage (#160).
     |
@@ -249,12 +249,12 @@ return [
         // Period each plan's rate metrics are counted over: daily, weekly or monthly.
         'plan_periods' => [
             'free' => [
-                'source_fetches' => env('QUOTA_FREE_SOURCE_FETCHES_PERIOD', 'daily'),
-                'deliveries' => env('QUOTA_FREE_DELIVERIES_PERIOD', 'daily'),
+                'source_fetches' => env('QUOTA_FREE_SOURCE_FETCHES_PERIOD', 'monthly'),
+                'deliveries' => env('QUOTA_FREE_DELIVERIES_PERIOD', 'monthly'),
             ],
             'unlimited' => [
-                'source_fetches' => 'daily',
-                'deliveries' => 'daily',
+                'source_fetches' => 'monthly',
+                'deliveries' => 'monthly',
             ],
         ],
     ],

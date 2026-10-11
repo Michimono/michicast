@@ -19,6 +19,15 @@ class AdminOrganizationQuotaTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These tests cover daily counting; plans default to monthly (#196).
+        $daily = ['source_fetches' => 'daily', 'deliveries' => 'daily'];
+        config(['michicast.quotas.plan_periods' => ['free' => $daily, 'unlimited' => $daily]]);
+    }
+
     public function test_non_admins_get_404_on_quota_endpoints(): void
     {
         config(['michicast.platform_admin_emails' => ['admin@example.test']]);

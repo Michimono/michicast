@@ -18,6 +18,15 @@ class OrganizationUsageTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These tests cover daily counting; plans default to monthly (#196).
+        $daily = ['source_fetches' => 'daily', 'deliveries' => 'daily'];
+        config(['michicast.quotas.plan_periods' => ['free' => $daily, 'unlimited' => $daily]]);
+    }
+
     public function test_the_usage_card_shows_used_and_limit_for_an_organization_with_usage(): void
     {
         $this->travelTo(Carbon::parse('2026-10-06 15:00:00', 'UTC'));

@@ -16,7 +16,7 @@ use App\Models\OrganizationQuotaPeriod;
  * default plan when the plan name is missing or unknown. Null means unlimited.
  *
  * Periods (rate metrics only): an organization_quota_periods row wins, then
- * the plan's plan_periods entry, then daily.
+ * the plan's plan_periods entry, then monthly.
  */
 class Quotas
 {
@@ -64,7 +64,7 @@ class Quotas
         $periods = config('michicast.quotas.plan_periods', []);
         $configured = $periods[$this->planName($organization)][$metric->value] ?? null;
 
-        return (is_string($configured) ? QuotaPeriod::tryFrom($configured) : null) ?? QuotaPeriod::Daily;
+        return (is_string($configured) ? QuotaPeriod::tryFrom($configured) : null) ?? QuotaPeriod::Monthly;
     }
 
     /**

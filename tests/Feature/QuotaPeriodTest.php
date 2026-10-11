@@ -43,14 +43,34 @@ class QuotaPeriodTest extends TestCase
         $this->assertSame('2026-09-28', QuotaPeriod::Weekly->startOf($madrid)->toDateString());
     }
 
-    public function test_defaults_stay_daily_and_existing_rows_read_as_daily(): void
+    public function test_plans_default_to_monthly_and_existing_rows_stay_daily(): void
     {
         $this->travelTo(Carbon::parse('2026-10-06 12:00:00', 'UTC'));
 
         $organization = Organization::factory()->create(['plan' => 'free']);
 
         $this->assertTrue(Schema::hasColumn('organization_usage', 'period'));
-        $this->assertSame(QuotaPeriod::Daily, app(Quotas::class)->periodFor($organization, QuotaMetric::Deliveries));
+        $quotas = app(Quotas::class);
+
+        foreach (['free', 'unlimited'] as $plan) {
+            $organization->forceFill(['plan' => $plan])->save();
+            $this->assertSame(QuotaPeriod::Monthly, $quotas->periodFor($organization, QuotaMetric::Deliveries));
+            $this->assertSame(QuotaPeriod::Monthly, $quotas->periodFor($organization, QuotaMetric::SourceFetches));
+        }
+
+        // Missing config falls back to monthly too.
+        config(['michicast.quotas.plan_periods' => []]);
+        $this->assertSame(QuotaPeriod::Monthly, $quotas->periodFor($organization, QuotaMetric::Deliveries));
+
+        // Rows written before #196 are daily counters and must not be read as
+        // a monthly row, so the column default stays daily. They keep counting
+        // for an organization that is set to daily.
+        $organization->forceFill(['plan' => 'free'])->save();
+        OrganizationQuotaPeriod::query()->create([
+            'organization_id' => $organization->getKey(),
+            'metric' => QuotaMetric::Deliveries,
+            'period' => QuotaPeriod::Daily,
+        ]);
 
         // A row written before this change (no period column value) keeps counting as today's daily usage.
         OrganizationUsage::query()->insert([
@@ -71,13 +91,13 @@ class QuotaPeriodTest extends TestCase
 
     public function test_plan_period_comes_from_config_and_the_admin_setting_wins(): void
     {
-        config(['michicast.quotas.plan_periods.free.source_fetches' => 'monthly']);
+        config(['michicast.quotas.plan_periods.free.source_fetches' => 'daily']);
 
         $organization = Organization::factory()->create(['plan' => 'free']);
         $quotas = app(Quotas::class);
 
-        $this->assertSame(QuotaPeriod::Monthly, $quotas->periodFor($organization, QuotaMetric::SourceFetches));
-        $this->assertSame(QuotaPeriod::Daily, $quotas->periodFor($organization, QuotaMetric::Deliveries));
+        $this->assertSame(QuotaPeriod::Daily, $quotas->periodFor($organization, QuotaMetric::SourceFetches));
+        $this->assertSame(QuotaPeriod::Monthly, $quotas->periodFor($organization, QuotaMetric::Deliveries));
 
         OrganizationQuotaPeriod::query()->create([
             'organization_id' => $organization->getKey(),
@@ -86,7 +106,7 @@ class QuotaPeriodTest extends TestCase
         ]);
 
         $this->assertSame(QuotaPeriod::Weekly, $quotas->periodFor($organization, QuotaMetric::SourceFetches));
-        $this->assertSame(QuotaPeriod::Monthly, $quotas->planPeriodFor($organization, QuotaMetric::SourceFetches));
+        $this->assertSame(QuotaPeriod::Daily, $quotas->planPeriodFor($organization, QuotaMetric::SourceFetches));
     }
 
     public function test_weekly_usage_accumulates_across_days_and_resets_on_monday(): void
@@ -143,6 +163,7 @@ class QuotaPeriodTest extends TestCase
     public function test_switching_period_starts_a_fresh_counter_and_does_not_reuse_daily_rows(): void
     {
         $this->travelTo(Carbon::parse('2026-10-05 12:00:00', 'UTC')); // a Monday
+        config(['michicast.quotas.plan_periods.free.deliveries' => 'daily']);
 
         $organization = Organization::factory()->create(['plan' => 'free']);
         $meter = app(QuotaMeter::class);
@@ -212,8 +233,8 @@ class QuotaPeriodTest extends TestCase
         $this->assertSame('Customer wants weekly budgets', $set->reason);
         $this->assertSame('deliveries', $set->changes['metric']);
         $this->assertSame(['before' => '(plan)', 'after' => 'weekly'], $set->changes['period_setting']);
-        $this->assertSame(['before' => 'daily', 'after' => 'weekly'], $set->changes['effective_period']);
-        $this->assertSame('daily', $set->changes['plan_period']);
+        $this->assertSame(['before' => 'monthly', 'after' => 'weekly'], $set->changes['effective_period']);
+        $this->assertSame('monthly', $set->changes['plan_period']);
 
         $this->actingAs($admin)
             ->withSession($session)
@@ -222,10 +243,10 @@ class QuotaPeriodTest extends TestCase
                 'period' => 'plan',
                 'reason' => 'Back to the plan',
             ])
-            ->assertSessionHas('success', 'Deliveries now counts daily (plan default).');
+            ->assertSessionHas('success', 'Deliveries now counts monthly (plan default).');
 
         $this->assertSame(0, OrganizationQuotaPeriod::query()->count());
-        $this->assertSame(QuotaPeriod::Daily, $quotas->periodFor($organization, QuotaMetric::Deliveries));
+        $this->assertSame(QuotaPeriod::Monthly, $quotas->periodFor($organization, QuotaMetric::Deliveries));
         $this->assertSame(2, AdminActionLog::query()->where('action', AdminAction::QuotaPeriodSet)->count());
 
         $this->actingAs($admin)
@@ -233,8 +254,8 @@ class QuotaPeriodTest extends TestCase
             ->get(route('admin.organizations.show', $organization))
             ->assertOk()
             ->assertSee('Set period')
-            ->assertSee('Plan default (Daily)')
-            ->assertSee('Usage today');
+            ->assertSee('Plan default (Monthly)')
+            ->assertSee('Usage this month');
     }
 
     public function test_admin_period_input_is_validated(): void

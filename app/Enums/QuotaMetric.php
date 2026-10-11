@@ -5,7 +5,7 @@ namespace App\Enums;
 /**
  * Metered resources an organization can be limited on.
  *
- * Rate metrics are counted over a calendar QuotaPeriod (daily by default; plans
+ * Rate metrics are counted over a calendar QuotaPeriod (monthly by default; plans
  * and admins can pick weekly or monthly, see Quotas::periodFor). Count metrics
  * are a cap on how many records may exist at once.
  */
@@ -33,7 +33,7 @@ enum QuotaMetric: string
     public function period(): ?string
     {
         return match ($this) {
-            self::SourceFetches, self::Deliveries => 'daily',
+            self::SourceFetches, self::Deliveries => 'monthly',
             self::ActiveBroadcasts, self::Sources, self::Destinations, self::Members => null,
         };
     }

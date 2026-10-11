@@ -31,6 +31,15 @@ class QuotaExceededRunTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These tests cover daily counting; plans default to monthly (#196).
+        $daily = ['source_fetches' => 'daily', 'deliveries' => 'daily'];
+        config(['michicast.quotas.plan_periods' => ['free' => $daily, 'unlimited' => $daily]]);
+    }
+
     public function test_a_run_at_the_fetch_limit_records_out_of_quota_without_http_or_failures(): void
     {
         $this->travelTo(Carbon::parse('2026-10-06 12:00:00', 'UTC'));

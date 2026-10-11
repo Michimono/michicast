@@ -91,7 +91,7 @@ A ban signs the user out everywhere (sessions deleted, remember-me token rotated
 
 In the **Quotas** card on `/admin/organizations/{organization}` (every action needs a reason):
 
-- **Change plan**: pick `free` or `unlimited` (defined in `config/michicast.php`). New organizations get `QUOTA_DEFAULT_PLAN` (default `free`). Free-plan limits come from the `QUOTA_FREE_*` env keys.
+- **Change plan**: pick `free` or `unlimited` (defined in `config/michicast.php`). New organizations get `QUOTA_DEFAULT_PLAN` (default `free`). Free-plan limits come from the `QUOTA_FREE_*` env keys. Rate limits (source fetches, deliveries) count per UTC calendar month by default (`QUOTA_FREE_*_PERIOD`); **Set period** on the Quotas card picks daily, weekly or monthly for one organization.
 - **Set override** / **Update override**: per metric, set a limit or tick "Unlimited for this metric", with an optional note. An override wins over the plan. **Clear override** returns the metric to the plan limit.
 - **Reset usage**: sets today's counter for a metric back to zero. Daily metrics (source fetches, deliveries) reset at midnight UTC anyway.
 
