@@ -33,28 +33,17 @@
 @endphp
 
 {{--
-    A first organization gets the focused onboarding page: no app chrome, one card
-    holding the intro, the workflow row and the form, and a way out at the foot.
-    A member adding another organization keeps the app header and a plainer card.
+    One card under the normal app header: intro, the workflow row and the form.
+    A member adding another organization gets plainer copy and no workflow row.
 --}}
 <x-layout
     :title="$firstOrganization ? 'Create your organization' : 'New organization'"
-    :focused="$firstOrganization"
-    :centered="! $firstOrganization"
     :footer="false"
 >
-    @if ($firstOrganization)
-        <a class="mx-auto flex items-center gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent" href="{{ route('dashboard') }}">
-            <x-brand.mark variant="face" class="h-8 shrink-0" />
-
-            <span class="font-display text-2xl tracking-tight">{{ config('app.name') }}</span>
-        </a>
-    @endif
-
-    <x-card eared class="w-full shadow-[0_2px_4px_rgb(18_50_79/0.03),0_12px_32px_rgb(18_50_79/0.05)] sm:p-8">
+    <x-card eared class="mx-auto w-full max-w-[45rem] shadow-[0_2px_4px_rgb(18_50_79/0.03),0_12px_32px_rgb(18_50_79/0.05)] sm:p-8">
         <div class="flex flex-col gap-6">
             <div class="flex flex-col items-start gap-3">
-                <p class="rounded-full bg-accent/10 px-2.5 py-1 font-mono text-[0.6875rem] leading-none tracking-[0.12em] text-accent uppercase">
+                <p class="house-edge rounded-full border px-2.5 py-1 font-mono text-[0.6875rem] leading-none font-semibold tracking-[0.12em] text-ink uppercase">
                     {{ $firstOrganization ? 'Your workspace starts here' : 'Another workspace' }}
                 </p>
 
@@ -74,21 +63,25 @@
             </div>
 
             @if ($firstOrganization)
-                <ol class="grid gap-4 sm:grid-cols-3" aria-label="How {{ config('app.name') }} works">
+                <ol class="grid gap-3 sm:grid-cols-3 sm:gap-8" aria-label="How {{ config('app.name') }} works">
                     @foreach ($steps as $step)
-                        <li class="flex items-start gap-3 sm:flex-col sm:gap-2">
+                        <li class="relative flex items-start gap-3 rounded-xl bg-accent/5 p-4 sm:flex-col sm:gap-2">
                             <x-dynamic-component :component="'icons.'.$step['icon']" class="mt-0.5 shrink-0 text-accent sm:mt-0" />
 
                             <span class="flex flex-col gap-0.5">
                                 <span class="text-sm font-semibold text-ink">{{ $step['label'] }}</span>
                                 <span class="text-xs text-muted">{{ $step['description'] }}</span>
                             </span>
+
+                            @unless ($loop->last)
+                                <x-icons.arrow-right class="absolute top-1/2 -right-4 hidden translate-x-1/2 -translate-y-1/2 text-line-strong sm:block" />
+                            @endunless
                         </li>
                     @endforeach
                 </ol>
             @endif
 
-            <section class="flex flex-col gap-5 rounded-card border border-line p-5 sm:p-6" @if ($firstOrganization) aria-labelledby="create-organization-heading" @endif>
+            <section class="flex flex-col gap-5 border-t border-line pt-6" @if ($firstOrganization) aria-labelledby="create-organization-heading" @endif>
                 @if ($firstOrganization)
                     <div class="flex flex-col gap-1.5">
                         <h2 id="create-organization-heading" class="font-display text-2xl tracking-tight">Create your organization</h2>
@@ -123,7 +116,6 @@
                         label="Organization name"
                         size="lg"
                         placeholder="e.g. Pokémon News"
-                        hint="Choose a name for the workspace where your broadcasts, sources and destinations will live."
                         autocomplete="organization"
                         maxlength="255"
                         :autofocus="$focus === 'name'"
@@ -206,20 +198,6 @@
     </x-card>
 
     @if ($firstOrganization)
-        <footer class="flex flex-col items-center gap-2 text-center text-sm text-muted">
-            <p>A simpler way to keep everything connected.</p>
-
-            {{-- The app header is gone here, so the way out lives at the foot. --}}
-            <form class="flex flex-wrap items-center justify-center gap-x-1.5" method="POST" action="{{ route('session.destroy') }}">
-                @csrf
-                @method('DELETE')
-
-                <span>Signed in as {{ auth()->user()->email }}.</span>
-
-                <button class="cursor-pointer underline hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" type="submit">
-                    Log out
-                </button>
-            </form>
-        </footer>
+        <p class="text-center text-sm text-muted">A simpler way to keep everything connected.</p>
     @endif
 </x-layout>
