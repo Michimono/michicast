@@ -43,10 +43,6 @@
     <x-card eared class="mx-auto w-full max-w-[45rem] shadow-[0_2px_4px_rgb(18_50_79/0.03),0_12px_32px_rgb(18_50_79/0.05)] sm:p-8">
         <div class="flex flex-col gap-6">
             <div class="flex flex-col items-start gap-3">
-                <p class="house-edge rounded-full border px-2.5 py-1 font-mono text-[0.6875rem] leading-none font-semibold tracking-[0.12em] text-ink uppercase">
-                    {{ $firstOrganization ? 'Your workspace starts here' : 'Another workspace' }}
-                </p>
-
                 @if ($firstOrganization)
                     <h1 class="font-display text-[1.75rem] leading-tight tracking-tight sm:text-3xl">
                         Good things happen when everything connects.
@@ -123,16 +119,16 @@
                     />
 
                     {{--
-                        A real <select> stretched invisibly over a styled face, so keyboard,
-                        screen readers and form posts stay native. app.js keeps the face in
-                        step with the selection.
+                        A real <select> stretched invisibly over a styled face. app.js swaps the
+                        face's name for a searchable combobox that drives the select, so the
+                        posted field stays native; without JS the select works as-is.
                     --}}
                     <div class="flex flex-col gap-2">
                         <label class="text-sm font-medium" for="timezone">Timezone</label>
 
                         <div
                             @class([
-                                'relative flex h-14 items-center gap-3 rounded-lg border bg-ink/4 pr-11 pl-4 transition-colors has-[select:focus-visible]:border-accent has-[select:focus-visible]:bg-paper-raised has-[select:focus-visible]:outline-3 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-accent/30',
+                                'relative flex h-14 items-center gap-3 rounded-lg border bg-ink/4 pr-11 pl-4 transition-colors has-[select:focus-visible]:border-accent has-[select:focus-visible]:bg-paper-raised has-[select:focus-visible]:outline-3 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-accent/30 has-[input:focus]:border-accent has-[input:focus]:bg-paper-raised has-[input:focus]:outline-3 has-[input:focus]:outline-offset-2 has-[input:focus]:outline-accent/30',
                                 'border-line hover:border-line-strong' => ! $errors->has('timezone'),
                                 'border-state-fail' => $errors->has('timezone'),
                             ])

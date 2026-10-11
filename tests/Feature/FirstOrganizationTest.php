@@ -26,7 +26,7 @@ class FirstOrganizationTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.create'))
             ->assertOk()
-            ->assertSee('Your workspace starts here')
+            ->assertDontSee('Your workspace starts here')
             ->assertSee('Good things happen when everything connects.')
             ->assertSee('Bring your sources together. Shape the content. Send it where it needs to go — automatically.')
             ->assertSeeInOrder(['Sources', 'Mapping', 'Destinations'])

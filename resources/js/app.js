@@ -432,10 +432,20 @@ document.addEventListener('click', (event) => {
 import './mapping-editor';
 
 /*
- * Timezone picker (first organization): a native <select> sits invisibly over a
- * styled face. Keep the face's name and subtitle in step with the selection.
+ * Timezone combobox (first organization). Progressive enhancement over the
+ * native <select>: without JS the select works as-is; with JS a searchable
+ * ARIA combobox drives the same select, so the posted `timezone` field and its
+ * server-side validation do not change. Matching ignores case and treats "/"
+ * and "_" as spaces, so "new york" finds America/New_York.
  */
-document.querySelectorAll('[data-timezone-picker]').forEach((picker) => {
+const normalizeZone = (value) =>
+    value
+        .toLowerCase()
+        .replace(/[/_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+function enhanceTimezonePicker(picker) {
     const select = picker.querySelector('select');
     const name = picker.querySelector('[data-timezone-name]');
     const subtitle = picker.querySelector('[data-timezone-subtitle]');
@@ -444,12 +454,204 @@ document.querySelectorAll('[data-timezone-picker]').forEach((picker) => {
         return;
     }
 
-    const sync = () => {
-        const option = select.selectedOptions[0];
-        name.textContent = option?.value ?? '';
-        subtitle.textContent = option?.dataset.subtitle ?? '';
+    const options = Array.from(select.options).map((option) => ({
+        value: option.value,
+        subtitle: option.dataset.subtitle ?? '',
+        key: normalizeZone(option.value),
+    }));
+    const fieldId = select.id;
+    const listId = `${fieldId}-listbox`;
+    const hadFocus = select.hasAttribute('autofocus') || document.activeElement === select;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = fieldId;
+    input.value = select.value;
+    input.placeholder = 'Search timezones';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.className = 'w-full min-w-0 truncate bg-transparent text-base text-ink outline-none placeholder:text-muted/70';
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', listId);
+    ['aria-invalid', 'aria-describedby'].forEach((attribute) => {
+        if (select.hasAttribute(attribute)) {
+            input.setAttribute(attribute, select.getAttribute(attribute));
+        }
+    });
+
+    // The select stays in the form as the value holder, out of reach of focus and AT.
+    select.id = `${fieldId}-native`;
+    select.removeAttribute('autofocus');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    select.classList.add('hidden');
+
+    name.parentElement.removeAttribute('aria-hidden');
+    subtitle.setAttribute('aria-hidden', 'true');
+    name.replaceWith(input);
+
+    const list = document.createElement('ul');
+    list.id = listId;
+    list.hidden = true;
+    list.setAttribute('role', 'listbox');
+    list.setAttribute('aria-label', 'Timezones');
+    list.className =
+        'absolute top-full right-0 left-0 z-20 mt-2 max-h-72 overflow-y-auto rounded-lg border border-line bg-paper-raised py-1 shadow-lg';
+    picker.append(list);
+
+    let matches = options;
+    let active = -1;
+
+    const isOpen = () => !list.hidden;
+
+    const highlight = (index) => {
+        list.querySelector('[aria-selected="true"]')?.setAttribute('aria-selected', 'false');
+        list.querySelector('.bg-accent\\/10')?.classList.remove('bg-accent/10');
+        active = index;
+
+        const item = index >= 0 ? list.children[index] : null;
+
+        if (item && item.getAttribute('role') === 'option') {
+            item.setAttribute('aria-selected', 'true');
+            item.classList.add('bg-accent/10');
+            item.scrollIntoView({ block: 'nearest' });
+            input.setAttribute('aria-activedescendant', item.id);
+        } else {
+            input.removeAttribute('aria-activedescendant');
+        }
     };
 
-    select.addEventListener('change', sync);
-    sync();
-});
+    const render = (query) => {
+        const needle = normalizeZone(query);
+        matches = needle ? options.filter((option) => option.key.includes(needle)) : options;
+
+        const fragment = document.createDocumentFragment();
+
+        matches.forEach((option, index) => {
+            const item = document.createElement('li');
+            item.id = `${listId}-${index}`;
+            item.dataset.index = String(index);
+            item.setAttribute('role', 'option');
+            item.setAttribute('aria-selected', 'false');
+            item.className = 'flex cursor-pointer flex-col px-4 py-2 leading-tight';
+
+            const label = document.createElement('span');
+            label.className = option.value === select.value ? 'text-sm font-semibold text-ink' : 'text-sm text-ink';
+            label.textContent = option.value;
+
+            const hint = document.createElement('span');
+            hint.className = 'text-xs text-muted';
+            hint.textContent = option.subtitle;
+
+            item.append(label, hint);
+            fragment.append(item);
+        });
+
+        if (matches.length === 0) {
+            const empty = document.createElement('li');
+            empty.className = 'px-4 py-2 text-sm text-muted';
+            empty.textContent = 'No matching timezones';
+            fragment.append(empty);
+        }
+
+        list.replaceChildren(fragment);
+
+        const current = needle ? 0 : matches.findIndex((option) => option.value === select.value);
+        highlight(matches.length ? Math.max(current, 0) : -1);
+    };
+
+    const open = (query) => {
+        list.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+        render(query);
+    };
+
+    const close = () => {
+        list.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+        input.value = select.value;
+    };
+
+    const commit = (option) => {
+        select.value = option.value;
+        subtitle.textContent = option.subtitle;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        close();
+    };
+
+    input.addEventListener('focus', () => input.select());
+    input.addEventListener('click', () => {
+        if (!isOpen()) {
+            open('');
+        }
+    });
+    input.addEventListener('input', () => open(input.value));
+    input.addEventListener('blur', close);
+
+    input.addEventListener('keydown', (event) => {
+        switch (event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                isOpen() ? highlight(Math.min(active + 1, matches.length - 1)) : open('');
+                break;
+            case 'ArrowUp':
+                event.preventDefault();
+                isOpen() ? highlight(Math.max(active - 1, 0)) : open('');
+                break;
+            case 'Home':
+            case 'End':
+                if (isOpen() && matches.length) {
+                    event.preventDefault();
+                    highlight(event.key === 'Home' ? 0 : matches.length - 1);
+                }
+                break;
+            case 'Enter':
+                // Closed, Enter submits the form as usual; open, it picks the highlighted zone.
+                if (isOpen()) {
+                    event.preventDefault();
+
+                    if (matches[active]) {
+                        commit(matches[active]);
+                    }
+                }
+                break;
+            case 'Escape':
+                if (isOpen()) {
+                    event.preventDefault();
+                    close();
+                    input.select();
+                }
+                break;
+        }
+    });
+
+    // Keep focus in the input while choosing with the pointer.
+    list.addEventListener('mousedown', (event) => event.preventDefault());
+    list.addEventListener('click', (event) => {
+        const item = event.target.closest('[role="option"]');
+
+        if (item) {
+            commit(matches[Number(item.dataset.index)]);
+        }
+    });
+
+    // The whole face (globe, chevron) opens the list.
+    picker.addEventListener('mousedown', (event) => {
+        if (event.target === picker || !list.contains(event.target)) {
+            if (event.target !== input) {
+                event.preventDefault();
+                input.focus();
+                open('');
+            }
+        }
+    });
+
+    if (hadFocus) {
+        input.focus();
+    }
+}
+
+document.querySelectorAll('[data-timezone-picker]').forEach(enhanceTimezonePicker);
