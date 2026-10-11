@@ -11,7 +11,7 @@
     $steps = [
         ['icon' => 'source', 'label' => 'Sources', 'description' => 'RSS, websites and more'],
         ['icon' => 'mapping', 'label' => 'Mapping', 'description' => 'Shape your content'],
-        ['icon' => 'destination', 'label' => 'Destinations', 'description' => 'Telegram chats'],
+        ['icon' => 'destination', 'label' => 'Destinations', 'description' => 'Telegram and more'],
     ];
 
     // Timezone picker: each option carries a friendly subtitle (offset and abbreviation).
