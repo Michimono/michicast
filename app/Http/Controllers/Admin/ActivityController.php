@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\QuotaMetric;
+use App\Enums\QuotaPeriod;
 use App\Enums\RunStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Broadcast;
@@ -120,17 +121,24 @@ class ActivityController extends Controller
     }
 
     /**
-     * Organizations whose rate usage for the current UTC day has hit a limit.
+     * Organizations whose rate usage for their current period has hit a limit.
+     *
+     * Reads rows that could belong to a current period (the earliest possible
+     * start is this week's Monday or the 1st), then keeps only the row for each
+     * organization's effective period.
      *
      * @return list<array{organization: Organization, metric: QuotaMetric, used: int, limit: int}>
      */
     private function organizationsOutOfQuotaToday(): array
     {
-        $periodStart = $this->meter->currentPeriodStart()->toDateString();
+        $earliest = min(
+            $this->meter->currentPeriodStart(QuotaPeriod::Weekly),
+            $this->meter->currentPeriodStart(QuotaPeriod::Monthly),
+        )->toDateString();
 
         $usages = OrganizationUsage::query()
             ->with('organization:id,name,slug')
-            ->whereDate('period_start', $periodStart)
+            ->whereDate('period_start', '>=', $earliest)
             ->whereIn('metric', [QuotaMetric::SourceFetches, QuotaMetric::Deliveries])
             ->orderByDesc('used')
             ->get();
@@ -139,6 +147,12 @@ class ActivityController extends Controller
 
         foreach ($usages as $usage) {
             if ($usage->organization === null) {
+                continue;
+            }
+
+            $period = $this->quotas->periodFor($usage->organization, $usage->metric);
+
+            if ($usage->period !== $period || ! $usage->period_start->isSameDay($this->meter->currentPeriodStart($period))) {
                 continue;
             }
 

@@ -324,6 +324,7 @@ class AdminOrganizationQuotaTest extends TestCase
             ->assertSee('Source fetches', false)
             ->assertSee('custom deliveries', false)
             ->assertSee('Set override', false)
-            ->assertSee('Reset today', false);
+            ->assertSee('Reset current period usage', false)
+            ->assertSee('Set period', false);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\View\Components;
 
 use App\Enums\QuotaMetric;
+use App\Enums\QuotaPeriod;
 use App\Models\Organization;
 use App\Support\QuotaUsage;
 use Carbon\CarbonInterface;
@@ -10,7 +11,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
 /**
- * Settings card: plan name, each metric's used/limit, and daily reset times.
+ * Settings card: plan name, each metric's used/limit, and for rate metrics
+ * the counting period and reset time.
  */
 class OrganizationUsageCard extends Component
 {
@@ -23,6 +25,7 @@ class OrganizationUsageCard extends Component
      *     used: int,
      *     limit: int|null,
      *     exhausted: bool,
+     *     period: QuotaPeriod|null,
      *     resets_at: CarbonInterface|null
      * }>
      */

@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\BannedUserController as AdminBannedUserController
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
 use App\Http\Controllers\Admin\OrganizationPlanController as AdminOrganizationPlanController;
 use App\Http\Controllers\Admin\OrganizationQuotaOverrideController as AdminOrganizationQuotaOverrideController;
+use App\Http\Controllers\Admin\OrganizationQuotaPeriodController as AdminOrganizationQuotaPeriodController;
 use App\Http\Controllers\Admin\OrganizationQuotaUsageController as AdminOrganizationQuotaUsageController;
 use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\SettingController as AdminSettingController;
@@ -445,6 +446,10 @@ Route::middleware([
     Route::post('organizations/{organization}/quota-usage-resets', [AdminOrganizationQuotaUsageController::class, 'store'])
         ->middleware('throttle:admin')
         ->name('organizations.quota-usage-resets.store');
+
+    Route::post('organizations/{organization}/quota-periods', [AdminOrganizationQuotaPeriodController::class, 'store'])
+        ->middleware('throttle:admin')
+        ->name('organizations.quota-periods.store');
 
     Route::get('activity', ActivityController::class)->name('activity');
 

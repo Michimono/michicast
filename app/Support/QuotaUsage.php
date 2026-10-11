@@ -3,13 +3,14 @@
 namespace App\Support;
 
 use App\Enums\QuotaMetric;
+use App\Enums\QuotaPeriod;
 use App\Models\Organization;
 use Carbon\CarbonInterface;
 
 /**
  * Read-only organization quota usage for member-facing views.
  *
- * Rate metrics come from QuotaMeter (UTC daily counters). Stock metrics come
+ * Rate metrics come from QuotaMeter (UTC calendar-period counters). Stock metrics come
  * from ResourceQuotas (current counts). Limits resolve through Quotas.
  */
 class QuotaUsage
@@ -39,7 +40,8 @@ class QuotaUsage
     }
 
     /**
-     * One row per QuotaMetric: used, limit (null = unlimited), and daily reset.
+     * One row per QuotaMetric: used, limit (null = unlimited), and for rate
+     * metrics the counting period and when it resets.
      *
      * @return list<array{
      *     metric: QuotaMetric,
@@ -47,12 +49,12 @@ class QuotaUsage
      *     used: int,
      *     limit: int|null,
      *     exhausted: bool,
+     *     period: QuotaPeriod|null,
      *     resets_at: CarbonInterface|null
      * }>
      */
     public function rows(Organization $organization): array
     {
-        $resetsAt = $this->meter->resetsAt();
         $rows = [];
 
         foreach (QuotaMetric::cases() as $metric) {
@@ -67,7 +69,8 @@ class QuotaUsage
                 'used' => $used,
                 'limit' => $limit,
                 'exhausted' => $limit !== null && $used >= $limit,
-                'resets_at' => $metric->isRate() ? $resetsAt : null,
+                'period' => $metric->isRate() ? $this->meter->periodFor($organization, $metric) : null,
+                'resets_at' => $metric->isRate() ? $this->meter->resetsAtFor($organization, $metric) : null,
             ];
         }
 

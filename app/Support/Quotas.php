@@ -3,15 +3,20 @@
 namespace App\Support;
 
 use App\Enums\QuotaMetric;
+use App\Enums\QuotaPeriod;
 use App\Models\Organization;
 use App\Models\OrganizationQuotaOverride;
+use App\Models\OrganizationQuotaPeriod;
 
 /**
- * Resolves the quota limit for an organization and metric.
+ * Resolves the quota limit and period for an organization and metric.
  *
- * Override rows win when present (null limit = unlimited). Otherwise the
- * organization's named plan is used, falling back to the configured default
- * plan when the plan name is missing or unknown. Null means unlimited.
+ * Limits: override rows win when present (null limit = unlimited). Otherwise
+ * the organization's named plan is used, falling back to the configured
+ * default plan when the plan name is missing or unknown. Null means unlimited.
+ *
+ * Periods (rate metrics only): an organization_quota_periods row wins, then
+ * the plan's plan_periods entry, then daily.
  */
 class Quotas
 {
@@ -35,6 +40,31 @@ class Quotas
     public function planLimitFor(Organization $organization, QuotaMetric $metric): ?int
     {
         return $this->planLimit($this->planName($organization), $metric);
+    }
+
+    /**
+     * Effective counting period for a rate metric.
+     */
+    public function periodFor(Organization $organization, QuotaMetric $metric): QuotaPeriod
+    {
+        $override = OrganizationQuotaPeriod::query()
+            ->where('organization_id', $organization->getKey())
+            ->where('metric', $metric)
+            ->first();
+
+        return $override->period ?? $this->planPeriodFor($organization, $metric);
+    }
+
+    /**
+     * Plan-configured period for the organization, ignoring the admin setting.
+     */
+    public function planPeriodFor(Organization $organization, QuotaMetric $metric): QuotaPeriod
+    {
+        /** @var array<string, array<string, string|null>> $periods */
+        $periods = config('michicast.quotas.plan_periods', []);
+        $configured = $periods[$this->planName($organization)][$metric->value] ?? null;
+
+        return (is_string($configured) ? QuotaPeriod::tryFrom($configured) : null) ?? QuotaPeriod::Daily;
     }
 
     /**

@@ -42,7 +42,7 @@ class StoreOrganizationQuotaUsageResetRequest extends FormRequest
             }
 
             if (! $metric->isRate()) {
-                $validator->errors()->add('metric', 'Only daily rate metrics can have their current-period usage reset.');
+                $validator->errors()->add('metric', 'Only rate metrics can have their current-period usage reset.');
             }
         });
     }

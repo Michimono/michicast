@@ -34,7 +34,7 @@
             <div class="flex flex-col gap-3">
                 <h3 class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Out of quota today</h3>
                 @if ($outOfQuota === [])
-                    <p class="text-sm text-muted">No organizations have hit a daily rate limit.</p>
+                    <p class="text-sm text-muted">No organizations have hit a rate limit this period.</p>
                 @else
                     <ul class="flex flex-col divide-y divide-line border-t border-line">
                         @foreach ($outOfQuota as $row)

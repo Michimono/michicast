@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\QuotaMetric;
+use App\Enums\QuotaPeriod;
 use Carbon\CarbonInterface;
 
 /**
@@ -18,6 +19,7 @@ readonly class QuotaDecision
         public ?int $limit,
         public int $used,
         public CarbonInterface $resetsAt,
+        public QuotaPeriod $period = QuotaPeriod::Daily,
     ) {}
 
     /**
@@ -26,13 +28,13 @@ readonly class QuotaDecision
     public function message(QuotaMetric $metric): string
     {
         $label = match ($metric) {
-            QuotaMetric::SourceFetches => 'Daily source fetch limit',
-            QuotaMetric::Deliveries => 'Daily delivery limit',
+            QuotaMetric::SourceFetches => $this->period->label().' source fetch limit',
+            QuotaMetric::Deliveries => $this->period->label().' delivery limit',
             default => $metric->label().' limit',
         };
 
         $limit = $this->limit ?? 0;
-        $resets = $this->resetsAt->timezone('UTC')->format('H:i').' UTC';
+        $resets = $this->period->formatReset($this->resetsAt);
 
         return "{$label} reached ({$this->used} of {$limit}). Resets at {$resets}.";
     }
