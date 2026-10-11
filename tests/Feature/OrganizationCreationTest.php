@@ -60,7 +60,7 @@ class OrganizationCreationTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.create'))
             ->assertOk()
-            ->assertSee('<option value="Europe/Madrid" selected>', false);
+            ->assertSee('<option value="Europe/Madrid" selected data-subtitle="', false);
     }
 
     public function test_a_user_can_create_an_organization_and_is_recorded_as_its_owner(): void
@@ -74,8 +74,8 @@ class OrganizationCreationTest extends TestCase
 
         $organization = Organization::query()->sole();
 
-        $response->assertRedirect(route('members.index', $organization));
-        $response->assertSessionHas('success');
+        $response->assertRedirect(route('organizations.show', $organization));
+        $response->assertSessionHas('success', 'You’re all set — your organization has been created.');
 
         $this->assertSame('Michimono Labs', $organization->name);
         $this->assertSame('michimono-labs', $organization->slug);
@@ -136,7 +136,7 @@ class OrganizationCreationTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('organizations.store'), ['name' => '', 'timezone' => 'UTC'])
-            ->assertSessionHasErrors('name');
+            ->assertSessionHasErrors(['name' => 'Enter an organization name.']);
 
         $this->assertDatabaseCount('organizations', 0);
     }
@@ -150,7 +150,7 @@ class OrganizationCreationTest extends TestCase
                 'name' => 'Michimono Labs',
                 'timezone' => 'Mars/Olympus_Mons',
             ])
-            ->assertSessionHasErrors('timezone');
+            ->assertSessionHasErrors(['timezone' => 'Select a valid timezone.']);
 
         $this->assertDatabaseCount('organizations', 0);
     }

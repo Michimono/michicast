@@ -97,7 +97,7 @@ class CurrentOrganizationTest extends TestCase
 
         $second = Organization::query()->where('name', 'Second Studio')->sole();
 
-        $response->assertRedirect(route('members.index', $second));
+        $response->assertRedirect(route('organizations.show', $second));
 
         $this->assertSame($second->getKey(), session(SetCurrentOrganization::SESSION_KEY));
     }

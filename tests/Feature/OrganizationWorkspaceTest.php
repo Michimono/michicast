@@ -27,8 +27,9 @@ class OrganizationWorkspaceTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.show', $organization))
             ->assertOk()
-            ->assertSee('Nothing to chase yet')
-            ->assertSee('+ New broadcast')
+            ->assertSee('Your workspace is ready.')
+            ->assertSee('Create broadcast')
+            ->assertDontSee('+ New broadcast')
             ->assertSee(route('broadcasts.create', $organization), false)
             ->assertDontSee('Nothing to manage yet')
             ->assertDontSee('viewBox="0 0 64 10"', false);

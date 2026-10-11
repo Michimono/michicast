@@ -1,10 +1,19 @@
-@props(['href' => null, 'variant' => 'primary', 'paw' => null])
+@props(['href' => null, 'variant' => 'primary', 'paw' => null, 'size' => 'md'])
 
 @php
     $classes = match ($variant) {
         'ghost' => 'cursor-pointer group inline-flex items-center justify-center gap-2 rounded-md border border-line-strong bg-transparent px-4 py-2 text-sm font-medium text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line-strong',
         default => 'cursor-pointer group inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-accent',
     };
+
+    // size="lg": the full-height, ink call to action of focused pages (first organization).
+    if ($size === 'lg') {
+        $classes = str_replace(
+            ['rounded-md', 'px-4 py-2 text-sm', ' bg-accent ', 'hover:bg-ink ', 'disabled:hover:bg-accent'],
+            ['rounded-lg', 'h-12 px-5 text-base', ' bg-ink ', 'hover:bg-ink-raised ', 'disabled:hover:bg-ink'],
+            $classes,
+        );
+    }
 @endphp
 
 @if ($href)

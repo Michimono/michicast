@@ -80,7 +80,8 @@
                             </button>
                         @endif
 
-                        <a class="flex min-w-0 items-center gap-2.5" href="{{ route('home') }}">
+                        {{-- Signed in, the dashboard redirect picks the workspace (or the first-organization page). --}}
+                        <a class="flex min-w-0 items-center gap-2.5" href="{{ auth()->check() ? route('dashboard') : route('home') }}">
                             <x-brand.mark variant="face" class="h-6 shrink-0" />
 
                             <span class="truncate font-display text-xl tracking-tight">{{ config('app.name') }}</span>
