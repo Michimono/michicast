@@ -60,7 +60,7 @@ class OrganizationCreationTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.create'))
             ->assertOk()
-            ->assertSee('<option value="Europe/Madrid" selected>', false);
+            ->assertSee('<option value="Europe/Madrid" selected data-subtitle="', false);
     }
 
     public function test_a_user_can_create_an_organization_and_is_recorded_as_its_owner(): void

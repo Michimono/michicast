@@ -430,3 +430,26 @@ document.addEventListener('click', (event) => {
 })();
 
 import './mapping-editor';
+
+/*
+ * Timezone picker (first organization): a native <select> sits invisibly over a
+ * styled face. Keep the face's name and subtitle in step with the selection.
+ */
+document.querySelectorAll('[data-timezone-picker]').forEach((picker) => {
+    const select = picker.querySelector('select');
+    const name = picker.querySelector('[data-timezone-name]');
+    const subtitle = picker.querySelector('[data-timezone-subtitle]');
+
+    if (!select || !name || !subtitle) {
+        return;
+    }
+
+    const sync = () => {
+        const option = select.selectedOptions[0];
+        name.textContent = option?.value ?? '';
+        subtitle.textContent = option?.dataset.subtitle ?? '';
+    };
+
+    select.addEventListener('change', sync);
+    sync();
+});

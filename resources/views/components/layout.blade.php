@@ -139,7 +139,7 @@
             <div @class(['flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $rail])>
                 <main @class([
                     'mx-auto flex w-full flex-1 flex-col px-6',
-                    'max-w-[41.25rem] gap-10 pt-10 pb-14 sm:pt-12' => $focused,
+                    'max-w-[45rem] gap-8 pt-10 pb-14 sm:pt-12' => $focused,
                     'max-w-lg justify-center gap-8 py-12' => $centered && ! $focused,
                     'max-w-5xl gap-6 py-10' => ! $centered && ! $focused,
                 ])>

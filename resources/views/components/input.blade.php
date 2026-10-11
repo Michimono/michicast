@@ -20,7 +20,7 @@
         @if ($described) aria-describedby="{{ implode(' ', $described) }}" @endif
         {{ $attributes->class([
             'w-full rounded-md border bg-paper-raised px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent' => ! $large,
-            'h-12 w-full rounded-lg border bg-paper-raised px-4 text-base text-ink transition-colors placeholder:text-muted/70 focus-visible:border-accent focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-accent/30' => $large,
+            'h-12 w-full rounded-lg border bg-ink/4 px-4 focus-visible:bg-paper-raised text-base text-ink transition-colors placeholder:text-muted/70 focus-visible:border-accent focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-accent/30' => $large,
             'border-line' => ! $errors->has($field),
             'hover:border-line-strong' => $large && ! $errors->has($field),
             'border-state-fail' => $errors->has($field),

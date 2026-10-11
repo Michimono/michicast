@@ -30,6 +30,8 @@ class FirstOrganizationTest extends TestCase
             ->assertSee('Good things happen when everything connects.')
             ->assertSee('Bring your sources together. Shape the content. Send it where it needs to go — automatically.')
             ->assertSeeInOrder(['Sources', 'Mapping', 'Destinations'])
+            ->assertSee('data-timezone-picker', false)
+            ->assertSee('<option value="UTC" selected data-subtitle="UTC+00:00">UTC</option>', false)
             ->assertSee('Create your organization')
             ->assertSee('Choose a name for the workspace where your broadcasts, sources and destinations will live.')
             ->assertSee('You can change these details later.')
@@ -153,7 +155,7 @@ class FirstOrganizationTest extends TestCase
             ->post(route('organizations.store'), ['name' => '', 'timezone' => 'Asia/Tokyo'])
             ->assertOk()
             ->assertSee('Enter an organization name.')
-            ->assertSee('<option value="Asia/Tokyo" selected>', false)
+            ->assertSee('<option value="Asia/Tokyo" selected data-subtitle="', false)
             ->assertSeeInOrder(['id="name"', 'autofocus="autofocus"', 'id="timezone"'], false);
 
         $this->assertDatabaseCount('organizations', 0);
@@ -185,7 +187,7 @@ class FirstOrganizationTest extends TestCase
             ->assertSee('We couldn’t create your organization. Please try again.')
             ->assertSee('data-focus-on-load', false)
             ->assertSee('value="Pokémon News"', false)
-            ->assertSee('<option value="Europe/Madrid" selected>', false)
+            ->assertSee('<option value="Europe/Madrid" selected data-subtitle="', false)
             ->assertDontSee('database is gone')
             ->assertDontSee(self::SUCCESS);
 
