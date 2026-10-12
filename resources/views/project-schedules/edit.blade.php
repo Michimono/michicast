@@ -10,8 +10,6 @@
                 :timezones="$timezones"
                 :schedule="$schedule"
                 :selected-timezone="$selectedTimezone"
-                :timezone-name="$timezoneName"
-                :timezone-source="$timezoneSource"
             />
 
             <div class="flex flex-wrap gap-2">

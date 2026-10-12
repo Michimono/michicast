@@ -43,8 +43,6 @@
                         :timezones="$timezones"
                         :schedule="$schedule"
                         :selected-timezone="$selectedTimezone"
-                        :timezone-name="$timezoneName"
-                        :timezone-source="$timezoneSource"
                         separate-timezone
                     />
                 </div>

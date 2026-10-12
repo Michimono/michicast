@@ -4,8 +4,6 @@
     'timezones',
     'schedule',
     'selectedTimezone' => null,
-    'timezoneName' => null,
-    'timezoneSource' => null,
     // Single-column create page (#200): timezone becomes its own section.
     'separateTimezone' => false,
 ])
@@ -132,12 +130,5 @@
                 ? 'Schedules use this timezone, regardless of who views them. Leave it on the organization timezone unless this broadcast should run on a different clock.'
                 : 'Leave this on the organization timezone unless this broadcast should run on a different clock.'"
         />
-
-        @if ($timezoneName)
-            <p class="flex items-start gap-2 rounded-md border border-accent/20 bg-accent/5 px-3 py-2.5 text-sm text-accent">
-                <x-icons.info class="mt-0.5 size-4 shrink-0" />
-                <span>Runs are calculated in {{ $timezoneName }}, the {{ $timezoneSource }}. They are stored in UTC.</span>
-            </p>
-        @endif
     </div>
 </div>
