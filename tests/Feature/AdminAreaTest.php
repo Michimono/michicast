@@ -208,14 +208,16 @@ class AdminAreaTest extends TestCase
         $admin = User::factory()->create(['email' => 'admin@example.test']);
         $member = User::factory()->create(['email' => 'member@example.test']);
 
+        // Users without organizations are redirected from the index (#198), so
+        // check the header on the create page, which everyone can open.
         $this->actingAs($admin)
-            ->get(route('organizations.index'))
+            ->get(route('organizations.create'))
             ->assertOk()
             ->assertSee('href="'.route('admin.overview').'"', false)
             ->assertSee('>Admin</a>', false);
 
         $this->actingAs($member)
-            ->get(route('organizations.index'))
+            ->get(route('organizations.create'))
             ->assertOk()
             ->assertDontSee('href="'.route('admin.overview').'"', false);
     }

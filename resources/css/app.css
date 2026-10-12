@@ -105,9 +105,10 @@
 /*
  * Fills a logo silhouette with the gradient, for the moments the mark needs to
  * pop. The mask URL lives in a class, not a style attribute: style attributes
- * need 'unsafe-inline', which the production CSP does not allow. Root-relative
- * urls resolve against the page origin once the stylesheet is built and served
- * from that origin. Alpha mode keeps the black artwork visible as a silhouette.
+ * need 'unsafe-inline', which the production CSP does not allow. Paths are relative to this file so Vite
+ * rewrites them in dev and build: a root-relative url('/images/...') resolves
+ * against the Vite dev server origin, which does not serve public/, so the
+ * mask 404s and the gradient shows as a solid block. Alpha mode keeps the black artwork visible as a silhouette.
  */
 @utility house-mark {
     background-image: var(--house-gradient);
@@ -122,16 +123,16 @@
 }
 
 @utility house-mark-mark {
-    -webkit-mask-image: url('/images/brand/logo-day-mark.svg');
-    mask-image: url('/images/brand/logo-day-mark.svg');
+    -webkit-mask-image: url('../../public/images/brand/logo-day-mark.svg');
+    mask-image: url('../../public/images/brand/logo-day-mark.svg');
 }
 
 @utility house-mark-face {
-    -webkit-mask-image: url('/images/brand/logo-day-face.svg');
-    mask-image: url('/images/brand/logo-day-face.svg');
+    -webkit-mask-image: url('../../public/images/brand/logo-day-face.svg');
+    mask-image: url('../../public/images/brand/logo-day-face.svg');
 }
 
 @utility house-mark-cat {
-    -webkit-mask-image: url('/images/brand/logo-day-full.svg');
-    mask-image: url('/images/brand/logo-day-full.svg');
+    -webkit-mask-image: url('../../public/images/brand/logo-day-full.svg');
+    mask-image: url('../../public/images/brand/logo-day-full.svg');
 }
