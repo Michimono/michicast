@@ -6,6 +6,8 @@
     'selectedTimezone' => null,
     'timezoneName' => null,
     'timezoneSource' => null,
+    // Single-column create page (#200): timezone becomes its own section.
+    'separateTimezone' => false,
 ])
 
 @php
@@ -122,13 +124,15 @@
         </div>
     </div>
 
-    <div class="flex flex-col gap-2">
+    <div @class(['flex flex-col gap-2', 'mt-1 border-t border-line pt-6' => $separateTimezone])>
         <x-select
             name="timezone"
             label="Timezone"
             :value="old('timezone', $selectedTimezone)"
             :options="$timezones"
-            hint="Leave this on the organization timezone unless this broadcast should run on a different clock."
+            :hint="$separateTimezone
+                ? 'Schedules use this timezone, regardless of who views them. Leave it on the organization timezone unless this broadcast should run on a different clock.'
+                : 'Leave this on the organization timezone unless this broadcast should run on a different clock.'"
         />
 
         @if ($timezoneName)

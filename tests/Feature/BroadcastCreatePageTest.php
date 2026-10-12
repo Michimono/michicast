@@ -16,7 +16,7 @@ class BroadcastCreatePageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_create_page_shows_the_intro_column_and_schedule_tiles(): void
+    public function test_the_create_page_is_a_single_column_with_schedule_tiles(): void
     {
         [$user, $organization] = $this->editor();
 
@@ -25,7 +25,11 @@ class BroadcastCreatePageTest extends TestCase
             ->assertOk()
             ->assertSee('Back to broadcasts')
             ->assertSee('Create a broadcast')
-            ->assertSee('Automated collection')
+            ->assertSee('Set up a schedule to collect content')
+            ->assertSee('aria-label="Broadcast details and schedule"', false)
+            ->assertSee('Schedules use this timezone, regardless of who views them.')
+            // v2 is one column: no feature list beside the form.
+            ->assertDontSee('Automated collection')
             ->assertSee('placeholder="e.g. Daily Pokémon News"', false)
             ->assertSee('Choose how often this broadcast should run.')
             ->assertSee('type="radio"', false)
@@ -138,6 +142,8 @@ class BroadcastCreatePageTest extends TestCase
         $this->assertIsString($html);
         $this->assertMatchesRegularExpression('/value="interval"\s+data-schedule-frequency\s+checked/', $html);
         $this->assertStringContainsString('value="12"', $html);
+        // The edit page keeps the inline timezone hint, not the create page's section copy.
+        $this->assertStringNotContainsString('Schedules use this timezone, regardless of who views them.', $html);
     }
 
     /**
