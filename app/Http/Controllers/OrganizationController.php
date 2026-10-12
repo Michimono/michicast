@@ -21,10 +21,15 @@ class OrganizationController extends Controller
 {
     /**
      * Every organization the signed-in user belongs to, which is also how
-     * they move between them.
+     * they move between them. Someone with no membership yet (suspended
+     * organizations still count) is sent to create their first one.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
+        if ($request->user()->memberships()->doesntExist()) {
+            return redirect()->route('organizations.create');
+        }
+
         return view('organizations.index', [
             'memberships' => $request->user()
                 ->memberships()
