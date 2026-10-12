@@ -90,12 +90,12 @@ class QuotasTest extends TestCase
         $this->assertSame(config('michicast.quotas.default_plan'), $organization->plan);
     }
 
-    public function test_rate_metrics_declare_a_daily_period_and_counts_do_not(): void
+    public function test_rate_metrics_declare_a_monthly_default_period_and_counts_do_not(): void
     {
         $this->assertTrue(QuotaMetric::SourceFetches->isRate());
         $this->assertTrue(QuotaMetric::Deliveries->isRate());
-        $this->assertSame('daily', QuotaMetric::SourceFetches->period());
-        $this->assertSame('daily', QuotaMetric::Deliveries->period());
+        $this->assertSame('monthly', QuotaMetric::SourceFetches->period());
+        $this->assertSame('monthly', QuotaMetric::Deliveries->period());
 
         $this->assertFalse(QuotaMetric::Members->isRate());
         $this->assertNull(QuotaMetric::Members->period());

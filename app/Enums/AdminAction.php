@@ -13,6 +13,7 @@ enum AdminAction: string
     case QuotaOverrideSet = 'quota_override_set';
     case QuotaOverrideCleared = 'quota_override_cleared';
     case QuotaUsageReset = 'quota_usage_reset';
+    case QuotaPeriodSet = 'quota_period_set';
     case RegistrationSettingsChanged = 'registration_settings_changed';
 
     public function label(): string
@@ -27,6 +28,7 @@ enum AdminAction: string
             self::QuotaOverrideSet => 'Quota override set',
             self::QuotaOverrideCleared => 'Quota override cleared',
             self::QuotaUsageReset => 'Quota usage reset',
+            self::QuotaPeriodSet => 'Quota period set',
             self::RegistrationSettingsChanged => 'Registration settings changed',
         };
     }

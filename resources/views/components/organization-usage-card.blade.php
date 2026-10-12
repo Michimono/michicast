@@ -1,7 +1,7 @@
 <x-card id="usage" heading="Usage" kicker="Quota" eared class="scroll-mt-8 max-w-md">
     <p class="text-sm text-ink">
         Plan: <span class="font-medium">{{ ucfirst($planName) }}</span>.
-        Daily limits reset at midnight UTC, shown in your display timezone.
+        Usage limits reset at the start of each UTC day, week (Monday) or month, shown in your display timezone.
     </p>
 
     <dl class="flex flex-col gap-3">
@@ -16,6 +16,9 @@
                             Unlimited
                         @else
                             {{ number_format($row['limit']) }}
+                        @endif
+                        @if ($row['period'] !== null)
+                            <span class="font-sans text-muted">{{ $row['period']->current() }}</span>
                         @endif
                     </span>
                     @if ($row['resets_at'] !== null)

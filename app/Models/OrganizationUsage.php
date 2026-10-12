@@ -3,22 +3,25 @@
 namespace App\Models;
 
 use App\Enums\QuotaMetric;
+use App\Enums\QuotaPeriod;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Per-organization usage of a rate metric for one UTC calendar day.
+ * Per-organization usage of a rate metric for one UTC calendar period.
  *
- * period_start is the UTC date the counter belongs to. Counters reset at
- * UTC midnight (a new row for the next day), not the organization's timezone.
+ * period is the QuotaPeriod the row counts (daily, weekly, monthly) and
+ * period_start the UTC date that period began (the day, Monday or 1st). A new
+ * period gets a new row; the organization's timezone does not move boundaries.
  *
  * @property QuotaMetric $metric
+ * @property QuotaPeriod $period
  * @property Carbon $period_start
  * @property int $used
  */
-#[Fillable(['organization_id', 'metric', 'period_start', 'used'])]
+#[Fillable(['organization_id', 'metric', 'period', 'period_start', 'used'])]
 class OrganizationUsage extends Model
 {
     protected $table = 'organization_usage';
@@ -38,6 +41,7 @@ class OrganizationUsage extends Model
     {
         return [
             'metric' => QuotaMetric::class,
+            'period' => QuotaPeriod::class,
             'period_start' => 'date',
             'used' => 'integer',
         ];

@@ -112,7 +112,7 @@
         <x-card id="quotas" heading="Quotas" kicker="Plan & limits" eared class="scroll-mt-8">
         <p class="text-sm text-muted">
             Plan limits come from config. Overrides live in the database and win when present (null = unlimited).
-            Daily usage resets at midnight UTC. Changing a plan or override takes effect immediately for the next run.
+            Rate usage counts per UTC calendar period (day, Monday-week or month; plan default unless set below). Changing a plan, override or period takes effect immediately for the next run.
         </p>
 
         <form
@@ -156,7 +156,7 @@
                     <div class="flex flex-wrap items-baseline justify-between gap-2">
                         <h3 class="text-sm font-medium text-ink">{{ $row['label'] }}</h3>
                         @if ($row['is_rate'])
-                            <span class="font-mono text-xs text-muted uppercase">Daily</span>
+                            <span class="font-mono text-xs text-muted uppercase">{{ $row['period']->label() }}@unless ($row['has_period_setting']) <span class="normal-case">(plan)</span>@endunless</span>
                         @else
                             <span class="font-mono text-xs text-muted uppercase">Stock</span>
                         @endif
@@ -186,7 +186,7 @@
                         </div>
                         <div class="flex flex-col gap-1">
                             <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">
-                                {{ $row['is_rate'] ? 'Usage today' : 'Current count' }}
+                                {{ $row['is_rate'] ? 'Usage '.$row['period']->current() : 'Current count' }}
                             </dt>
                             <dd class="font-mono text-sm text-ink">{{ number_format($row['used']) }}</dd>
                         </div>
@@ -270,20 +270,51 @@
                         <form
                             class="flex flex-col gap-3 border-t border-line pt-4"
                             method="POST"
-                            action="{{ route('admin.organizations.quota-usage-resets.store', $organization) }}"
-                            onsubmit="return confirm('Reset this metric usage to zero for the current UTC day?')"
+                            action="{{ route('admin.organizations.quota-periods.store', $organization) }}"
                         >
                             @csrf
                             <input type="hidden" name="metric" value="{{ $metric->value }}">
 
-                            <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Reset today's usage</p>
+                            <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Set period</p>
+
+                            <x-select
+                                name="period"
+                                label="Period"
+                                :options="['plan' => 'Plan default ('.$row['plan_period']->label().')'] + \App\Enums\QuotaPeriod::options()"
+                                :value="old('metric') === $metric->value ? old('period') : ($row['has_period_setting'] ? $row['period']->value : 'plan')"
+                                hint="UTC calendar periods: days start at 00:00, weeks on Monday, months on the 1st. A new period starts a fresh counter."
+                            />
 
                             <x-textarea
                                 name="reason"
                                 label="Reason"
                                 rows="2"
                                 required
-                                hint="Zeros the current UTC-day counter only. Stock metrics cannot be reset here."
+                                hint="Required for the audit log."
+                            />
+
+                            <x-button variant="ghost">Set period</x-button>
+                        </form>
+                    @endif
+
+                    @if ($row['is_rate'])
+                        <form
+                            class="flex flex-col gap-3 border-t border-line pt-4"
+                            method="POST"
+                            action="{{ route('admin.organizations.quota-usage-resets.store', $organization) }}"
+                            onsubmit="return confirm('Reset this metric usage to zero for the current period?')"
+                        >
+                            @csrf
+                            <input type="hidden" name="metric" value="{{ $metric->value }}">
+
+                            <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Reset current period usage</p>
+
+                            <x-textarea
+                                name="reason"
+                                label="Reason"
+                                rows="2"
+                                required
+                                hint="Zeros the current period's counter only. Stock metrics cannot be reset here."
                             />
 
                             <x-button variant="ghost">Reset usage</x-button>

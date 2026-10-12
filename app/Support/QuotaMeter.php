@@ -3,19 +3,24 @@
 namespace App\Support;
 
 use App\Enums\QuotaMetric;
+use App\Enums\QuotaPeriod;
 use App\Models\Organization;
 use App\Models\OrganizationUsage;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Atomically meters rate-quota usage per organization.
  *
- * Periods are UTC calendar days: period_start is the UTC date, and counters
- * reset at UTC midnight (resetsAt). Organization timezone does not affect
- * the period boundary. Usage is stored even when the limit is null (unlimited)
- * so remaining() and member views can still report consumption.
+ * Each organization and metric counts over a QuotaPeriod (daily by default;
+ * see Quotas::periodFor). Periods are UTC calendar periods: period_start is
+ * the UTC date the day, Monday-week or month began, and counters reset at the
+ * next boundary (resetsAt). Rows are keyed by period and period_start, so a
+ * period change starts a fresh counter instead of reinterpreting old rows.
+ * Usage is stored even when the limit is null (unlimited) so remaining() and
+ * member views can still report consumption.
  *
  * consume() uses a conditional UPDATE so concurrent Horizon workers cannot
  * push used past the limit.
@@ -30,53 +35,53 @@ class QuotaMeter
             throw new \InvalidArgumentException('QuotaMeter::consume amount must be at least 1.');
         }
 
-        $periodStart = $this->currentPeriodStart();
-        $resetsAt = $this->resetsAt($periodStart);
+        $period = $this->quotas->periodFor($organization, $metric);
+        $periodStart = $this->currentPeriodStart($period);
+        $resetsAt = $this->resetsAt($periodStart, $period);
         $limit = $this->quotas->limitFor($organization, $metric);
 
-        $this->ensureRow($organization, $metric, $periodStart);
+        $this->ensureRow($organization, $metric, $period, $periodStart);
 
         if ($limit === null) {
-            $used = $this->increment($organization, $metric, $periodStart, $amount);
+            $this->row($organization, $metric, $period, $periodStart)->update([
+                'used' => DB::raw('used + '.(int) $amount),
+                'updated_at' => now(),
+            ]);
 
-            return new QuotaDecision(allowed: true, limit: null, used: $used, resetsAt: $resetsAt);
+            return new QuotaDecision(
+                allowed: true,
+                limit: null,
+                used: $this->usedIn($organization, $metric, $period, $periodStart),
+                resetsAt: $resetsAt,
+                period: $period,
+            );
         }
 
-        $affected = OrganizationUsage::query()
-            ->where('organization_id', $organization->getKey())
-            ->where('metric', $metric)
-            ->whereDate('period_start', $periodStart->toDateString())
+        $affected = $this->row($organization, $metric, $period, $periodStart)
             ->where('used', '<=', $limit - $amount)
             ->update([
                 'used' => DB::raw('used + '.(int) $amount),
                 'updated_at' => now(),
             ]);
 
-        $used = $this->used($organization, $metric, $periodStart);
-
         return new QuotaDecision(
             allowed: $affected > 0,
             limit: $limit,
-            used: $used,
+            used: $this->usedIn($organization, $metric, $period, $periodStart),
             resetsAt: $resetsAt,
+            period: $period,
         );
     }
 
+    /**
+     * Usage in the organization's current period for the metric, or in the
+     * period starting at $periodStart when given.
+     */
     public function used(Organization $organization, QuotaMetric $metric, ?CarbonInterface $periodStart = null): int
     {
-        $periodStart ??= $this->currentPeriodStart();
+        $period = $this->quotas->periodFor($organization, $metric);
 
-        $row = OrganizationUsage::query()
-            ->where('organization_id', $organization->getKey())
-            ->where('metric', $metric)
-            ->whereDate('period_start', $periodStart->toDateString())
-            ->first();
-
-        if ($row === null) {
-            return 0;
-        }
-
-        return $row->used;
+        return $this->usedIn($organization, $metric, $period, $periodStart ?? $this->currentPeriodStart($period));
     }
 
     public function remaining(Organization $organization, QuotaMetric $metric): ?int
@@ -102,20 +107,44 @@ class QuotaMeter
             ->delete();
     }
 
-    public function currentPeriodStart(): CarbonImmutable
+    public function currentPeriodStart(QuotaPeriod $period = QuotaPeriod::Daily): CarbonImmutable
     {
-        return CarbonImmutable::now('UTC')->startOfDay();
+        return $period->startOf(CarbonImmutable::now('UTC'));
     }
 
-    public function resetsAt(?CarbonInterface $periodStart = null): CarbonImmutable
+    public function resetsAt(?CarbonInterface $periodStart = null, QuotaPeriod $period = QuotaPeriod::Daily): CarbonImmutable
     {
-        $periodStart ??= $this->currentPeriodStart();
-
-        return CarbonImmutable::parse($periodStart->toDateString(), 'UTC')->addDay()->startOfDay();
+        return $period->resetsAt($periodStart ?? $this->currentPeriodStart($period));
     }
 
     /**
-     * Zero the current UTC-day usage counter for a rate metric.
+     * Effective counting period for this organization's metric.
+     */
+    public function periodFor(Organization $organization, QuotaMetric $metric): QuotaPeriod
+    {
+        return $this->quotas->periodFor($organization, $metric);
+    }
+
+    /**
+     * Current period start for this organization's metric.
+     */
+    public function periodStartFor(Organization $organization, QuotaMetric $metric): CarbonImmutable
+    {
+        return $this->currentPeriodStart($this->quotas->periodFor($organization, $metric));
+    }
+
+    /**
+     * When this organization's current period for the metric resets.
+     */
+    public function resetsAtFor(Organization $organization, QuotaMetric $metric): CarbonImmutable
+    {
+        $period = $this->quotas->periodFor($organization, $metric);
+
+        return $this->resetsAt($this->currentPeriodStart($period), $period);
+    }
+
+    /**
+     * Zero the organization's current-period usage counter for a rate metric.
      *
      * Returns the previous used value. Creates the period row when missing.
      */
@@ -125,46 +154,49 @@ class QuotaMeter
             throw new \InvalidArgumentException('Only rate metrics have a current period to reset.');
         }
 
-        $periodStart = $this->currentPeriodStart();
-        $previous = $this->used($organization, $metric, $periodStart);
+        $period = $this->quotas->periodFor($organization, $metric);
+        $periodStart = $this->currentPeriodStart($period);
+        $previous = $this->usedIn($organization, $metric, $period, $periodStart);
 
-        $this->ensureRow($organization, $metric, $periodStart);
+        $this->ensureRow($organization, $metric, $period, $periodStart);
 
-        OrganizationUsage::query()
-            ->where('organization_id', $organization->getKey())
-            ->where('metric', $metric)
-            ->whereDate('period_start', $periodStart->toDateString())
-            ->update([
-                'used' => 0,
-                'updated_at' => now(),
-            ]);
+        $this->row($organization, $metric, $period, $periodStart)->update([
+            'used' => 0,
+            'updated_at' => now(),
+        ]);
 
         return $previous;
     }
 
-    private function ensureRow(Organization $organization, QuotaMetric $metric, CarbonInterface $periodStart): void
+    private function usedIn(Organization $organization, QuotaMetric $metric, QuotaPeriod $period, CarbonInterface $periodStart): int
+    {
+        $row = $this->row($organization, $metric, $period, $periodStart)->first();
+
+        return $row === null ? 0 : $row->used;
+    }
+
+    /**
+     * @return Builder<OrganizationUsage>
+     */
+    private function row(Organization $organization, QuotaMetric $metric, QuotaPeriod $period, CarbonInterface $periodStart): Builder
+    {
+        return OrganizationUsage::query()
+            ->where('organization_id', $organization->getKey())
+            ->where('metric', $metric)
+            ->where('period', $period)
+            ->whereDate('period_start', $periodStart->toDateString());
+    }
+
+    private function ensureRow(Organization $organization, QuotaMetric $metric, QuotaPeriod $period, CarbonInterface $periodStart): void
     {
         OrganizationUsage::query()->insertOrIgnore([
             'organization_id' => $organization->getKey(),
             'metric' => $metric->value,
+            'period' => $period->value,
             'period_start' => $periodStart->toDateString(),
             'used' => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    }
-
-    private function increment(Organization $organization, QuotaMetric $metric, CarbonInterface $periodStart, int $amount): int
-    {
-        OrganizationUsage::query()
-            ->where('organization_id', $organization->getKey())
-            ->where('metric', $metric)
-            ->whereDate('period_start', $periodStart->toDateString())
-            ->update([
-                'used' => DB::raw('used + '.(int) $amount),
-                'updated_at' => now(),
-            ]);
-
-        return $this->used($organization, $metric, $periodStart);
     }
 }

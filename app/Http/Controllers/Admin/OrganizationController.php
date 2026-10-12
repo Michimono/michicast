@@ -10,6 +10,7 @@ use App\Models\Broadcast;
 use App\Models\ContentDelivery;
 use App\Models\Organization;
 use App\Models\OrganizationQuotaOverride;
+use App\Models\OrganizationQuotaPeriod;
 use App\Models\Project;
 use App\Models\ProjectRun;
 use App\Support\ProjectHealthResolver;
@@ -147,6 +148,11 @@ class OrganizationController extends Controller
             ->get()
             ->keyBy(fn (OrganizationQuotaOverride $override): string => $override->metric->value);
 
+        $periodSettings = OrganizationQuotaPeriod::query()
+            ->where('organization_id', $organization->getKey())
+            ->get()
+            ->keyBy(fn (OrganizationQuotaPeriod $setting): string => $setting->metric->value);
+
         $quotaRows = [];
 
         foreach (QuotaMetric::cases() as $metric) {
@@ -166,6 +172,10 @@ class OrganizationController extends Controller
                 'effective_limit' => $quotas->limitFor($organization, $metric),
                 'used' => $used,
                 'is_rate' => $metric->isRate(),
+                'period' => $metric->isRate() ? $quotas->periodFor($organization, $metric) : null,
+                'plan_period' => $metric->isRate() ? $quotas->planPeriodFor($organization, $metric) : null,
+                'has_period_setting' => $periodSettings->has($metric->value),
+                'period_start' => $metric->isRate() ? $meter->periodStartFor($organization, $metric) : null,
             ];
         }
 

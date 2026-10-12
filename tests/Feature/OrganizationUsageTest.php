@@ -18,6 +18,15 @@ class OrganizationUsageTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These tests cover daily counting; plans default to monthly (#196).
+        $daily = ['source_fetches' => 'daily', 'deliveries' => 'daily'];
+        config(['michicast.quotas.plan_periods' => ['free' => $daily, 'unlimited' => $daily]]);
+    }
+
     public function test_the_usage_card_shows_used_and_limit_for_an_organization_with_usage(): void
     {
         $this->travelTo(Carbon::parse('2026-10-06 15:00:00', 'UTC'));
@@ -77,13 +86,13 @@ class OrganizationUsageTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.show', $organization))
             ->assertOk()
-            ->assertDontSee('A daily quota is exhausted', false)
+            ->assertDontSee('A usage quota is exhausted', false)
             ->assertDontSee('View usage');
 
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertDontSee('A daily quota is exhausted', false);
+            ->assertDontSee('A usage quota is exhausted', false);
 
         OrganizationQuotaOverride::query()->create([
             'organization_id' => $organization->getKey(),
@@ -104,14 +113,14 @@ class OrganizationUsageTest extends TestCase
         $this->actingAs($user)
             ->get(route('organizations.show', $organization))
             ->assertOk()
-            ->assertSee('A daily quota is exhausted')
+            ->assertSee('A usage quota is exhausted')
             ->assertSee('View usage')
             ->assertSee($usageUrl, false);
 
         $this->actingAs($user)
             ->get(route('broadcasts.show', [$organization, $project]))
             ->assertOk()
-            ->assertSee('A daily quota is exhausted')
+            ->assertSee('A usage quota is exhausted')
             ->assertSee($usageUrl, false);
     }
 

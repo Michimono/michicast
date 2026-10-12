@@ -212,8 +212,11 @@ return [
     | Free-plan numbers stay modest so a public droplet is not an open relay;
     | override any of them with the QUOTA_FREE_* env keys below.
     |
-    | Rate metrics (source_fetches, deliveries) are daily caps counted in UTC
-    | (period resets at UTC midnight). The rest are caps on how many records
+    | Rate metrics (source_fetches, deliveries) are caps per UTC calendar
+    | period: daily (resets at UTC midnight), weekly (Monday 00:00 UTC) or
+    | monthly (the 1st, 00:00 UTC). plan_periods sets each plan's period and
+    | defaults to monthly; admins can pick another period per organization
+    | (organization_quota_periods, #196). The rest are caps on how many records
     | may exist at once. Usage rows live in organization_usage (#160).
     |
     */
@@ -224,9 +227,9 @@ return [
         'default_plan' => env('QUOTA_DEFAULT_PLAN', 'free'),
         'plans' => [
             'free' => [
-                // Daily live fetches across every source provider.
+                // Live fetches per period across every source provider.
                 'source_fetches' => (int) env('QUOTA_FREE_SOURCE_FETCHES', 200),
-                // Daily items published to any destination.
+                // Items published to any destination per period.
                 'deliveries' => (int) env('QUOTA_FREE_DELIVERIES', 100),
                 // Enabled broadcasts across the organization.
                 'active_broadcasts' => (int) env('QUOTA_FREE_ACTIVE_BROADCASTS', 10),
@@ -241,6 +244,17 @@ return [
                 'sources' => null,
                 'destinations' => null,
                 'members' => null,
+            ],
+        ],
+        // Period each plan's rate metrics are counted over: daily, weekly or monthly.
+        'plan_periods' => [
+            'free' => [
+                'source_fetches' => env('QUOTA_FREE_SOURCE_FETCHES_PERIOD', 'monthly'),
+                'deliveries' => env('QUOTA_FREE_DELIVERIES_PERIOD', 'monthly'),
+            ],
+            'unlimited' => [
+                'source_fetches' => 'monthly',
+                'deliveries' => 'monthly',
             ],
         ],
     ],

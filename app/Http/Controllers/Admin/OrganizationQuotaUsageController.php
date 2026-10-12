@@ -32,7 +32,8 @@ class OrganizationQuotaUsageController extends Controller
                 $reason,
                 [
                     'metric' => $metric->value,
-                    'period_start' => $meter->currentPeriodStart()->toDateString(),
+                    'period' => $meter->periodFor($organization, $metric)->value,
+                    'period_start' => $meter->periodStartFor($organization, $metric)->toDateString(),
                     'used' => [
                         'before' => $before,
                         'after' => 0,
@@ -43,6 +44,6 @@ class OrganizationQuotaUsageController extends Controller
 
         return redirect()
             ->route('admin.organizations.show', $organization)
-            ->with('success', $metric->label().' usage for today reset to zero.');
+            ->with('success', $metric->label().' usage for the current period reset to zero.');
     }
 }
