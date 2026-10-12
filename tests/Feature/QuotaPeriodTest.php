@@ -232,8 +232,11 @@ class QuotaPeriodTest extends TestCase
 
         $this->assertSame('Customer wants weekly budgets', $set->reason);
         $this->assertSame('deliveries', $set->changes['metric']);
-        $this->assertSame(['before' => '(plan)', 'after' => 'weekly'], $set->changes['period_setting']);
-        $this->assertSame(['before' => 'monthly', 'after' => 'weekly'], $set->changes['effective_period']);
+        // MySQL JSON columns normalise key order, so compare values per key.
+        $this->assertSame('(plan)', $set->changes['period_setting']['before']);
+        $this->assertSame('weekly', $set->changes['period_setting']['after']);
+        $this->assertSame('monthly', $set->changes['effective_period']['before']);
+        $this->assertSame('weekly', $set->changes['effective_period']['after']);
         $this->assertSame('monthly', $set->changes['plan_period']);
 
         $this->actingAs($admin)
