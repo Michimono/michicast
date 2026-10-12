@@ -65,7 +65,7 @@ class ProjectDestinationController extends Controller
     {
         $requested = $request->old('type', $request->string('type')->toString());
 
-        if (is_string($requested) && $this->providers->has($requested)) {
+        if (is_string($requested) && $this->providers->isSelectable($requested)) {
             return $requested;
         }
 

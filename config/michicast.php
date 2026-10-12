@@ -202,6 +202,17 @@ return [
     ],
 
     /*
+    | Test-only destination types (#202). They stay registered so existing
+    | destinations keep working, but are only offered and accepted for new
+    | destinations when enabled: by default in the local and testing
+    | environments, or with MICHICAST_TEST_DESTINATIONS=true.
+    */
+
+    'test_destinations' => ['recording'],
+
+    'test_destinations_enabled' => (bool) env('MICHICAST_TEST_DESTINATIONS', in_array(env('APP_ENV', 'production'), ['local', 'testing'], true)),
+
+    /*
     |--------------------------------------------------------------------------
     | Organization Quotas
     |--------------------------------------------------------------------------

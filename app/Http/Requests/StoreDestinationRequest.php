@@ -35,7 +35,7 @@ class StoreDestinationRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', Rule::in($registry->types())],
+            'type' => ['required', 'string', Rule::in($registry->selectableTypes())],
             'config' => ['nullable', 'array'],
             'credentials' => ['nullable', 'array'],
             ...$this->configurationRules($this->type()),
