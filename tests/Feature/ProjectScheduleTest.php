@@ -113,7 +113,7 @@ class ProjectScheduleTest extends TestCase
         $this->assertNull($project->next_run_at);
     }
 
-    public function test_the_schedule_form_says_which_timezone_is_in_force(): void
+    public function test_the_schedule_form_names_the_organization_timezone_without_the_utc_note(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor, ['timezone' => 'Europe/Madrid']);
         $project = Project::factory()->for($organization)->create();
@@ -122,7 +122,9 @@ class ProjectScheduleTest extends TestCase
             ->get(route('broadcasts.edit', [$organization, $project]))
             ->assertOk()
             ->assertSee('Use organization timezone (Europe/Madrid)')
-            ->assertSee('Europe/Madrid, the organization timezone');
+            // The accent note was removed (#201); the fallback option names the timezone.
+            ->assertDontSee('Runs are calculated in')
+            ->assertDontSee('They are stored in UTC.');
     }
 
     public function test_changing_the_organization_timezone_recalculates_projects_without_an_override(): void

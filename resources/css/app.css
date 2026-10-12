@@ -136,3 +136,17 @@
     -webkit-mask-image: url('../../public/images/brand/logo-day-full.svg');
     mask-image: url('../../public/images/brand/logo-day-full.svg');
 }
+
+/*
+ * Schedule picker (#200): the checked frequency tile reveals its panels with
+ * no script, so nothing depends on JS and every input keeps posting as before.
+ */
+[data-schedule-fields] [data-schedule-panel] {
+    display: none;
+}
+
+[data-schedule-fields]:has([data-schedule-frequency][value='daily']:checked) [data-schedule-panel~='daily'],
+[data-schedule-fields]:has([data-schedule-frequency][value='weekly']:checked) [data-schedule-panel~='weekly'],
+[data-schedule-fields]:has([data-schedule-frequency][value='interval']:checked) [data-schedule-panel~='interval'] {
+    display: flex;
+}
