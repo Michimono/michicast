@@ -400,11 +400,17 @@ document.addEventListener('click', (event) => {
     syncTestButton();
 })();
 /*
- * Schedule fields: show only the inputs the selected frequency needs.
+ * Schedule fields: the checked frequency tile reveals only the inputs it needs.
+ * CSS does this with :has() (see app.css), so it works without JS; this only
+ * sets `hidden` for browsers without :has() support.
  */
 (function () {
+    if (window.CSS?.supports?.('selector(:has(*))')) {
+        return;
+    }
+
     function syncScheduleFields(root) {
-        const frequency = root.querySelector('[data-schedule-frequency]')?.value ?? '';
+        const frequency = root.querySelector('[data-schedule-frequency]:checked')?.value ?? '';
 
         root.querySelectorAll('[data-schedule-panel]').forEach((panel) => {
             const modes = (panel.getAttribute('data-schedule-panel') ?? '').split(/\s+/).filter(Boolean);
@@ -413,15 +419,10 @@ document.addEventListener('click', (event) => {
     }
 
     document.addEventListener('change', (event) => {
-        const select = event.target.closest('[data-schedule-frequency]');
+        const input = event.target.closest('[data-schedule-frequency]');
+        const root = input?.closest('[data-schedule-fields]');
 
-        if (select === null) {
-            return;
-        }
-
-        const root = select.closest('[data-schedule-fields]');
-
-        if (root !== null) {
+        if (root) {
             syncScheduleFields(root);
         }
     });
