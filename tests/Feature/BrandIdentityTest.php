@@ -56,7 +56,7 @@ class BrandIdentityTest extends TestCase
         $response->assertSee('house-mark-cat', false);
         $response->assertDontSee('style=', false);
         $this->assertStringContainsString(
-            "url('/images/brand/logo-day-full.svg')",
+            "url('../../public/images/brand/logo-day-full.svg')",
             (string) file_get_contents(resource_path('css/app.css')),
         );
     }
