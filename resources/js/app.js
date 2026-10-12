@@ -433,7 +433,8 @@ document.addEventListener('click', (event) => {
 import './mapping-editor';
 
 /*
- * Timezone combobox (first organization). Progressive enhancement over the
+ * Timezone combobox (<x-timezone-picker>: first organization and broadcast
+ * schedules). Progressive enhancement over the
  * native <select>: without JS the select works as-is; with JS a searchable
  * ARIA combobox drives the same select, so the posted `timezone` field and its
  * server-side validation do not change. Matching ignores case and treats "/"
@@ -457,17 +458,20 @@ function enhanceTimezonePicker(picker) {
 
     const options = Array.from(select.options).map((option) => ({
         value: option.value,
+        // Options may carry a label (e.g. "Use organization timezone (…)"); search both.
+        label: option.textContent.trim() || option.value,
         subtitle: option.dataset.subtitle ?? '',
-        key: normalizeZone(option.value),
+        key: normalizeZone(`${option.value} ${option.textContent}`),
     }));
     const fieldId = select.id;
     const listId = `${fieldId}-listbox`;
+    const selectedLabel = () => select.selectedOptions[0]?.textContent.trim() ?? select.value;
     const hadFocus = select.hasAttribute('autofocus') || document.activeElement === select;
 
     const input = document.createElement('input');
     input.type = 'text';
     input.id = fieldId;
-    input.value = select.value;
+    input.value = selectedLabel();
     input.placeholder = 'Search timezones';
     input.autocomplete = 'off';
     input.spellcheck = false;
@@ -540,7 +544,7 @@ function enhanceTimezonePicker(picker) {
 
             const label = document.createElement('span');
             label.className = option.value === select.value ? 'text-sm font-semibold text-ink' : 'text-sm text-ink';
-            label.textContent = option.value;
+            label.textContent = option.label;
 
             const hint = document.createElement('span');
             hint.className = 'text-xs text-muted';
@@ -573,7 +577,7 @@ function enhanceTimezonePicker(picker) {
         list.hidden = true;
         input.setAttribute('aria-expanded', 'false');
         input.removeAttribute('aria-activedescendant');
-        input.value = select.value;
+        input.value = selectedLabel();
     };
 
     const commit = (option) => {

@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
+use DateTimeZone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -144,6 +145,59 @@ class BroadcastCreatePageTest extends TestCase
         $this->assertStringContainsString('value="12"', $html);
         // The edit page keeps the inline timezone hint, not the create page's section copy.
         $this->assertStringNotContainsString('Schedules use this timezone, regardless of who views them.', $html);
+        // Edit shares x-schedule-fields, so it gets the same searchable picker.
+        $this->assertStringContainsString('data-timezone-picker', $html);
+    }
+
+    public function test_the_schedule_timezone_uses_the_searchable_picker_with_the_full_server_list(): void
+    {
+        [$user, $organization] = $this->editor();
+
+        $html = $this->actingAs($user)
+            ->get(route('broadcasts.create', $organization))
+            ->assertOk()
+            ->assertSee('data-timezone-picker', false)
+            ->assertSee('<label class="text-sm font-medium" for="timezone">Timezone</label>', false)
+            ->assertSee('aria-describedby="timezone-hint"', false)
+            ->getContent();
+
+        $this->assertIsString($html);
+        // Default stays the organization fallback (blank), shown by its label on the face.
+        $this->assertMatchesRegularExpression('/<option value=""\s+selected/', $html);
+        $this->assertStringContainsString('data-timezone-name>Use organization timezone ('.$organization->timezone.')</span>', $html);
+
+        // Options: the blank fallback plus every identifier the server accepts, in order.
+        preg_match_all('/<option value="([^"]*)"[^>]*data-subtitle="[^"]*"/', $html, $matches);
+        $this->assertSame(['', ...DateTimeZone::listIdentifiers()], $matches[1]);
+    }
+
+    public function test_a_failed_submit_keeps_the_chosen_timezone(): void
+    {
+        [$user, $organization] = $this->editor();
+
+        $this->actingAs($user)
+            ->from(route('broadcasts.create', $organization))
+            ->post(route('broadcasts.store', $organization), ['name' => '', 'frequency' => 'daily', 'time' => '09:00', 'timezone' => 'Asia/Tokyo']);
+
+        $html = $this->actingAs($user)->get(route('broadcasts.create', $organization))->getContent();
+        $this->assertIsString($html);
+        $this->assertMatchesRegularExpression('/<option value="Asia\/Tokyo"\s+selected/', $html);
+        $this->assertStringContainsString('data-timezone-name>Asia/Tokyo</span>', $html);
+    }
+
+    public function test_an_invalid_schedule_timezone_is_flagged_on_the_picker(): void
+    {
+        [$user, $organization] = $this->editor();
+
+        $this->actingAs($user)
+            ->from(route('broadcasts.create', $organization))
+            ->post(route('broadcasts.store', $organization), ['name' => 'Show', 'frequency' => 'daily', 'time' => '09:00', 'timezone' => 'Mars/Olympus_Mons']);
+
+        $this->actingAs($user)
+            ->get(route('broadcasts.create', $organization))
+            ->assertSee('id="timezone-error"', false)
+            ->assertSee('aria-invalid="true"', false)
+            ->assertSee('aria-describedby="timezone-hint timezone-error"', false);
     }
 
     /**

@@ -14,22 +14,6 @@
         ['icon' => 'destination', 'label' => 'Destinations', 'description' => 'Telegram and more'],
     ];
 
-    // Timezone picker: each option carries a friendly subtitle (offset and abbreviation).
-    $zones = array_is_list($timezones) ? $timezones : array_keys($timezones);
-    $selectedZone = (string) old('timezone', $timezone);
-    $subtitle = static function (string $zone): string {
-        try {
-            $now = new DateTimeImmutable('now', new DateTimeZone($zone));
-        } catch (Exception) {
-            return '';
-        }
-
-        $offset = 'UTC'.$now->format('P');
-        $abbreviation = $now->format('T');
-
-        return ctype_alpha($abbreviation) && $abbreviation !== 'UTC' ? $offset.' · '.$abbreviation : $offset;
-    };
-    $timezoneDescribed = array_filter(['timezone-hint', $errors->has('timezone') ? 'timezone-error' : null]);
 @endphp
 
 {{--
@@ -118,58 +102,12 @@
                         required
                     />
 
-                    {{--
-                        A real <select> stretched invisibly over a styled face. app.js swaps the
-                        face's name for a searchable combobox that drives the select, so the
-                        posted field stays native; without JS the select works as-is.
-                    --}}
-                    <div class="flex flex-col gap-2">
-                        <label class="text-sm font-medium" for="timezone">Timezone</label>
-
-                        <div
-                            @class([
-                                'relative flex h-14 items-center gap-3 rounded-lg border bg-ink/4 pr-11 pl-4 transition-colors has-[select:focus-visible]:border-accent has-[select:focus-visible]:bg-paper-raised has-[select:focus-visible]:outline-3 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-accent/30 has-[input:focus]:border-accent has-[input:focus]:bg-paper-raised has-[input:focus]:outline-3 has-[input:focus]:outline-offset-2 has-[input:focus]:outline-accent/30',
-                                'border-line hover:border-line-strong' => ! $errors->has('timezone'),
-                                'border-state-fail' => $errors->has('timezone'),
-                            ])
-                            data-timezone-picker
-                        >
-                            <svg class="size-5 shrink-0 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="12" cy="12" r="8.5" />
-                                <path d="M3.5 12h17" />
-                                <path d="M12 3.5c2.3 2.4 3.5 5.2 3.5 8.5s-1.2 6.1-3.5 8.5c-2.3-2.4-3.5-5.2-3.5-8.5s1.2-6.1 3.5-8.5z" />
-                            </svg>
-
-                            <span class="flex min-w-0 flex-col leading-tight" aria-hidden="true">
-                                <span class="truncate text-base text-ink" data-timezone-name>{{ $selectedZone }}</span>
-                                <span class="truncate text-xs text-muted" data-timezone-subtitle>{{ $subtitle($selectedZone) }}</span>
-                            </span>
-
-                            <svg class="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <path d="m8 9 4-4 4 4" />
-                                <path d="m8 15 4 4 4-4" />
-                            </svg>
-
-                            <select
-                                id="timezone"
-                                name="timezone"
-                                @error('timezone') aria-invalid="true" @enderror
-                                aria-describedby="{{ implode(' ', $timezoneDescribed) }}"
-                                @if ($focus === 'timezone') autofocus="autofocus" @endif
-                                class="absolute inset-0 size-full cursor-pointer appearance-none rounded-lg opacity-0"
-                            >
-                                @foreach ($zones as $zone)
-                                    <option value="{{ $zone }}" @selected($zone === $selectedZone) data-subtitle="{{ $subtitle($zone) }}">{{ $zone }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <p id="timezone-hint" class="text-sm text-muted">Broadcast schedules use this timezone, regardless of who views them.</p>
-
-                        @error('timezone')
-                            <p id="timezone-error" class="text-sm text-state-fail">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    <x-timezone-picker
+                        :options="$timezones"
+                        :value="$timezone"
+                        :autofocus="$focus === 'timezone'"
+                        hint="Broadcast schedules use this timezone, regardless of who views them."
+                    />
 
                     <p class="sr-only" aria-live="polite" data-pending-status="Creating organization…"></p>
 

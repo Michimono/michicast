@@ -125,9 +125,7 @@
     </div>
 
     <div @class(['flex flex-col gap-2', 'mt-1 border-t border-line pt-6' => $separateTimezone])>
-        <x-select
-            name="timezone"
-            label="Timezone"
+        <x-timezone-picker
             :value="old('timezone', $selectedTimezone)"
             :options="$timezones"
             :hint="$separateTimezone
