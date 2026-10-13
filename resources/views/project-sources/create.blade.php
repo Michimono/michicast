@@ -20,7 +20,7 @@
                     :options="$types"
                     :value="$type"
                     hint="Settings for the chosen type appear below."
-                    onchange="this.form.requestSubmit()"
+                    data-auto-submit
                 />
             </form>
 

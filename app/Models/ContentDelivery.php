@@ -42,6 +42,7 @@ use Illuminate\Support\Carbon;
     'broadcast_run_id',
     'status',
     'external_reference',
+    'published_message',
     'failure',
     'error_detail',
     'retry_after_seconds',

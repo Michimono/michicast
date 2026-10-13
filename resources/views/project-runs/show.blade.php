@@ -134,6 +134,7 @@
                         'url' => $delivery->contentItem?->canonical_url,
                         'detail' => $secrets->redact($delivery->error_detail),
                         'reference' => $delivery->external_reference,
+                        'message' => $delivery->published_message,
                         'status' => $delivery->status,
                     ])
                     ->concat(
@@ -143,6 +144,7 @@
                             'url' => $skip->contentItem?->canonical_url,
                             'detail' => $secrets->redact($skip->reason),
                             'reference' => null,
+                            'message' => null,
                             'status' => App\Enums\DeliveryStatus::Skipped,
                         ])
                     );
@@ -167,6 +169,11 @@
 
                             @if ($outcome['detail'])
                                 <p class="text-sm text-muted">{{ $outcome['detail'] }}</p>
+                            @endif
+
+                            {{-- Activity Log destinations keep the message here instead of sending it (#202). --}}
+                            @if ($outcome['message'])
+                                <p class="rounded-md border border-line bg-paper px-3 py-2 text-sm whitespace-pre-line text-ink [overflow-wrap:anywhere]" data-delivery-message>{{ $outcome['message'] }}</p>
                             @endif
 
                             <div class="flex flex-wrap gap-3 text-xs">

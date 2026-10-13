@@ -690,6 +690,7 @@ class ExecutingProjectRunner implements ProjectRunner
             if ($result->successful) {
                 $delivery->status = DeliveryStatus::Delivered;
                 $delivery->external_reference = $result->externalReference;
+                $delivery->published_message = $result->publishedMessage;
                 $delivery->failure = null;
                 $delivery->error_detail = null;
                 $delivery->retry_after_seconds = null;

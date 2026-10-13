@@ -17,14 +17,16 @@ readonly class DeliveryResult
         public ?string $failureReason = null,
         public ?DeliveryFailure $failure = null,
         public ?int $retryAfterSeconds = null,
+        public ?string $publishedMessage = null,
     ) {}
 
     /**
      * @param  string|null  $externalReference  The destination's own id for the published message, when it gives one.
+     * @param  string|null  $publishedMessage  The message as published, kept on the delivery when the destination is the activity log itself.
      */
-    public static function success(?string $externalReference = null): self
+    public static function success(?string $externalReference = null, ?string $publishedMessage = null): self
     {
-        return new self(true, $externalReference);
+        return new self(true, $externalReference, publishedMessage: $publishedMessage);
     }
 
     /**

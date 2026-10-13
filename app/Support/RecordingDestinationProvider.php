@@ -6,10 +6,11 @@ use App\Enums\ConfigurationFieldType;
 use Illuminate\Validation\Rule;
 
 /**
- * A destination that records what it would have published instead of sending
- * it. It keeps the registry and the destination screens buildable until the
- * first real provider lands, and gives tests a destination they can steer
- * through its own configuration.
+ * Shown to users as "Activity Log" (#202): instead of sending anywhere, each
+ * message is kept on its delivery row (published_message) and shown in the
+ * broadcast's delivery history. The internal type stays `recording` so stored
+ * destinations need no data migration, and tests can still steer it through
+ * its own configuration (outcome).
  */
 class RecordingDestinationProvider implements DestinationProvider
 {
@@ -25,7 +26,7 @@ class RecordingDestinationProvider implements DestinationProvider
 
     public function label(): string
     {
-        return 'Recording destination';
+        return 'Activity Log';
     }
 
     /**
@@ -49,7 +50,7 @@ class RecordingDestinationProvider implements DestinationProvider
                 name: 'channel',
                 label: 'Channel',
                 type: ConfigurationFieldType::Text,
-                hint: 'Where this recording destination pretends to publish.',
+                hint: 'A name for this log, e.g. the channel you would publish to.',
             ),
         ];
     }
@@ -92,7 +93,7 @@ class RecordingDestinationProvider implements DestinationProvider
         $token = $destination->credential('token');
 
         if (! is_string($token) || trim($token) === '') {
-            return ConnectionTestResult::failure('The recording destination has no token to authenticate with.');
+            return ConnectionTestResult::failure('The activity log has no token to authenticate with.');
         }
 
         $result = $this->publish($destination, new PreparedMessage(
@@ -101,20 +102,20 @@ class RecordingDestinationProvider implements DestinationProvider
 
         if ($result->successful) {
             return ConnectionTestResult::success(
-                'Sent a test message to the recording destination (ref '.$result->externalReference.').',
+                'Sent a test message to the activity log (ref '.$result->externalReference.').',
             );
         }
 
         return ConnectionTestResult::failure(
-            $result->failureReason ?? 'The recording destination connection test failed.',
+            $result->failureReason ?? 'The activity log connection test failed.',
         );
     }
 
     public function publish(DestinationDefinition $destination, PreparedMessage $message): DeliveryResult
     {
         return match ($destination->config('outcome', 'success')) {
-            'permanent_failure' => DeliveryResult::permanentFailure('The recording destination rejected the message.'),
-            'transient_failure' => DeliveryResult::transientFailure('The recording destination did not answer in time.'),
+            'permanent_failure' => DeliveryResult::permanentFailure('The activity log rejected the message.'),
+            'transient_failure' => DeliveryResult::transientFailure('The activity log did not answer in time.'),
             default => $this->record($message),
         };
     }
@@ -133,6 +134,12 @@ class RecordingDestinationProvider implements DestinationProvider
     {
         $this->published[] = $message;
 
-        return DeliveryResult::success('recording-'.count($this->published));
+        $text = $message->body;
+
+        if (is_string($message->link) && trim($message->link) !== '') {
+            $text .= "\n\n".trim($message->link);
+        }
+
+        return DeliveryResult::success('recording-'.count($this->published), $text);
     }
 }
