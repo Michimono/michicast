@@ -6,7 +6,7 @@ use App\Enums\ConfigurationFieldType;
 use Illuminate\Validation\Rule;
 
 /**
- * Shown to users as "Activity Log" (#202): instead of sending anywhere, each
+ * Shown to users as "Activity log (testing)" (#202): instead of sending anywhere, each
  * message is kept on its delivery row (published_message) and shown in the
  * broadcast's delivery history. The internal type stays `recording` so stored
  * destinations need no data migration, and tests can still steer it through
@@ -26,7 +26,7 @@ class RecordingDestinationProvider implements DestinationProvider
 
     public function label(): string
     {
-        return 'Activity Log';
+        return 'Activity log (testing)';
     }
 
     /**
@@ -116,7 +116,7 @@ class RecordingDestinationProvider implements DestinationProvider
         return match ($destination->config('outcome', 'success')) {
             'permanent_failure' => DeliveryResult::permanentFailure('The activity log rejected the message.'),
             'transient_failure' => DeliveryResult::transientFailure('The activity log did not answer in time.'),
-            default => $this->record($message),
+            default => $this->record($destination, $message),
         };
     }
 
@@ -130,7 +130,7 @@ class RecordingDestinationProvider implements DestinationProvider
         return $this->published;
     }
 
-    private function record(PreparedMessage $message): DeliveryResult
+    private function record(DestinationDefinition $destination, PreparedMessage $message): DeliveryResult
     {
         $this->published[] = $message;
 
@@ -140,6 +140,19 @@ class RecordingDestinationProvider implements DestinationProvider
             $text .= "\n\n".trim($message->link);
         }
 
-        return DeliveryResult::success('recording-'.count($this->published), $text);
+        $reference = 'recording-'.count($this->published);
+
+        // The internal object as delivered, for analysis. Credentials never go in.
+        $payload = [
+            'destination' => ['type' => $destination->type, 'id' => $destination->destinationId, 'channel' => $destination->config('channel')],
+            'message' => ['body' => $message->body, 'link' => $message->link, 'media' => $message->media],
+        ];
+
+        // Every mapped destination field, when a content mapping produced the message.
+        if ($message->fields !== []) {
+            $payload['fields'] = $message->fields;
+        }
+
+        return DeliveryResult::success($reference, $text, $payload);
     }
 }

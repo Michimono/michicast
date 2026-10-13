@@ -691,6 +691,17 @@ class ExecutingProjectRunner implements ProjectRunner
                 $delivery->status = DeliveryStatus::Delivered;
                 $delivery->external_reference = $result->externalReference;
                 $delivery->published_message = $result->publishedMessage;
+                $delivery->published_payload = $result->publishedPayload === null ? null : [
+                    'content_item' => [
+                        'id' => $item->getKey(),
+                        'source_id' => $item->source_id,
+                        'external_id' => $item->external_id,
+                        'canonical_url' => $item->canonical_url,
+                    ],
+                    'broadcast_id' => $broadcast->getKey(),
+                    'attempt' => $attempt,
+                    ...$result->publishedPayload,
+                ];
                 $delivery->failure = null;
                 $delivery->error_detail = null;
                 $delivery->retry_after_seconds = null;

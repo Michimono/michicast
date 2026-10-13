@@ -18,15 +18,18 @@ readonly class DeliveryResult
         public ?DeliveryFailure $failure = null,
         public ?int $retryAfterSeconds = null,
         public ?string $publishedMessage = null,
+        /** @var array<string, mixed>|null */
+        public ?array $publishedPayload = null,
     ) {}
 
     /**
      * @param  string|null  $externalReference  The destination's own id for the published message, when it gives one.
      * @param  string|null  $publishedMessage  The message as published, kept on the delivery when the destination is the activity log itself.
+     * @param  array<string, mixed>|null  $publishedPayload  The internal object that was delivered, kept as JSON for analysis.
      */
-    public static function success(?string $externalReference = null, ?string $publishedMessage = null): self
+    public static function success(?string $externalReference = null, ?string $publishedMessage = null, ?array $publishedPayload = null): self
     {
-        return new self(true, $externalReference, publishedMessage: $publishedMessage);
+        return new self(true, $externalReference, publishedMessage: $publishedMessage, publishedPayload: $publishedPayload);
     }
 
     /**

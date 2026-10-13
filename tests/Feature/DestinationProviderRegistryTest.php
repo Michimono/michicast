@@ -45,7 +45,7 @@ class DestinationProviderRegistryTest extends TestCase
         $options = $this->registry()->options();
 
         $this->assertArrayHasKey('recording', $options);
-        $this->assertSame('Activity Log', $options['recording']);
+        $this->assertSame('Activity log (testing)', $options['recording']);
     }
 
     public function test_capabilities_are_queried_without_knowing_the_provider(): void

@@ -204,7 +204,7 @@ return [
 
     /*
     | Optional destination types (#202). `recording` is shown to users as
-    | "Activity Log": it keeps each message in the broadcast's delivery
+    | "Activity log (testing)": it keeps each message in the broadcast's delivery
     | history instead of sending it, so it is offered in every environment.
     | Set MICHICAST_TEST_DESTINATIONS=false to stop offering it for new
     | destinations; existing ones always keep working.

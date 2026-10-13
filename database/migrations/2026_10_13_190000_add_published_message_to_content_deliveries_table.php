@@ -13,13 +13,14 @@ return new class extends Migration
     {
         Schema::table('content_deliveries', function (Blueprint $table) {
             $table->text('published_message')->nullable()->after('external_reference');
+            $table->json('published_payload')->nullable()->after('published_message');
         });
     }
 
     public function down(): void
     {
         Schema::table('content_deliveries', function (Blueprint $table) {
-            $table->dropColumn('published_message');
+            $table->dropColumn(['published_message', 'published_payload']);
         });
     }
 };

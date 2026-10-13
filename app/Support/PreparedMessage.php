@@ -10,10 +10,12 @@ readonly class PreparedMessage
 {
     /**
      * @param  list<array<array-key, mixed>>  $media
+     * @param  array<string, mixed>  $fields  Every mapped destination field, as the mapping produced it (for the activity log).
      */
     public function __construct(
         public string $body,
         public ?string $link = null,
         public array $media = [],
+        public array $fields = [],
     ) {}
 }

@@ -74,13 +74,15 @@
                             <p class="text-sm text-muted">{{ $secrets->redact($delivery->error_detail) }}</p>
                         @endif
 
-                        {{-- Activity Log destinations keep the message here instead of sending it (#202). --}}
+                        {{-- Activity log (testing) destinations keep the message here instead of sending it (#202). --}}
                         @if ($delivery->published_message)
                             <figure class="flex flex-col gap-1">
                                 <figcaption class="font-mono text-xs text-muted">Logged message</figcaption>
                                 <p class="rounded-md border border-line bg-paper px-3 py-2 text-sm whitespace-pre-line text-ink [overflow-wrap:anywhere]" data-delivery-message>{{ $delivery->published_message }}</p>
                             </figure>
                         @endif
+
+                        <x-delivery-payload :payload="$delivery->published_payload" />
 
                         @if ($delivery->attempts->count() > 1)
                             <ol class="flex flex-col gap-1 border-l border-line pl-3">

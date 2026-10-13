@@ -20,7 +20,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The Activity Log destination (internal type `recording`, #202): offered by
+ * The Activity log (testing) destination (internal type `recording`, #202): offered by
  * default everywhere, switchable off for new destinations while existing ones
  * keep working; it keeps each message in the delivery history. Also covers the
  * create form's instant type switch.
@@ -51,13 +51,13 @@ class TestDestinationVisibilityTest extends TestCase
             ->assertOk()
             ->assertSee('value="telegram"', false)
             ->assertDontSee('value="recording"', false)
-            ->assertDontSee('Activity Log');
+            ->assertDontSee('Activity log (testing)');
 
         // Asking for it explicitly falls back to the default selectable type.
         $this->actingAs($user)
             ->get(route('broadcast-destinations.create', [$organization, $project, 'type' => 'recording']))
             ->assertOk()
-            ->assertDontSee('Activity Log');
+            ->assertDontSee('Activity log (testing)');
     }
 
     public function test_recording_is_offered_in_local(): void
@@ -69,7 +69,7 @@ class TestDestinationVisibilityTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcast-destinations.create', [$organization, $project, 'type' => 'recording']))
             ->assertOk()
-            ->assertSee('Activity Log');
+            ->assertSee('Activity log (testing)');
     }
 
     public function test_store_rejects_recording_in_production(): void
@@ -118,11 +118,11 @@ class TestDestinationVisibilityTest extends TestCase
             ->assertOk()
             ->assertSee('data-destination-type-switch', false)
             ->assertSee('data-destination-type-reload', false)
-            ->assertSee('Activity Log')
+            ->assertSee('Activity log (testing)')
             ->getContent();
 
         $this->assertIsString($html);
-        // Telegram is the default; its group is live, the Activity Log group waits disabled.
+        // Telegram is the default; its group is live, the Activity log group waits disabled.
         $this->assertMatchesRegularExpression('/data-destination-type-fields="telegram"\s*>/', $html);
         $this->assertMatchesRegularExpression('/data-destination-type-fields="recording"\s+hidden disabled/', $html);
         $this->assertStringContainsString('name="config[chat_id]"', $html);
@@ -154,6 +154,9 @@ class TestDestinationVisibilityTest extends TestCase
 
         $this->assertTrue($result->successful);
         $this->assertSame("Hello Pokémon fans\n\nhttps://example.com/post", $result->publishedMessage);
+        $this->assertSame(['type' => 'recording', 'id' => 1, 'channel' => 'news'], $result->publishedPayload['destination'] ?? null);
+        $this->assertSame('https://example.com/post', $result->publishedPayload['message']['link'] ?? null);
+        $this->assertArrayNotHasKey('token', $result->publishedPayload['destination'] ?? []);
     }
 
     public function test_logged_messages_show_in_the_delivery_history(): void
@@ -165,6 +168,7 @@ class TestDestinationVisibilityTest extends TestCase
             'broadcast_id' => $broadcast->getKey(),
             'destination_id' => $broadcast->destination_id,
             'published_message' => "Weekly news\n\nhttps://example.com/post",
+            'published_payload' => ['message' => ['body' => 'Weekly <b>news</b>', 'link' => 'https://example.com/post']],
         ]);
 
         $this->actingAs($user)
@@ -172,7 +176,11 @@ class TestDestinationVisibilityTest extends TestCase
             ->assertOk()
             ->assertSee('Logged message')
             ->assertSee('data-delivery-message', false)
-            ->assertSee('Weekly news');
+            ->assertSee('Weekly news')
+            ->assertSee('data-delivery-payload', false)
+            ->assertSee('Sent payload')
+            // Pretty-printed and escaped.
+            ->assertSee('&quot;body&quot;: &quot;Weekly &lt;b&gt;news&lt;/b&gt;&quot;', false);
     }
 
     public function test_a_run_to_the_activity_log_shows_the_message_in_activity(): void
@@ -210,11 +218,21 @@ class TestDestinationVisibilityTest extends TestCase
         $message = (string) $broadcast->deliveries()->sole()->published_message;
         $this->assertStringContainsString('Activity log item', $message);
 
+        $payload = $broadcast->deliveries()->sole()->published_payload;
+        $this->assertIsArray($payload);
+        $this->assertSame('item-1', $payload['content_item']['external_id']);
+        $this->assertSame($broadcast->getKey(), $payload['broadcast_id']);
+        $this->assertSame('recording', $payload['destination']['type']);
+        $this->assertStringContainsString('Activity log item', $payload['message']['body']);
+        $this->assertStringNotContainsString('"token"', (string) json_encode($payload));
+
         $this->actingAs($user)
             ->get(route('broadcast-runs.show', [$organization, $project, ProjectRun::query()->sole()]))
             ->assertOk()
             ->assertSee('data-delivery-message', false)
-            ->assertSee('Activity log item');
+            ->assertSee('Activity log item')
+            ->assertSee('Sent payload')
+            ->assertSee('&quot;external_id&quot;: &quot;item-1&quot;', false);
     }
 
     /**

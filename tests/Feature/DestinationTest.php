@@ -52,7 +52,7 @@ class DestinationTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcast-destinations.create', [$organization, $project, 'type' => 'recording']))
             ->assertOk()
-            ->assertSee('Activity Log')
+            ->assertSee('Activity log (testing)')
             ->assertSee('Channel')
             ->assertSee('Token')
             ->assertSee('config[channel]', false)

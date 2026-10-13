@@ -29,6 +29,7 @@ final class LogicalMessageAdapter
             body: $text,
             link: $link,
             media: $media,
+            fields: $logical,
         );
     }
 }
