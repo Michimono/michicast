@@ -154,9 +154,9 @@ class TestDestinationVisibilityTest extends TestCase
 
         $this->assertTrue($result->successful);
         $this->assertSame("Hello Pokémon fans\n\nhttps://example.com/post", $result->publishedMessage);
-        $this->assertSame(['type' => 'recording', 'id' => 1, 'channel' => 'news'], $result->publishedPayload['destination'] ?? null);
+        $this->assertSame(['type' => 'recording', 'id' => 1, 'channel' => 'news'], $result->publishedPayload['destination']);
         $this->assertSame('https://example.com/post', $result->publishedPayload['message']['link'] ?? null);
-        $this->assertArrayNotHasKey('token', $result->publishedPayload['destination'] ?? []);
+        $this->assertArrayNotHasKey('token', $result->publishedPayload['destination']);
     }
 
     public function test_logged_messages_show_in_the_delivery_history(): void
@@ -219,7 +219,7 @@ class TestDestinationVisibilityTest extends TestCase
         $this->assertStringContainsString('Activity log item', $message);
 
         $payload = $broadcast->deliveries()->sole()->published_payload;
-        $this->assertIsArray($payload);
+        $this->assertNotNull($payload);
         $this->assertSame('item-1', $payload['content_item']['external_id']);
         $this->assertSame($broadcast->getKey(), $payload['broadcast_id']);
         $this->assertSame('recording', $payload['destination']['type']);
