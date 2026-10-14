@@ -356,7 +356,7 @@ class ProjectDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Play')
             ->assertSee('disabled', false)
-            ->assertSee('A project cannot be activated until it has at least one enabled broadcast.', false)
+            ->assertSee('Add a source and a destination to play this broadcast.', false)
             ->assertDontSee(route('active-broadcasts.store', [$organization, $project]), false);
     }
 

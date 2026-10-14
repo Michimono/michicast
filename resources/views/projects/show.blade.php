@@ -27,9 +27,9 @@
                                         <x-button>Play</x-button>
                                     </form>
                                 @else
-                                    <span class="inline-flex" title="{{ $project->activationBlockReason() }}">
-                                        <x-button disabled :paw="false" type="button">Play</x-button>
-                                    </span>
+                                    <x-tooltip :text="$project->activationBlockReason()" id="play-disabled-reason" align="end">
+                                        <x-button disabled aria-disabled="true" :paw="false" type="button" tabindex="-1">Play</x-button>
+                                    </x-tooltip>
                                 @endif
                             @elseif ($project->canPause())
                                 <form method="POST" action="{{ route('paused-broadcasts.store', $project) }}" class="inline-flex">
