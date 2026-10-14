@@ -91,19 +91,45 @@ class Project extends Model
     }
 
     /**
-     * Why Activate is blocked for a draft, or null when activation is allowed / not a draft.
+     * Why Play is blocked for a draft, as a brief next step for the user, or null
+     * when activation is allowed / not a draft. Ordered most actionable first.
      */
     public function activationBlockReason(): ?string
     {
-        if ($this->status !== ProjectStatus::Draft) {
+        if ($this->status !== ProjectStatus::Draft || $this->hasRequiredBroadcasts()) {
             return null;
         }
 
-        if ($this->hasRequiredBroadcasts()) {
-            return null;
+        $hasSource = $this->sources()->notArchived()->exists();
+        $hasDestination = $this->destinations()->notArchived()->exists();
+
+        if (! $hasSource && ! $hasDestination) {
+            return 'Add a source and a destination to play this broadcast.';
         }
 
-        return 'A project cannot be activated until it has at least one enabled broadcast.';
+        if (! $hasSource) {
+            return 'Add a source to play this broadcast.';
+        }
+
+        if (! $hasDestination) {
+            return 'Add a destination to play this broadcast.';
+        }
+
+        $pipelines = $this->broadcasts()->notArchived();
+
+        if (! $pipelines->exists()) {
+            return 'Connect the source to a destination to play this broadcast.';
+        }
+
+        if ($this->broadcasts()->notArchived()->whereNotNull('failure_pause_reason')->exists()) {
+            return 'Paused after repeated failures. Fix the pipeline and re-enable it to play.';
+        }
+
+        if (app(ResourceQuotas::class)->wouldExceed($this->organization, QuotaMetric::ActiveBroadcasts)) {
+            return 'Active broadcast limit reached. Pause or archive another broadcast to play this one.';
+        }
+
+        return 'Enable the pipeline to play this broadcast.';
     }
 
     public function canPause(): bool

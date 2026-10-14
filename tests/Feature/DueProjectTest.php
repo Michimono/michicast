@@ -114,7 +114,7 @@ class DueProjectTest extends TestCase
             ->assertOk()
             ->assertSee('Settings')
             ->assertSee('Play')
-            ->assertSee('A project cannot be activated until it has at least one enabled broadcast.', false)
+            ->assertSee('Add a source and a destination to play this broadcast.', false)
             ->assertDontSee('Run now')
             ->assertDontSee(route('immediate-broadcast-runs.store', [$organization, $project]), false);
     }
