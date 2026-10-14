@@ -61,12 +61,16 @@ class RssSourceProvider implements SourceProvider
         return [
             new ConfigurationField(
                 name: 'feed_url',
+                placeholder: 'https://example.com/feed.xml',
+                required: true,
                 label: 'Feed URL',
                 type: ConfigurationFieldType::Url,
                 hint: 'The RSS or Atom feed this source reads.',
             ),
             new ConfigurationField(
                 name: 'item_limit',
+                placeholder: (string) self::DEFAULT_ITEM_LIMIT,
+                optional: true,
                 label: 'Item limit',
                 type: ConfigurationFieldType::Number,
                 hint: 'How many of the newest entries to keep, up to '.self::MAX_ITEM_LIMIT.'. Defaults to '.self::DEFAULT_ITEM_LIMIT.'.',

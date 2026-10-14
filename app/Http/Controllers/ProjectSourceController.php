@@ -6,6 +6,7 @@ use App\Http\Requests\StoreSourceRequest;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\Source;
+use App\Support\SourceFormData;
 use App\Support\SourceProviderRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,10 @@ use Illuminate\View\View;
 
 class ProjectSourceController extends Controller
 {
-    public function __construct(private SourceProviderRegistry $providers) {}
+    public function __construct(
+        private SourceProviderRegistry $providers,
+        private SourceFormData $form,
+    ) {}
 
     public function create(Request $request, Organization $organization, Project $project): View|RedirectResponse
     {
@@ -30,13 +34,7 @@ class ProjectSourceController extends Controller
 
         abort_if($type === null, 404);
 
-        return view('project-sources.create', [
-            'project' => $project,
-            'types' => $this->providers->options(),
-            'type' => $type,
-            'fields' => $this->providers->configurationFields($type),
-            'supportsPreview' => $this->providers->capabilities($type)->supportsConnectionTest,
-        ]);
+        return $this->form->view($project, $type);
     }
 
     public function store(StoreSourceRequest $request, Organization $organization, Project $project): RedirectResponse

@@ -1,24 +1,26 @@
-@props(['name', 'label', 'value' => null, 'options' => [], 'hint' => null, 'size' => 'md'])
+@props(['name', 'label', 'value' => null, 'options' => [], 'hint' => null, 'size' => 'md', 'id' => null])
 
 @php
     // A field posted as "config[format]" is read back as "config.format".
     $field = rtrim(str_replace(['[', ']'], ['.', ''], $name), '.');
     $choices = array_is_list($options) ? array_combine($options, $options) : $options;
     $selected = old($field, $value);
-    $described = array_filter([$hint ? $field.'-hint' : null, $errors->has($field) ? $field.'-error' : null]);
+    // id: override when several forms on one page share a field name.
+    $id ??= $field;
+    $described = array_filter([$hint ? $id.'-hint' : null, $errors->has($field) ? $id.'-error' : null]);
     // size="lg": the taller, roomier control of focused pages (first organization).
     $large = $size === 'lg';
 @endphp
 
 <div @class(['flex flex-col', 'gap-1.5' => ! $large, 'gap-2' => $large])>
-    <label class="text-sm font-medium" for="{{ $field }}">{{ $label }}</label>
+    <label class="text-sm font-medium" for="{{ $id }}">{{ $label }}</label>
 
     @if ($large)
         <div class="relative">
     @endif
 
     <select
-        id="{{ $field }}"
+        id="{{ $id }}"
         name="{{ $name }}"
         @error($field) aria-invalid="true" @enderror
         @if ($described) aria-describedby="{{ implode(' ', $described) }}" @endif
@@ -43,10 +45,10 @@
     @endif
 
     @if ($hint)
-        <p id="{{ $field }}-hint" class="text-sm text-muted">{{ $hint }}</p>
+        <p id="{{ $id }}-hint" class="text-sm text-muted">{{ $hint }}</p>
     @endif
 
     @error($field)
-        <p id="{{ $field }}-error" class="text-sm text-state-fail">{{ $message }}</p>
+        <p id="{{ $id }}-error" class="text-sm text-state-fail">{{ $message }}</p>
     @enderror
 </div>

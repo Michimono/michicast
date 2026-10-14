@@ -52,12 +52,12 @@ class SourceTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcast-sources.create', [$organization, $project, 'type' => 'rss']))
             ->assertOk()
-            ->assertSee('RSS / Atom feed')
+            ->assertSee('RSS / Atom')
             ->assertDontSee('Fake source')
             ->assertSee('Feed URL')
             ->assertSee('config[feed_url]', false)
-            ->assertSee('Enter a feed URL and press Test to see the latest entry here.')
-            ->assertDontSee('Show settings');
+            ->assertSee('Your preview will appear here')
+            ->assertSee('<noscript>', false);
     }
 
     public function test_an_editor_can_add_a_source(): void

@@ -79,6 +79,8 @@ class RedditSourceProvider implements SourceProvider
         return [
             new ConfigurationField(
                 name: 'subreddit',
+                placeholder: 'pokemon',
+                required: true,
                 label: 'Subreddit',
                 type: ConfigurationFieldType::Text,
                 hint: 'Name without r/ (for example pokemon). Free public JSON fetch — no OAuth, API keys, or paid Reddit API. Each fetch returns a list of posts (one item per post), not a single post. Reddit rate-limits anonymous clients.',
@@ -110,6 +112,8 @@ class RedditSourceProvider implements SourceProvider
             ),
             new ConfigurationField(
                 name: 'item_limit',
+                placeholder: (string) self::DEFAULT_ITEM_LIMIT,
+                optional: true,
                 label: 'Item limit',
                 type: ConfigurationFieldType::Number,
                 hint: 'How many posts to keep from the listing as a list/array of items, up to '.self::MAX_ITEM_LIMIT.'. Defaults to '.self::DEFAULT_ITEM_LIMIT.'.',
