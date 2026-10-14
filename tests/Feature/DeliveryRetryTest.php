@@ -71,7 +71,7 @@ class DeliveryRetryTest extends TestCase
         $this->assertCount(2, $attempts);
         $this->assertSame(DeliveryStatus::Failed, $attempts[0]->status);
         $this->assertSame(DeliveryFailure::Transient, $attempts[0]->failure);
-        $this->assertSame('The recording destination did not answer in time.', $attempts[0]->error_detail);
+        $this->assertSame('The activity log did not answer in time.', $attempts[0]->error_detail);
         $this->assertFalse($attempts[0]->is_retry);
         $this->assertSame(DeliveryStatus::Delivered, $attempts[1]->status);
         $this->assertTrue($attempts[1]->is_retry);
@@ -80,7 +80,7 @@ class DeliveryRetryTest extends TestCase
             ->get(route('broadcast-deliveries.index', [$organization, $broadcast]))
             ->assertOk()
             ->assertSee('2 attempts')
-            ->assertSee('The recording destination did not answer in time.');
+            ->assertSee('The activity log did not answer in time.');
     }
 
     public function test_a_retry_never_creates_a_second_delivery_row_or_message(): void

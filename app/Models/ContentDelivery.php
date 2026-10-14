@@ -34,6 +34,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $retry_requested_at
  * @property Carbon $attempted_at
  * @property Carbon|null $finished_at
+ * @property string|null $published_message
+ * @property array<string, mixed>|null $published_payload
  */
 #[Fillable([
     'content_item_id',
@@ -42,6 +44,8 @@ use Illuminate\Support\Carbon;
     'broadcast_run_id',
     'status',
     'external_reference',
+    'published_message',
+    'published_payload',
     'failure',
     'error_detail',
     'retry_after_seconds',
@@ -182,6 +186,7 @@ class ContentDelivery extends Model
             'status' => DeliveryStatus::class,
             'failure' => DeliveryFailure::class,
             'retry_after_seconds' => 'integer',
+            'published_payload' => 'array',
             'retry_requested_at' => 'datetime',
             'attempted_at' => 'datetime',
             'finished_at' => 'datetime',

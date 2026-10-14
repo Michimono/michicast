@@ -13,9 +13,9 @@ final class RecordingDestinationSchema
         return new ContentSchema(
             version: 1,
             providerType: 'recording',
-            label: 'Recording destination',
+            label: 'Activity log (testing)',
             fields: [
-                new SchemaField('text', 'Message text', FieldType::Text, 'Body of the recorded message', true),
+                new SchemaField('text', 'Message text', FieldType::Text, 'Body of the logged message', true),
                 new SchemaField('link', 'Link', FieldType::Url, 'Optional link', false),
                 new SchemaField(
                     name: 'media',

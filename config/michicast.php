@@ -197,9 +197,22 @@ return [
     */
 
     'destinations' => [
-        'recording' => RecordingDestinationProvider::class,
+        // Telegram first: the registry's first offered type is the form default.
         'telegram' => TelegramDestinationProvider::class,
+        'recording' => RecordingDestinationProvider::class,
     ],
+
+    /*
+    | Optional destination types (#202). `recording` is shown to users as
+    | "Activity log (testing)": it keeps each message in the broadcast's delivery
+    | history instead of sending it, so it is offered in every environment.
+    | Set MICHICAST_TEST_DESTINATIONS=false to stop offering it for new
+    | destinations; existing ones always keep working.
+    */
+
+    'test_destinations' => ['recording'],
+
+    'test_destinations_enabled' => (bool) env('MICHICAST_TEST_DESTINATIONS', true),
 
     /*
     |--------------------------------------------------------------------------

@@ -73,13 +73,13 @@ class DestinationConnectionTestTest extends TestCase
                 'credentials' => ['token' => ''],
             ])
             ->assertOk()
-            ->assertSee('The recording destination has no token to authenticate with.');
+            ->assertSee('The activity log has no token to authenticate with.');
 
         $destination->refresh();
 
         $this->assertFalse($destination->last_test_successful);
         $this->assertSame(
-            'The recording destination has no token to authenticate with.',
+            'The activity log has no token to authenticate with.',
             $destination->last_test_message,
         );
     }

@@ -57,6 +57,28 @@ class DestinationProviderRegistry
     }
 
     /**
+     * Types a user may pick for a new destination. Test-only types (Recording)
+     * stay registered, so existing destinations keep working, but are only
+     * offered when enabled (#202).
+     *
+     * @return list<string>
+     */
+    public function selectableTypes(): array
+    {
+        return array_values(array_filter($this->types(), fn (string $type): bool => $this->isSelectable($type)));
+    }
+
+    public function isSelectable(string $type): bool
+    {
+        if (! $this->has($type)) {
+            return false;
+        }
+
+        return (bool) config('michicast.test_destinations_enabled', false)
+            || ! in_array($type, (array) config('michicast.test_destinations', []), true);
+    }
+
+    /**
      * The types a destination form offers, keyed by type string.
      *
      * @return array<string, string>
@@ -65,7 +87,7 @@ class DestinationProviderRegistry
     {
         $options = [];
 
-        foreach ($this->types() as $type) {
+        foreach ($this->selectableTypes() as $type) {
             $options[$type] = $this->get($type)->label();
         }
 
@@ -114,6 +136,6 @@ class DestinationProviderRegistry
      */
     public function defaultType(): ?string
     {
-        return $this->types()[0] ?? null;
+        return $this->selectableTypes()[0] ?? null;
     }
 }

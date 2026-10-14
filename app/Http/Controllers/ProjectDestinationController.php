@@ -36,6 +36,13 @@ class ProjectDestinationController extends Controller
             'type' => $type,
             'fields' => $this->providers->configurationFields($type),
             'credentialFields' => $this->providers->credentialFields($type),
+            // Every offered type's fields, so the form can switch types without a reload.
+            'typeFields' => collect($this->providers->selectableTypes())
+                ->mapWithKeys(fn (string $option): array => [$option => [
+                    'fields' => $this->providers->configurationFields($option),
+                    'credentialFields' => $this->providers->credentialFields($option),
+                ]])
+                ->all(),
         ]);
     }
 
@@ -65,7 +72,7 @@ class ProjectDestinationController extends Controller
     {
         $requested = $request->old('type', $request->string('type')->toString());
 
-        if (is_string($requested) && $this->providers->has($requested)) {
+        if (is_string($requested) && $this->providers->isSelectable($requested)) {
             return $requested;
         }
 

@@ -45,7 +45,7 @@ class DestinationProviderRegistryTest extends TestCase
         $options = $this->registry()->options();
 
         $this->assertArrayHasKey('recording', $options);
-        $this->assertSame('Recording destination', $options['recording']);
+        $this->assertSame('Activity log (testing)', $options['recording']);
     }
 
     public function test_capabilities_are_queried_without_knowing_the_provider(): void
@@ -96,7 +96,7 @@ class DestinationProviderRegistryTest extends TestCase
 
         $this->assertTrue($authenticated->successful);
         $this->assertFalse($refused->successful);
-        $this->assertSame('The recording destination has no token to authenticate with.', $refused->message);
+        $this->assertSame('The activity log has no token to authenticate with.', $refused->message);
     }
 
     public function test_publishing_reports_success_with_the_destination_reference(): void
@@ -124,7 +124,7 @@ class DestinationProviderRegistryTest extends TestCase
 
         $this->assertFalse($result->successful);
         $this->assertSame(DeliveryFailure::Permanent, $result->failure);
-        $this->assertSame('The recording destination rejected the message.', $result->failureReason);
+        $this->assertSame('The activity log rejected the message.', $result->failureReason);
         $this->assertFalse($result->isRetryable());
         $this->assertSame([], $provider->published());
     }
