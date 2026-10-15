@@ -209,9 +209,6 @@ class SourceFormTest extends TestCase
         return new \DOMXPath($dom);
     }
 
-    /**
-     * @return array{User, Organization, Project}
-     */
     public function test_source_create_and_edit_headers_link_back_to_broadcast(): void
     {
         [$user, $organization, $project] = $this->editorProject();
@@ -233,6 +230,9 @@ class SourceFormTest extends TestCase
         $this->assertStringNotContainsString($project->name, $link->textContent);
     }
 
+    /**
+     * @return array{User, Organization, Project}
+     */
     private function editorProject(): array
     {
         $user = User::factory()->create();

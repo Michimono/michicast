@@ -66,25 +66,32 @@ class BroadcastLatestResendTest extends TestCase
         $this->assertSame(1, $resend->length);
         $this->assertSame(
             'Clear delivery state for the latest received item? It will not publish until you use Run now.',
-            $resend->item(0)->getAttribute('data-confirm'),
+            $this->domElement($resend->item(0))->getAttribute('data-confirm'),
         );
 
         $sendLatest = $xpath->query('//form[@data-confirm][@data-run-form][.//button[normalize-space(.)="Send latest"]]');
         $this->assertSame(1, $sendLatest->length);
         $this->assertSame(
             'Publish only the latest received item to the destination now? This bypasses backfill and already-delivered blockers for that item alone.',
-            $sendLatest->item(0)->getAttribute('data-confirm'),
+            $this->domElement($sendLatest->item(0))->getAttribute('data-confirm'),
         );
 
         $archive = $xpath->query('//form[@data-confirm][.//button[normalize-space(.)="Archive"]]');
         $this->assertSame(1, $archive->length);
         $this->assertSame(
             'Archive this broadcast? Historical activity is kept.',
-            $archive->item(0)->getAttribute('data-confirm'),
+            $this->domElement($archive->item(0))->getAttribute('data-confirm'),
         );
-        $this->assertSame(1, $xpath->query('.//input[@type="hidden"][@name="confirmation"][@value="1"]', $archive->item(0))->length);
+        $this->assertSame(1, $xpath->query('.//input[@type="hidden"][@name="confirmation"][@value="1"]', $this->domElement($archive->item(0)))->length);
 
         $this->assertSame(0, $xpath->query('//*[@onsubmit or @onclick or @onchange]')->length);
+    }
+
+    private function domElement(?\DOMNode $node): \DOMElement
+    {
+        $this->assertInstanceOf(\DOMElement::class, $node);
+
+        return $node;
     }
 
     public function test_dashboard_header_is_settings_run_now_and_pause_only(): void
