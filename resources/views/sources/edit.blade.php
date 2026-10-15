@@ -8,7 +8,7 @@
             <a
                 class="mb-2 inline-flex items-center gap-2 text-sm font-medium text-accent underline-offset-4 hover:underline"
                 href="{{ route('broadcasts.show', $source->project) }}"
-            ><span aria-hidden="true">&larr;</span> Back to {{ $source->project->name }}</a>
+            ><span aria-hidden="true">&larr;</span> Back to broadcast</a>
 
             <span class="max-w-full truncate rounded-md bg-accent/10 px-2.5 py-1 font-mono text-[0.6875rem] tracking-[0.12em] text-accent uppercase">{{ $source->project->name }} &middot; Source</span>
             <h1 class="font-display text-4xl tracking-tight break-words text-ink">{{ $source->name }}</h1>

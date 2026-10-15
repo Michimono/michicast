@@ -212,6 +212,27 @@ class SourceFormTest extends TestCase
     /**
      * @return array{User, Organization, Project}
      */
+    public function test_source_create_and_edit_headers_link_back_to_broadcast(): void
+    {
+        [$user, $organization, $project] = $this->editorProject();
+
+        $this->assertBackToBroadcast($this->actingAs($user)->get(route('broadcast-sources.create', [$organization, $project]))->assertOk(), $project);
+
+        $source = Source::factory()->for($project)->create([
+            'type' => 'reddit',
+            'config' => ['subreddit' => 'pokemon', 'sort' => 'top', 'time_period' => 'week'],
+        ]);
+
+        $this->assertBackToBroadcast($this->actingAs($user)->get(route('sources.edit', [$organization, $source]))->assertOk(), $project);
+    }
+
+    private function assertBackToBroadcast(TestResponse $response, Project $project): void
+    {
+        $link = $this->el($this->dom($response), '//a[@href="'.route('broadcasts.show', $project).'"][contains(., "Back to broadcast")]');
+        $this->assertStringEndsWith('Back to broadcast', trim($link->textContent));
+        $this->assertStringNotContainsString($project->name, $link->textContent);
+    }
+
     private function editorProject(): array
     {
         $user = User::factory()->create();
