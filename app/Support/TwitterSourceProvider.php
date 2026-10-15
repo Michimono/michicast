@@ -65,12 +65,16 @@ class TwitterSourceProvider implements SourceProvider
         return [
             new ConfigurationField(
                 name: 'handle',
+                placeholder: '@Pokemon',
+                required: true,
                 label: 'Handle',
                 type: ConfigurationFieldType::Text,
                 hint: 'Public @username only. Best-effort scrape of the public X profile page — may break when X changes or blocks requests. Private accounts are not supported.',
             ),
             new ConfigurationField(
                 name: 'item_limit',
+                placeholder: (string) self::DEFAULT_ITEM_LIMIT,
+                optional: true,
                 label: 'Item limit',
                 type: ConfigurationFieldType::Number,
                 hint: 'How many of the newest posts to keep, up to '.self::MAX_ITEM_LIMIT.'. Defaults to '.self::DEFAULT_ITEM_LIMIT.'.',

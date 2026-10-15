@@ -65,7 +65,7 @@
                     <form
                         method="POST"
                         action="{{ route('broadcast-latest-resends.store', $project) }}"
-                        onsubmit="return confirm('Clear delivery state for the latest received item? It will not publish until you use Run now.')"
+                        data-confirm="Clear delivery state for the latest received item? It will not publish until you use Run now."
                     >
                         @csrf
                         <x-button variant="ghost" :paw="false">Allow resend of latest</x-button>
@@ -77,7 +77,7 @@
                         method="POST"
                         action="{{ route('broadcast-send-latests.store', $project) }}"
                         data-run-form
-                        onsubmit="return confirm('Publish only the latest received item to the destination now? This bypasses backfill and already-delivered blockers for that item alone.')"
+                        data-confirm="Publish only the latest received item to the destination now? This bypasses backfill and already-delivered blockers for that item alone."
                     >
                         @csrf
                         <x-button variant="ghost" :paw="false" data-run-submit>Send latest</x-button>
@@ -118,7 +118,7 @@
                             <form
                                 method="POST"
                                 action="{{ route('archived-broadcasts.store', $project) }}"
-                                onsubmit="return confirm('Archive this broadcast? Historical activity is kept.')"
+                                data-confirm="Archive this broadcast? Historical activity is kept."
                             >
                                 @csrf
                                 <input type="hidden" name="confirmation" value="1">

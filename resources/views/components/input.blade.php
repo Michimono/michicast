@@ -1,18 +1,20 @@
-@props(['name', 'label', 'type' => 'text', 'value' => null, 'hint' => null, 'size' => 'md'])
+@props(['name', 'label', 'type' => 'text', 'value' => null, 'hint' => null, 'size' => 'md', 'id' => null])
 
 @php
     // A field posted as "config[feed_url]" is read back as "config.feed_url".
     $field = rtrim(str_replace(['[', ']'], ['.', ''], $name), '.');
-    $described = array_filter([$hint ? $field.'-hint' : null, $errors->has($field) ? $field.'-error' : null]);
+    // id: override when several forms on one page share a field name.
+    $id ??= $field;
+    $described = array_filter([$hint ? $id.'-hint' : null, $errors->has($field) ? $id.'-error' : null]);
     // size="lg": the taller, roomier control of focused pages (first organization).
     $large = $size === 'lg';
 @endphp
 
 <div @class(['flex flex-col', 'gap-1.5' => ! $large, 'gap-2' => $large])>
-    <label class="text-sm font-medium" for="{{ $field }}">{{ $label }}@if ($large && $attributes->has('required'))<span class="ml-0.5 text-state-fail" aria-hidden="true">*</span>@endif</label>
+    <label class="text-sm font-medium" for="{{ $id }}">{{ $label }}@if ($large && $attributes->get('required'))<span class="ml-0.5 text-state-fail" aria-hidden="true">*</span>@endif</label>
 
     <input
-        id="{{ $field }}"
+        id="{{ $id }}"
         name="{{ $name }}"
         type="{{ $type }}"
         value="{{ old($field, $value) }}"
@@ -28,10 +30,10 @@
     >
 
     @if ($hint)
-        <p id="{{ $field }}-hint" class="text-sm text-muted">{{ $hint }}</p>
+        <p id="{{ $id }}-hint" class="text-sm text-muted">{{ $hint }}</p>
     @endif
 
     @error($field)
-        <p id="{{ $field }}-error" class="text-sm text-state-fail">{{ $message }}</p>
+        <p id="{{ $id }}-error" class="text-sm text-state-fail">{{ $message }}</p>
     @enderror
 </div>

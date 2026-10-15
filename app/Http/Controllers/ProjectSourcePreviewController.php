@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Support\QuotaMeter;
 use App\Support\SourceDefinition;
+use App\Support\SourceFormData;
 use App\Support\SourceProviderRegistry;
 use Illuminate\View\View;
 use Throwable;
@@ -23,6 +24,7 @@ class ProjectSourcePreviewController extends Controller
     public function __construct(
         private SourceProviderRegistry $providers,
         private QuotaMeter $meter,
+        private SourceFormData $form,
     ) {}
 
     public function store(
@@ -63,16 +65,11 @@ class ProjectSourcePreviewController extends Controller
             $previewError = 'The feed could not be previewed. Check the configuration and try again.';
         }
 
-        return view('project-sources.create', [
-            'project' => $project,
-            'types' => $this->providers->options(),
-            'type' => $type,
-            'fields' => $this->providers->configurationFields($type),
+        return $this->form->view($project, $type, [
             'formName' => $request->name(),
             'formConfig' => $config,
             'previewEntry' => $previewEntry,
             'previewError' => $previewError,
-            'supportsPreview' => $this->providers->capabilities($type)->supportsConnectionTest,
         ]);
     }
 

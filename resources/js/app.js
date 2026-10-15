@@ -374,32 +374,6 @@ document.addEventListener('click', (event) => {
 });
 
 /*
- * Source create: enable Test once a feed URL is present.
- */
-(function () {
-    const root = document.querySelector('[data-source-create]');
-
-    if (root === null) {
-        return;
-    }
-
-    const form = root.querySelector('[data-source-create-form]');
-    const testButton = root.querySelector('[data-source-test]');
-    const feedInput = form?.querySelector('[name="config[feed_url]"]');
-
-    if (form === null || testButton === null || feedInput === null) {
-        return;
-    }
-
-    function syncTestButton() {
-        testButton.disabled = feedInput.value.trim() === '';
-    }
-
-    form.addEventListener('input', syncTestButton);
-    form.addEventListener('change', syncTestButton);
-    syncTestButton();
-})();
-/*
  * Schedule fields: the checked frequency tile reveals only the inputs it needs.
  * CSS does this with :has() (see app.css), so it works without JS; this only
  * sets `hidden` for browsers without :has() support.
@@ -702,5 +676,59 @@ document.addEventListener('change', (event) => {
 
     if (target instanceof HTMLSelectElement && target.matches('[data-auto-submit]')) {
         target.form?.requestSubmit();
+    }
+});
+
+/*
+ * Source type tiles (#206). Every offered type's fields render in their own
+ * disabled fieldset; picking a tile enables just that group, so its fields show
+ * (and post) at once. Without JS a <noscript> "Show settings" GET reload is offered.
+ */
+document.querySelectorAll('[data-source-form]').forEach((form) => {
+    const options = form.querySelectorAll('[data-source-type-option]');
+    const groups = form.querySelectorAll('[data-source-type-fields]');
+    const heading = form.querySelector('[data-source-settings-heading]');
+    const icon = form.querySelector('[data-source-settings-icon]');
+    const test = form.querySelector('[data-source-test]');
+
+    if (options.length === 0 || groups.length === 0) {
+        return;
+    }
+
+    options.forEach((option) => {
+        option.addEventListener('change', () => {
+            if (!option.checked) {
+                return;
+            }
+
+            groups.forEach((group) => {
+                const active = group.dataset.sourceTypeFields === option.value;
+                group.hidden = !active;
+                group.disabled = !active;
+
+                if (active) {
+                    if (heading) heading.textContent = group.dataset.sourceTypeHeading ?? '';
+                    if (icon) icon.textContent = group.dataset.sourceTypeIcon ?? '';
+                    if (test) test.hidden = group.dataset.sourceTypePreview !== 'yes';
+                }
+            });
+
+            // Keep a reload or a shared link on the same type.
+            const url = new URL(window.location.href);
+            url.searchParams.set('type', option.value);
+            window.history.replaceState(null, '', url);
+        });
+    });
+});
+
+/*
+ * Forms marked data-confirm ask before submitting. Replaces inline onsubmit
+ * handlers, which the CSP blocks.
+ */
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+
+    if (form instanceof HTMLFormElement && form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
+        event.preventDefault();
     }
 });

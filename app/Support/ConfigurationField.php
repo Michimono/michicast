@@ -13,6 +13,8 @@ readonly class ConfigurationField
 {
     /**
      * @param  array<string, string>  $options  Choices for a select field, keyed by stored value.
+     * @param  bool  $required  Rendered with the HTML required attribute (mirror the provider rules).
+     * @param  bool  $optional  Labelled "(optional)" on forms.
      */
     public function __construct(
         public string $name,
@@ -20,5 +22,8 @@ readonly class ConfigurationField
         public ConfigurationFieldType $type = ConfigurationFieldType::Text,
         public ?string $hint = null,
         public array $options = [],
+        public ?string $placeholder = null,
+        public bool $required = false,
+        public bool $optional = false,
     ) {}
 }

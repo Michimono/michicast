@@ -47,6 +47,53 @@ class BroadcastLatestResendTest extends TestCase
         $this->assertStringContainsString(route('broadcasts.edit', [$organization, $project]), $html);
     }
 
+    public function test_settings_ops_forms_use_csp_safe_confirmations(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $project = Project::factory()->for($organization)->active()->create();
+
+        $html = $this->actingAs($user)
+            ->get(route('broadcasts.edit', [$organization, $project]))
+            ->assertOk()
+            ->getContent();
+
+        libxml_use_internal_errors(true);
+        $dom = new \DOMDocument;
+        $dom->loadHTML('<?xml encoding="utf-8" ?>'.$html);
+        $xpath = new \DOMXPath($dom);
+
+        $resend = $xpath->query('//form[@data-confirm][.//button[normalize-space(.)="Allow resend of latest"]]');
+        $this->assertSame(1, $resend->length);
+        $this->assertSame(
+            'Clear delivery state for the latest received item? It will not publish until you use Run now.',
+            $this->domElement($resend->item(0))->getAttribute('data-confirm'),
+        );
+
+        $sendLatest = $xpath->query('//form[@data-confirm][@data-run-form][.//button[normalize-space(.)="Send latest"]]');
+        $this->assertSame(1, $sendLatest->length);
+        $this->assertSame(
+            'Publish only the latest received item to the destination now? This bypasses backfill and already-delivered blockers for that item alone.',
+            $this->domElement($sendLatest->item(0))->getAttribute('data-confirm'),
+        );
+
+        $archive = $xpath->query('//form[@data-confirm][.//button[normalize-space(.)="Archive"]]');
+        $this->assertSame(1, $archive->length);
+        $this->assertSame(
+            'Archive this broadcast? Historical activity is kept.',
+            $this->domElement($archive->item(0))->getAttribute('data-confirm'),
+        );
+        $this->assertSame(1, $xpath->query('.//input[@type="hidden"][@name="confirmation"][@value="1"]', $this->domElement($archive->item(0)))->length);
+
+        $this->assertSame(0, $xpath->query('//*[@onsubmit or @onclick or @onchange]')->length);
+    }
+
+    private function domElement(?\DOMNode $node): \DOMElement
+    {
+        $this->assertInstanceOf(\DOMElement::class, $node);
+
+        return $node;
+    }
+
     public function test_dashboard_header_is_settings_run_now_and_pause_only(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);
