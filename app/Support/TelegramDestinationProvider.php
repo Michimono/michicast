@@ -62,12 +62,15 @@ class TelegramDestinationProvider implements DestinationProvider
             new ConfigurationField(
                 name: 'chat_id',
                 label: 'Chat ID',
+                placeholder: '@mychannel',
+                required: true,
                 type: ConfigurationFieldType::Text,
                 hint: 'A numeric chat id or a channel username such as @mychannel.',
             ),
             new ConfigurationField(
                 name: 'parse_mode',
                 label: 'Parse mode',
+                optional: true,
                 type: ConfigurationFieldType::Select,
                 hint: 'HTML uses tags like <b>bold</b>. Markdown V2 uses *bold* and _italic_ (single markers, not **). Special characters in content are escaped; formatting markers you type are kept.',
                 options: [
@@ -97,8 +100,10 @@ class TelegramDestinationProvider implements DestinationProvider
             new ConfigurationField(
                 name: 'bot_token',
                 label: 'Bot token',
+                placeholder: '123456:ABC-DEF1234ghIkl',
+                required: true,
                 type: ConfigurationFieldType::Password,
-                hint: 'From BotFather. Leave blank on edit to keep the stored value.',
+                hint: 'From BotFather.',
             ),
         ];
     }

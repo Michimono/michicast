@@ -7,6 +7,7 @@ use App\Models\Destination;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Support\DestinationProviderRegistry;
+use App\Support\DestinationTypePresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -30,15 +31,16 @@ class ProjectDestinationController extends Controller
 
         abort_if($type === null, 404);
 
+        $types = $this->providers->options();
+
         return view('project-destinations.create', [
             'project' => $project,
-            'types' => $this->providers->options(),
             'type' => $type,
-            'fields' => $this->providers->configurationFields($type),
-            'credentialFields' => $this->providers->credentialFields($type),
-            // Every offered type's fields, so the form can switch types without a reload.
-            'typeFields' => collect($this->providers->selectableTypes())
+            // Every offered type's tile and fields, so the form can switch types without a reload.
+            'typeGroups' => collect($this->providers->selectableTypes())
                 ->mapWithKeys(fn (string $option): array => [$option => [
+                    'label' => $types[$option] ?? $option,
+                    'presentation' => DestinationTypePresentation::for($option, $types[$option] ?? $option),
                     'fields' => $this->providers->configurationFields($option),
                     'credentialFields' => $this->providers->credentialFields($option),
                 ]])

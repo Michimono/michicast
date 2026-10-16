@@ -69,7 +69,7 @@ class TestDestinationVisibilityTest extends TestCase
         $this->actingAs($user)
             ->get(route('broadcast-destinations.create', [$organization, $project, 'type' => 'recording']))
             ->assertOk()
-            ->assertSee('Activity log (testing)');
+            ->assertSee('Activity log');
     }
 
     public function test_store_rejects_recording_in_production(): void
@@ -116,18 +116,18 @@ class TestDestinationVisibilityTest extends TestCase
         $html = $this->actingAs($user)
             ->get(route('broadcast-destinations.create', [$organization, $project]))
             ->assertOk()
-            ->assertSee('data-destination-type-switch', false)
+            ->assertSee('data-destination-form', false)
             ->assertSee('data-destination-type-reload', false)
-            ->assertSee('Activity log (testing)')
+            ->assertSee('Activity log')
             ->getContent();
 
         $this->assertIsString($html);
         // Telegram is the default; its group is live, the Activity log group waits disabled.
-        $this->assertMatchesRegularExpression('/data-destination-type-fields="telegram"\s*>/', $html);
-        $this->assertMatchesRegularExpression('/data-destination-type-fields="recording"\s+hidden disabled/', $html);
+        $this->assertMatchesRegularExpression('/data-destination-type-fields="telegram"(?:(?!hidden disabled)[^>])*>/', $html);
+        $this->assertMatchesRegularExpression('/data-destination-type-fields="recording"[^>]*hidden disabled/', $html);
         $this->assertStringContainsString('name="config[chat_id]"', $html);
         $this->assertStringContainsString('name="config[channel]"', $html);
-        $this->assertMatchesRegularExpression('/name="type" value="telegram"\s+data-destination-type-input/', $html);
+        $this->assertMatchesRegularExpression('/value="telegram"\s+class="peer sr-only"\s+data-destination-type-option\s+checked/', $html);
     }
 
     public function test_choosing_a_type_by_query_enables_that_group(): void
@@ -140,8 +140,8 @@ class TestDestinationVisibilityTest extends TestCase
             ->getContent();
 
         $this->assertIsString($html);
-        $this->assertMatchesRegularExpression('/data-destination-type-fields="recording"\s*>/', $html);
-        $this->assertMatchesRegularExpression('/data-destination-type-fields="telegram"\s+hidden disabled/', $html);
+        $this->assertMatchesRegularExpression('/data-destination-type-fields="recording"(?:(?!hidden disabled)[^>])*>/', $html);
+        $this->assertMatchesRegularExpression('/data-destination-type-fields="telegram"[^>]*hidden disabled/', $html);
     }
 
     public function test_the_activity_log_keeps_the_message_it_was_given(): void

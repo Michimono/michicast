@@ -636,34 +636,42 @@ function enhanceTimezonePicker(picker) {
 document.querySelectorAll('[data-timezone-picker]').forEach(enhanceTimezonePicker);
 
 /*
- * Destination type switch (#202). The create form renders every offered type's
- * fields in its own disabled fieldset; picking a type enables just that group,
- * so its fields show (and post) at once. Without JS the "Show settings" GET
- * reload keeps working.
+ * Destination type tiles (#208). Same pattern as the source form: every offered
+ * type's fields render in their own disabled fieldset; picking a tile enables
+ * just that group. Without JS a <noscript> "Show settings" GET reload is offered.
  */
-document.querySelectorAll('[data-destination-type-switch]').forEach((root) => {
-    const select = root.querySelector('[data-destination-type-select]');
-    const input = root.querySelector('[data-destination-type-input]');
-    const groups = root.querySelectorAll('[data-destination-type-fields]');
+document.querySelectorAll('[data-destination-form]').forEach((form) => {
+    const options = form.querySelectorAll('[data-destination-type-option]');
+    const groups = form.querySelectorAll('[data-destination-type-fields]');
+    const heading = form.querySelector('[data-destination-settings-heading]');
+    const icon = form.querySelector('[data-destination-settings-icon]');
 
-    if (!select || !input || groups.length === 0) {
+    if (options.length === 0 || groups.length === 0) {
         return;
     }
 
-    root.querySelector('[data-destination-type-reload]')?.setAttribute('hidden', '');
+    options.forEach((option) => {
+        option.addEventListener('change', () => {
+            if (!option.checked) {
+                return;
+            }
 
-    select.addEventListener('change', () => {
-        groups.forEach((group) => {
-            const active = group.dataset.destinationTypeFields === select.value;
-            group.hidden = !active;
-            group.disabled = !active;
+            groups.forEach((group) => {
+                const active = group.dataset.destinationTypeFields === option.value;
+                group.hidden = !active;
+                group.disabled = !active;
+
+                if (active) {
+                    if (heading) heading.textContent = group.dataset.destinationTypeHeading ?? '';
+                    if (icon) icon.textContent = group.dataset.destinationTypeIcon ?? '';
+                }
+            });
+
+            // Keep a reload or a shared link on the same type.
+            const url = new URL(window.location.href);
+            url.searchParams.set('type', option.value);
+            window.history.replaceState(null, '', url);
         });
-        input.value = select.value;
-
-        // Keep a reload or a shared link on the same type.
-        const url = new URL(window.location.href);
-        url.searchParams.set('type', select.value);
-        window.history.replaceState(null, '', url);
     });
 });
 

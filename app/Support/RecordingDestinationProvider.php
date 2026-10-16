@@ -49,6 +49,8 @@ class RecordingDestinationProvider implements DestinationProvider
             new ConfigurationField(
                 name: 'channel',
                 label: 'Channel',
+                placeholder: 'e.g. news',
+                required: true,
                 type: ConfigurationFieldType::Text,
                 hint: 'A name for this log, e.g. the channel you would publish to.',
             ),
@@ -74,8 +76,9 @@ class RecordingDestinationProvider implements DestinationProvider
             new ConfigurationField(
                 name: 'token',
                 label: 'Token',
+                required: true,
                 type: ConfigurationFieldType::Password,
-                hint: 'Shown only when you type it. Leave blank on edit to keep the stored value.',
+                hint: 'Any value; it is stored like a real secret.',
             ),
         ];
     }
