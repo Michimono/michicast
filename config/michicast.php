@@ -241,9 +241,9 @@ return [
         'plans' => [
             'free' => [
                 // Live fetches per period across every source provider.
-                'source_fetches' => (int) env('QUOTA_FREE_SOURCE_FETCHES', 200),
+                'source_fetches' => (int) env('QUOTA_FREE_SOURCE_FETCHES', 10),
                 // Items published to any destination per period.
-                'deliveries' => (int) env('QUOTA_FREE_DELIVERIES', 100),
+                'deliveries' => (int) env('QUOTA_FREE_DELIVERIES', 10),
                 // Enabled broadcasts across the organization.
                 'active_broadcasts' => (int) env('QUOTA_FREE_ACTIVE_BROADCASTS', 10),
                 'sources' => (int) env('QUOTA_FREE_SOURCES', 10),
