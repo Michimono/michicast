@@ -9,7 +9,9 @@ use App\Support\ConnectionTestOutcome;
 use App\Support\ConnectionTestResult;
 use App\Support\DestinationDefinition;
 use App\Support\DestinationProviderRegistry;
+use App\Support\Pipeline\PipelineEditorPayload;
 use App\Support\SecretRedactor;
+use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Throwable;
 
@@ -25,11 +27,21 @@ class DestinationConnectionTestController extends Controller
         Organization $organization,
         Destination $destination,
         DestinationController $form,
-    ): View {
+        PipelineEditorPayload $payload,
+    ): View|JsonResponse {
         $config = array_merge($destination->config ?? [], $request->configuration());
         $credentials = $request->credentials();
         $result = $this->runTest($destination, $config, $credentials);
         $outcome = $this->persistResult($destination, $result);
+
+        // The pipeline inspector tests in place; the outcome never echoes credentials.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'successful' => $outcome->successful,
+                'message' => $outcome->message,
+                'destination' => $payload->destination($destination),
+            ]);
+        }
 
         return $form->form(
             $destination,

@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\ProjectKind;
 use App\Models\Project;
 use App\Support\CurrentOrganization;
 use App\Support\ProjectScheduleFields;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreProjectRequest extends FormRequest
 {
@@ -26,6 +28,7 @@ class StoreProjectRequest extends FormRequest
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'kind' => ['nullable', 'string', Rule::enum(ProjectKind::class)],
         ];
 
         if ($this->filled('frequency')) {
@@ -33,6 +36,14 @@ class StoreProjectRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    /**
+     * Simple unless the form chose the visual canvas.
+     */
+    public function kind(): ProjectKind
+    {
+        return ProjectKind::tryFrom($this->string('kind')->toString()) ?? ProjectKind::Simple;
     }
 
     public function nullableDescription(): ?string

@@ -113,6 +113,7 @@ class TelegramDestinationProvider implements DestinationProvider
         return new DestinationProviderCapabilities(
             supportsConnectionTest: true,
             supportsMedia: false,
+            maxTextLength: TelegramMessageFormatter::MAX_LENGTH,
         );
     }
 

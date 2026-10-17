@@ -8,7 +8,9 @@ use App\Models\Broadcast;
 use App\Models\Organization;
 use App\Models\Source;
 use App\Support\ConnectionTestOutcome;
+use App\Support\Pipeline\PipelineEditorPayload;
 use App\Support\SourceProviderRegistry;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -16,7 +18,10 @@ use Illuminate\View\View;
 
 class SourceController extends Controller
 {
-    public function __construct(private SourceProviderRegistry $providers) {}
+    public function __construct(
+        private SourceProviderRegistry $providers,
+        private PipelineEditorPayload $payload,
+    ) {}
 
     public function edit(Organization $organization, Source $source): View
     {
@@ -25,12 +30,19 @@ class SourceController extends Controller
         return $this->form($source);
     }
 
-    public function update(UpdateSourceRequest $request, Organization $organization, Source $source): RedirectResponse
+    public function update(UpdateSourceRequest $request, Organization $organization, Source $source): RedirectResponse|JsonResponse
     {
         $source->update([
             'name' => $request->name(),
             'config' => $request->configuration(),
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'The source has been updated.',
+                'source' => $this->payload->source($source->refresh()),
+            ]);
+        }
 
         return redirect()
             ->route('sources.edit', $source)

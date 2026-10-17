@@ -45,6 +45,15 @@
     --color-state-warn: #a16207;
     --color-state-fail: #b3261e;
 
+    /*
+     * Pipeline node categories. Information colour like the delivery states:
+     * each hue names a kind of node and nothing else, and always sits beside
+     * the type label. Kept clear of the state colours and the house ramp.
+     */
+    --color-node-source: #0e7490;
+    --color-node-transform: #6b4fd8;
+    --color-node-destination: #be3a7a;
+
     --radius-card: 0.75rem;
 }
 
@@ -149,4 +158,412 @@
 [data-schedule-fields]:has([data-schedule-frequency][value='weekly']:checked) [data-schedule-panel~='weekly'],
 [data-schedule-fields]:has([data-schedule-frequency][value='interval']:checked) [data-schedule-panel~='interval'] {
     display: flex;
+}
+
+/*
+ * Pipeline editor. The canvas is a pannable, zoomable world; the dotted grid
+ * is a background the script scales and offsets with the viewport, so the
+ * dots stay anchored to world space. Everything positional is set from JS
+ * (CSSOM, not style attributes), which keeps the page within the CSP.
+ *
+ * Nodes have a fixed footprint (--node-w x --node-h). Edge geometry is
+ * computed from these constants rather than measured, so two connections
+ * into one node meet on exactly the same point whatever the node's text.
+ */
+.pipeline-canvas {
+    --grid-size: 24px;
+    --grid-offset-x: 0px;
+    --grid-offset-y: 0px;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+    background-color: var(--color-paper);
+    background-image: radial-gradient(
+        circle,
+        color-mix(in srgb, var(--color-line-strong) 70%, transparent) 1px,
+        transparent 1.25px
+    );
+    background-size: var(--grid-size) var(--grid-size);
+    background-position: var(--grid-offset-x) var(--grid-offset-y);
+    outline: none;
+}
+
+.pipeline-canvas:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
+.pipeline-canvas.is-panning {
+    cursor: grabbing;
+}
+
+.pipeline-canvas.is-connecting,
+.pipeline-canvas.is-connecting * {
+    cursor: crosshair;
+}
+
+.pipeline-canvas.is-dropping {
+    cursor: copy;
+}
+
+.pipeline-world {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+.pipeline-edges {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.pipeline-edges path {
+    pointer-events: stroke;
+}
+
+.pipeline-edge {
+    fill: none;
+    stroke: var(--color-line-strong);
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 120ms ease;
+}
+
+.pipeline-edge.is-draft {
+    stroke: var(--color-accent);
+    stroke-dasharray: 6 5;
+    pointer-events: none;
+}
+
+.pipeline-edge.is-draft.is-valid {
+    stroke-dasharray: none;
+    stroke-width: 2;
+}
+
+.pipeline-edge.is-draft.is-invalid {
+    stroke: var(--color-state-fail);
+}
+
+.pipeline-edge.is-incomplete {
+    stroke-dasharray: 4 5;
+}
+
+.pipeline-edge.is-failed {
+    stroke: var(--color-state-fail);
+}
+
+.pipeline-edge-hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 16;
+    cursor: pointer;
+}
+
+.pipeline-edge-group:hover .pipeline-edge,
+.pipeline-edge-group.is-selected .pipeline-edge {
+    stroke: var(--color-accent);
+    stroke-width: 2.25;
+}
+
+.pipeline-edge-group.is-selected .pipeline-edge {
+    stroke-dasharray: none;
+}
+
+/* The count of items that flowed over an edge during the latest test. */
+.pipeline-edge-badge {
+    pointer-events: none;
+}
+
+.pipeline-edge-badge rect {
+    fill: var(--color-paper-raised);
+    stroke: var(--color-line);
+    stroke-width: 1;
+}
+
+.pipeline-edge-badge text {
+    fill: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    dominant-baseline: central;
+    text-anchor: middle;
+}
+
+.pipeline-edge-badge.is-empty text {
+    fill: var(--color-muted);
+}
+
+.pipeline-edge-badge.is-failed rect {
+    stroke: var(--color-state-fail);
+}
+
+.pipeline-edge-badge.is-failed text {
+    fill: var(--color-state-fail);
+}
+
+.pipeline-edge-group:hover .pipeline-edge-badge rect,
+.pipeline-edge-group.is-selected .pipeline-edge-badge rect {
+    stroke: var(--color-accent);
+}
+
+.pipeline-arrow {
+    fill: var(--color-line-strong);
+}
+
+.pipeline-edge-group:hover .pipeline-arrow,
+.pipeline-edge-group.is-selected .pipeline-arrow,
+.pipeline-arrow.is-accent {
+    fill: var(--color-accent);
+}
+
+.pipeline-arrow.is-fail {
+    fill: var(--color-state-fail);
+}
+
+.pipeline-node {
+    --node-tint: var(--color-muted);
+    position: absolute;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    width: var(--node-w, 13.5rem);
+    height: var(--node-h, 4.5rem);
+    user-select: none;
+    cursor: default;
+    outline: none;
+    transition:
+        box-shadow 120ms ease,
+        border-color 120ms ease,
+        opacity 120ms ease;
+}
+
+.pipeline-node-body {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    height: 100%;
+    padding: 0 0.75rem;
+}
+
+[data-node-category='source'] {
+    --node-tint: var(--color-node-source);
+}
+
+[data-node-category='transform'] {
+    --node-tint: var(--color-node-transform);
+}
+
+[data-node-category='destination'] {
+    --node-tint: var(--color-node-destination);
+}
+
+.pipeline-node:hover {
+    border-color: var(--color-line-strong);
+}
+
+.pipeline-node.is-selected,
+.pipeline-node:focus-visible {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
+
+.pipeline-node.is-dragging {
+    cursor: grabbing;
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent),
+        0 12px 24px -12px color-mix(in srgb, var(--color-ink) 35%, transparent);
+}
+
+.pipeline-node.is-dimmed {
+    opacity: 0.45;
+}
+
+.pipeline-node.is-drop-target {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.pipeline-node.is-drop-invalid {
+    border-color: var(--color-state-fail);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-state-fail) 22%, transparent);
+}
+
+/*
+ * Handles sit centred on each side; the script picks which side an edge
+ * uses from the relative position of the two nodes. A handle is 14px wide,
+ * so --handle-r in the script (7) must match the half size here.
+ */
+.pipeline-handle {
+    position: absolute;
+    width: 0.875rem;
+    height: 0.875rem;
+    padding: 0;
+    touch-action: none;
+    border-radius: 9999px;
+    border: 2px solid var(--node-tint);
+    background: var(--color-paper-raised);
+    cursor: crosshair;
+    opacity: 0;
+    transition:
+        transform 120ms ease,
+        background-color 120ms ease,
+        opacity 120ms ease;
+}
+
+.pipeline-handle[data-side='left'] {
+    top: 50%;
+    left: -0.4375rem;
+    transform: translateY(-50%);
+}
+
+.pipeline-handle[data-side='right'] {
+    top: 50%;
+    right: -0.4375rem;
+    transform: translateY(-50%);
+}
+
+.pipeline-handle[data-side='top'] {
+    top: -0.4375rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.pipeline-handle[data-side='bottom'] {
+    bottom: -0.4375rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.pipeline-handle.is-used,
+.pipeline-node:hover .pipeline-handle,
+.pipeline-node.is-selected .pipeline-handle,
+.pipeline-node:focus-within .pipeline-handle,
+.pipeline-canvas.is-connecting .pipeline-handle,
+.pipeline-node.is-drop-target .pipeline-handle {
+    opacity: 1;
+}
+
+.pipeline-handle:hover,
+.pipeline-handle:focus-visible {
+    background: var(--node-tint);
+    outline: none;
+}
+
+.pipeline-handle[data-side='left']:hover,
+.pipeline-handle[data-side='right']:hover {
+    transform: translateY(-50%) scale(1.3);
+}
+
+.pipeline-handle[data-side='top']:hover,
+.pipeline-handle[data-side='bottom']:hover {
+    transform: translateX(-50%) scale(1.3);
+}
+
+.pipeline-node.is-drop-target .pipeline-handle {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.pipeline-node-tile {
+    background: color-mix(in srgb, var(--node-tint) 12%, transparent);
+    color: var(--node-tint);
+}
+
+.pipeline-node-kicker {
+    color: var(--node-tint);
+}
+
+/* The toolbox collapses behind a button below md; the script toggles is-open. */
+.pipeline-palette {
+    display: none;
+}
+
+.pipeline-palette.is-open {
+    display: flex;
+}
+
+@media (min-width: 48rem) {
+    .pipeline-palette {
+        display: flex;
+    }
+}
+
+/* Ghost node that follows the pointer out of the toolbox. */
+.pipeline-ghost {
+    transform-origin: 0 0;
+    opacity: 0.85;
+    will-change: transform;
+}
+
+.pipeline-ghost .pipeline-node {
+    position: static;
+}
+
+.pipeline-ghost.is-outside {
+    opacity: 0.35;
+}
+
+.pipeline-panel {
+    scrollbar-width: thin;
+}
+
+/* Document state dot beside the save status in the header. */
+.pipeline-save-dot {
+    background: var(--color-state-ok);
+}
+
+[data-pipeline-save-status][data-state='dirty'] .pipeline-save-dot,
+[data-pipeline-save-status][data-state='saving'] .pipeline-save-dot {
+    background: var(--color-state-warn);
+}
+
+[data-pipeline-save-status][data-state='error'] .pipeline-save-dot {
+    background: var(--color-state-fail);
+}
+
+[data-pipeline-save-status][data-state='readonly'] .pipeline-save-dot {
+    background: var(--color-state-skip);
+}
+
+@keyframes pipeline-pulse {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+[data-pipeline-save-status][data-state='saving'] .pipeline-save-dot {
+    animation: pipeline-pulse 900ms ease-in-out infinite;
+}
+
+/* Read-only canvases keep hover affordances quiet. */
+.pipeline-canvas.is-readonly .pipeline-handle {
+    cursor: default;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.pipeline-canvas.is-readonly .pipeline-handle.is-used {
+    opacity: 1;
+}
+
+.pipeline-canvas.is-readonly .pipeline-edge-hit {
+    cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pipeline-node,
+    .pipeline-handle,
+    .pipeline-edge {
+        transition: none;
+    }
+
+    [data-pipeline-save-status][data-state='saving'] .pipeline-save-dot {
+        animation: none;
+    }
 }

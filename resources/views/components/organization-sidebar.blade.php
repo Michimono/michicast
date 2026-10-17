@@ -103,13 +103,23 @@
             </details>
 
             <nav class="flex flex-col gap-1" aria-label="Broadcast">
-                <x-sidebar-link
-                    :href="route('broadcasts.show', $project)"
-                    :active="request()->routeIs('broadcasts.show')"
-                >
-                    <x-slot:icon><x-icons.overview class="size-5 shrink-0" /></x-slot:icon>
-                    Overview
-                </x-sidebar-link>
+                @if ($project->isVisual())
+                    <x-sidebar-link
+                        :href="route('pipelines.edit', $project)"
+                        :active="request()->routeIs('pipelines.edit')"
+                    >
+                        <x-slot:icon><x-icons.overview class="size-5 shrink-0" /></x-slot:icon>
+                        Pipeline
+                    </x-sidebar-link>
+                @else
+                    <x-sidebar-link
+                        :href="route('broadcasts.show', $project)"
+                        :active="request()->routeIs('broadcasts.show')"
+                    >
+                        <x-slot:icon><x-icons.overview class="size-5 shrink-0" /></x-slot:icon>
+                        Overview
+                    </x-sidebar-link>
+                @endif
 
                 <x-sidebar-link
                     :href="route('broadcast-runs.index', $project)"

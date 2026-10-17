@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectKind;
 use App\Enums\ProjectStatus;
 use App\Enums\QuotaMetric;
+use App\Exceptions\InvalidPipelineGraphException;
 use App\Exceptions\InvalidProjectTransitionException;
 use App\Support\NextRunCalculator;
+use App\Support\Pipeline\PipelineGraph;
 use App\Support\ResourceQuotas;
 use Carbon\CarbonInterface;
 use Database\Factories\ProjectFactory;
@@ -21,6 +24,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
+ * @property ProjectKind $kind
+ * @property array<string, mixed>|null $graph
  * @property ProjectStatus $status
  * @property ProjectStatus|null $archived_from
  * @property array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}|null $schedule
@@ -31,7 +36,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $last_success_at
  * @property Carbon|null $last_failure_at
  */
-#[Fillable(['name', 'slug', 'description'])]
+#[Fillable(['name', 'slug', 'description', 'kind'])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
@@ -46,9 +51,35 @@ class Project extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
+        'kind' => 'simple',
         'status' => 'draft',
         'consecutive_failures' => 0,
     ];
+
+    /**
+     * Whether routes come from the pipeline canvas rather than the overview.
+     */
+    public function isVisual(): bool
+    {
+        return $this->kind === ProjectKind::Visual;
+    }
+
+    /**
+     * The saved pipeline document. Stored graphs were parsed on the way in,
+     * so one that fails to parse now is treated as empty rather than fatal.
+     */
+    public function pipelineGraph(): PipelineGraph
+    {
+        if (! is_array($this->graph)) {
+            return PipelineGraph::empty();
+        }
+
+        try {
+            return PipelineGraph::fromArray($this->graph);
+        } catch (InvalidPipelineGraphException) {
+            return PipelineGraph::empty();
+        }
+    }
 
     /**
      * Build a URL-safe slug for a name, unique within this organization.
@@ -118,7 +149,9 @@ class Project extends Model
         $pipelines = $this->broadcasts()->notArchived();
 
         if (! $pipelines->exists()) {
-            return 'Connect the source to a destination to play this broadcast.';
+            return $this->isVisual()
+                ? 'Connect a source to a destination on the canvas to play this broadcast.'
+                : 'Connect the source to a destination to play this broadcast.';
         }
 
         if ($this->broadcasts()->notArchived()->whereNotNull('failure_pause_reason')->exists()) {
@@ -378,12 +411,13 @@ class Project extends Model
     /**
      * Soft single-broadcast product rule: when a source and destination exist
      * and there is not yet a pipeline broadcast, create one named for the project.
+     * Visual broadcasts get their routes from the graph instead, never by default.
      */
     public function ensureDefaultBroadcast(): ?Broadcast
     {
         $existing = $this->primaryBroadcast();
 
-        if ($existing !== null) {
+        if ($existing !== null || $this->isVisual()) {
             return $existing;
         }
 
@@ -469,6 +503,8 @@ class Project extends Model
     protected function casts(): array
     {
         return [
+            'kind' => ProjectKind::class,
+            'graph' => 'array',
             'status' => ProjectStatus::class,
             'archived_from' => ProjectStatus::class,
             'schedule' => 'array',

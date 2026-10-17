@@ -963,6 +963,7 @@ class ExecutingProjectRunner implements ProjectRunner
     ): void {
         $report = $broadcastRun->dry_report ?? [];
         $report[] = array_filter([
+            'content_item_id' => $item->getKey(),
             'title' => $this->itemLabel($item),
             'canonical_url' => $item->canonical_url,
             'outcome' => $outcome,

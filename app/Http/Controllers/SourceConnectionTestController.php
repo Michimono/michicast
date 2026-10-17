@@ -8,10 +8,12 @@ use App\Models\Organization;
 use App\Models\Source;
 use App\Support\ConnectionTestOutcome;
 use App\Support\ConnectionTestResult;
+use App\Support\Pipeline\PipelineEditorPayload;
 use App\Support\QuotaMeter;
 use App\Support\SecretRedactor;
 use App\Support\SourceDefinition;
 use App\Support\SourceProviderRegistry;
+use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Throwable;
 
@@ -28,10 +30,20 @@ class SourceConnectionTestController extends Controller
         Organization $organization,
         Source $source,
         SourceController $form,
-    ): View {
+        PipelineEditorPayload $payload,
+    ): View|JsonResponse {
         $config = array_merge($source->config ?? [], $request->configuration());
         $result = $this->runTest($organization, $source, $config);
         $outcome = $this->persistResult($source, $result);
+
+        // The pipeline inspector tests in place and only needs the outcome.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'successful' => $outcome->successful,
+                'message' => $outcome->message,
+                'source' => $payload->source($source),
+            ]);
+        }
 
         return $form->form(
             $source,

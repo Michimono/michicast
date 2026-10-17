@@ -33,6 +33,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryRetryController;
 use App\Http\Controllers\DestinationConnectionTestController;
 use App\Http\Controllers\DestinationController;
+use App\Http\Controllers\DestinationSummaryController;
 use App\Http\Controllers\DueProjectController;
 use App\Http\Controllers\EnabledBroadcastController;
 use App\Http\Controllers\FontStylesheetController;
@@ -47,6 +48,8 @@ use App\Http\Controllers\OrganizationSettingController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\PasswordResetLinkController;
 use App\Http\Controllers\PausedProjectController;
+use App\Http\Controllers\PipelineController;
+use App\Http\Controllers\PipelineEdgeTraceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfilePasswordController;
 use App\Http\Controllers\ProjectBroadcastController;
@@ -60,6 +63,7 @@ use App\Http\Controllers\ProjectSourcePreviewController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SourceConnectionTestController;
 use App\Http\Controllers\SourceController;
+use App\Http\Controllers\SourceSummaryController;
 use App\Http\Controllers\TwoFactorAuthenticationController;
 use App\Http\Controllers\TwoFactorChallengeController;
 use App\Http\Controllers\TwoFactorRecoveryCodeController;
@@ -197,6 +201,23 @@ Route::middleware('auth')->group(function (): void {
                 ->names(['store' => 'broadcast-send-latests.store'])
                 ->middlewareFor('store', 'throttle:broadcast-dry-run');
 
+            // The canvas of a visual broadcast. Saving the graph recompiles its routes;
+            // testing, running and status changes keep their own resources below.
+            Route::singleton('broadcasts.pipeline', PipelineController::class)
+                ->only(['edit', 'update'])
+                ->parameters(['broadcasts' => 'project'])
+                ->names([
+                    'edit' => 'pipelines.edit',
+                    'update' => 'pipelines.update',
+                ]);
+
+            // What flowed over one edge of the canvas during the latest dry run.
+            Route::resource('broadcasts.pipeline-edge-traces', PipelineEdgeTraceController::class)
+                ->only(['show'])
+                ->parameters(['broadcasts' => 'project', 'pipeline-edge-traces' => 'edge'])
+                ->names(['show' => 'pipeline-edge-traces.show'])
+                ->where(['edge' => '[A-Za-z0-9_-]{1,64}']);
+
             Route::singleton('broadcasts.schedule', ProjectScheduleController::class)
                 ->only(['edit', 'update'])
                 ->parameters(['broadcasts' => 'project'])
@@ -264,6 +285,11 @@ Route::middleware('auth')->group(function (): void {
 
             Route::resource('sources', SourceController::class)->only(['edit', 'update', 'destroy']);
 
+            // Read-only JSON digest of one source for the pipeline inspector.
+            Route::singleton('sources.summary', SourceSummaryController::class)
+                ->only(['show'])
+                ->names(['show' => 'source-summaries.show']);
+
             Route::match(['POST', 'PATCH'], 'sources/{source}/connection-tests', [SourceConnectionTestController::class, 'store'])
                 ->name('source-connection-tests.store')
                 ->middleware('throttle:source-connection-test');
@@ -277,6 +303,10 @@ Route::middleware('auth')->group(function (): void {
                 ]);
 
             Route::resource('destinations', DestinationController::class)->only(['edit', 'update', 'destroy']);
+
+            Route::singleton('destinations.summary', DestinationSummaryController::class)
+                ->only(['show'])
+                ->names(['show' => 'destination-summaries.show']);
 
             Route::match(['POST', 'PATCH'], 'destinations/{destination}/connection-tests', [DestinationConnectionTestController::class, 'store'])
                 ->name('destination-connection-tests.store')

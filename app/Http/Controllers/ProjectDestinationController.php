@@ -8,6 +8,8 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Support\DestinationProviderRegistry;
 use App\Support\DestinationTypePresentation;
+use App\Support\Pipeline\PipelineEditorPayload;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -15,13 +17,16 @@ use Illuminate\View\View;
 
 class ProjectDestinationController extends Controller
 {
-    public function __construct(private DestinationProviderRegistry $providers) {}
+    public function __construct(
+        private DestinationProviderRegistry $providers,
+        private PipelineEditorPayload $payload,
+    ) {}
 
     public function create(Request $request, Organization $organization, Project $project): View|RedirectResponse
     {
         Gate::authorize('create', [Destination::class, $project]);
 
-        if ($project->destinations()->notArchived()->exists()) {
+        if (! $project->isVisual() && $project->destinations()->notArchived()->exists()) {
             return redirect()
                 ->route('broadcasts.show', $project)
                 ->with('error', 'This broadcast already has a destination. Manage it from Overview.');
@@ -48,15 +53,15 @@ class ProjectDestinationController extends Controller
         ]);
     }
 
-    public function store(StoreDestinationRequest $request, Organization $organization, Project $project): RedirectResponse
+    public function store(StoreDestinationRequest $request, Organization $organization, Project $project): RedirectResponse|JsonResponse
     {
-        if ($project->destinations()->notArchived()->exists()) {
+        if (! $project->isVisual() && $project->destinations()->notArchived()->exists()) {
             return redirect()
                 ->route('broadcasts.show', $project)
                 ->with('error', 'This broadcast already has a destination. Manage it from Overview.');
         }
 
-        $project->destinations()->create([
+        $destination = $project->destinations()->create([
             'name' => $request->name(),
             'type' => $request->type(),
             'config' => $request->configuration(),
@@ -65,8 +70,16 @@ class ProjectDestinationController extends Controller
 
         $project->ensureDefaultBroadcast();
 
+        // The pipeline editor adds destinations from its inspector; secrets stay server-side.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'The destination has been added.',
+                'destination' => $this->payload->destination($destination),
+            ], 201);
+        }
+
         return redirect()
-            ->route('broadcasts.show', $project)
+            ->route($project->isVisual() ? 'pipelines.edit' : 'broadcasts.show', $project)
             ->with('success', 'The destination has been added.');
     }
 
