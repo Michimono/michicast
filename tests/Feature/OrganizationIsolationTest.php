@@ -411,6 +411,8 @@ class OrganizationIsolationTest extends TestCase
             'member' => $fixtures['foreignMember']->getRouteKey(),
             'invitation' => $fixtures['foreignInvitation']->getRouteKey(),
             'delivery' => $fixtures['foreignDelivery']->getRouteKey(),
+            // Graph edge ids are opaque strings, not Eloquent models.
+            'edge' => 'isolation-edge',
         ];
 
         $parameters = [];
