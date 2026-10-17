@@ -258,7 +258,7 @@ class AdminActivityTest extends TestCase
             'organization_id' => $noisy->id,
             'metric' => QuotaMetric::SourceFetches,
             'period_start' => now('UTC')->toDateString(),
-            'used' => 200,
+            'used' => 10,
         ]);
 
         $run = $this->broadcastRunFor($noisy, [
@@ -288,7 +288,7 @@ class AdminActivityTest extends TestCase
             ->assertSee('Too many consecutive failures.', false)
             ->assertSee('Noisy Tenant', false)
             ->assertSee('Source fetches', false)
-            ->assertSee('200 / 200', false)
+            ->assertSee('10 / 10', false)
             ->assertSee('Top fetches (24h)', false)
             ->assertSee('Top deliveries (24h)', false);
     }
