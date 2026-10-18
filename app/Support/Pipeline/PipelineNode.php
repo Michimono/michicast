@@ -61,6 +61,35 @@ readonly class PipelineNode
     }
 
     /**
+     * The mapping node's Set field steps, once at least one step has a value.
+     * Blank steps stay on the node for the editor and are not compiled.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function mapping(): ?array
+    {
+        $mapping = $this->config['mapping'] ?? null;
+
+        if (! is_array($mapping) || ! is_array($mapping['steps'] ?? null)) {
+            return null;
+        }
+
+        foreach ($mapping['steps'] as $step) {
+            if (! is_array($step)) {
+                continue;
+            }
+
+            $value = is_array($step['config'] ?? null) ? ($step['config']['value'] ?? '') : '';
+
+            if (is_string($value) && trim($value) !== '') {
+                return $mapping;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

@@ -49,6 +49,90 @@ class PipelineGraphTest extends TestCase
         $this->assertSame(['src' => ['flt'], 'flt' => ['dst'], 'dst' => []], $graph->adjacency());
     }
 
+    public function test_a_mapping_node_keeps_set_field_steps_and_a_destination_does_not(): void
+    {
+        $graph = PipelineGraph::fromArray([
+            'nodes' => [
+                ['id' => 'map', 'type' => 'mapping', 'x' => 0, 'y' => 0, 'config' => [
+                    'label' => 'News',
+                    'mapping' => [
+                        'version' => 1,
+                        'source_provider' => 'fake',
+                        'destination_provider' => 'recording',
+                        'steps' => [
+                            ['id' => 'keep', 'operation' => 'set_field', 'order' => 1, 'config' => ['field' => 'text', 'value' => 'News: {{title}}']],
+                            ['id' => 'drop', 'operation' => 'concatenate', 'order' => 0, 'config' => ['value' => 'nope']],
+                            ['operation' => 'set_field', 'config' => ['field' => 'link', 'value' => '']],
+                        ],
+                    ],
+                ]],
+                ['id' => 'dst', 'type' => 'destination', 'x' => 200, 'y' => 0, 'config' => [
+                    'destination_id' => 3,
+                    'mapping' => [
+                        'steps' => [
+                            ['id' => 'nope', 'operation' => 'set_field', 'config' => ['field' => 'text', 'value' => 'ignored']],
+                        ],
+                    ],
+                ]],
+            ],
+            'edges' => [],
+        ]);
+
+        $mappingNode = $graph->node('map');
+        $this->assertNotNull($mappingNode);
+        $this->assertSame([
+            'label' => 'News',
+            'mapping' => [
+                'version' => 1,
+                'steps' => [
+                    ['id' => 'keep', 'operation' => 'set_field', 'order' => 0, 'config' => ['field' => 'text', 'value' => 'News: {{title}}']],
+                    ['id' => 'step-2', 'operation' => 'set_field', 'order' => 1, 'config' => ['field' => 'link', 'value' => '']],
+                ],
+                'source_provider' => 'fake',
+                'destination_provider' => 'recording',
+            ],
+        ], $mappingNode->config);
+        $mapping = $mappingNode->mapping();
+        $this->assertNotNull($mapping);
+        $this->assertSame('News: {{title}}', $mapping['steps'][0]['config']['value']);
+
+        $destination = $graph->node('dst');
+        $this->assertNotNull($destination);
+        $this->assertSame(['destination_id' => 3], $destination->config);
+    }
+
+    public function test_a_transform_may_sit_before_or_after_a_mapping(): void
+    {
+        $before = PipelineGraph::fromArray([
+            'nodes' => [
+                ['id' => 't', 'type' => 'transform', 'x' => 0, 'y' => 0, 'config' => ['rules' => [['type' => 'strip_html', 'field' => 'title']]]],
+                ['id' => 'm', 'type' => 'mapping', 'x' => 0, 'y' => 0, 'config' => []],
+            ],
+            'edges' => [['id' => 'e', 'from' => 't', 'to' => 'm']],
+        ]);
+        $after = PipelineGraph::fromArray([
+            'nodes' => [
+                ['id' => 'm', 'type' => 'mapping', 'x' => 0, 'y' => 0, 'config' => []],
+                ['id' => 't', 'type' => 'transform', 'x' => 0, 'y' => 0, 'config' => ['rules' => [['type' => 'strip_html', 'field' => 'text']]]],
+            ],
+            'edges' => [['id' => 'e', 'from' => 'm', 'to' => 't']],
+        ]);
+
+        $this->assertCount(1, $before->edges);
+        $this->assertCount(1, $after->edges);
+    }
+
+    public function test_rejects_chaining_two_mappings(): void
+    {
+        $this->expectInvalidGraph('graph.edges.0.nodes', [
+            'nodes' => [
+                ['id' => 'm1', 'type' => 'mapping', 'x' => 0, 'y' => 0, 'config' => []],
+                ['id' => 'm2', 'type' => 'mapping', 'x' => 0, 'y' => 0, 'config' => []],
+            ],
+            'edges' => [['id' => 'e', 'from' => 'm1', 'to' => 'm2']],
+        ]);
+    }
+
     public function test_an_out_of_range_viewport_is_dropped(): void
     {
         $graph = PipelineGraph::fromArray([

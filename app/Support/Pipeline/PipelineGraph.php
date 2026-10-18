@@ -306,15 +306,97 @@ readonly class PipelineGraph
                 $normalized['destination_id'] = is_numeric($config['destination_id'] ?? null) ? (int) $config['destination_id'] : null;
                 break;
 
+            case PipelineNodeType::Mapping:
+                $mapping = self::normalizeMapping($config['mapping'] ?? null);
+
+                if ($mapping !== null) {
+                    $normalized['mapping'] = $mapping;
+                }
+                break;
+
             case PipelineNodeType::Filter:
                 $normalized['rules'] = self::normalizeRules($config['rules'] ?? [], ['type', 'field', 'value', 'hours']);
                 break;
 
             case PipelineNodeType::Transform:
                 $template = $config['template'] ?? '';
-                $normalized['template'] = is_string($template) ? mb_substr($template, 0, 5000) : '';
-                $normalized['rules'] = self::normalizeRules($config['rules'] ?? [], ['type', 'value', 'length', 'pattern', 'replacement']);
+
+                if (is_string($template) && trim($template) !== '') {
+                    $normalized['template'] = mb_substr($template, 0, 5000);
+                }
+
+                $normalized['rules'] = self::normalizeRules($config['rules'] ?? [], ['type', 'field', 'value', 'length', 'pattern', 'replacement']);
                 break;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * A mapping node is a list of Set field steps: which destination field
+     * receives which source template. Other operations are dropped, and a
+     * mapping with no steps is omitted.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function normalizeMapping(mixed $mapping): ?array
+    {
+        if (! is_array($mapping) || ! is_array($mapping['steps'] ?? null)) {
+            return null;
+        }
+
+        $steps = [];
+
+        foreach (array_values($mapping['steps']) as $index => $step) {
+            if (count($steps) >= 20 || ! is_array($step)) {
+                continue;
+            }
+
+            $operation = $step['operation'] ?? $step['op'] ?? '';
+
+            if ($operation !== 'set_field') {
+                continue;
+            }
+
+            $config = is_array($step['config'] ?? null) ? $step['config'] : [];
+            $field = $config['field'] ?? '';
+            $value = $config['value'] ?? '';
+
+            if (! is_string($field) || trim($field) === '' || ! is_string($value)) {
+                continue;
+            }
+
+            $id = $step['id'] ?? null;
+            $id = is_string($id) && preg_match('/^[A-Za-z0-9_-]{1,64}$/', $id) === 1
+                ? $id
+                : 'step-'.$index;
+
+            $steps[] = [
+                'id' => $id,
+                'operation' => 'set_field',
+                'order' => count($steps),
+                'config' => [
+                    'field' => mb_substr(trim($field), 0, 80),
+                    'value' => mb_substr($value, 0, 5000),
+                ],
+            ];
+        }
+
+        if ($steps === []) {
+            return null;
+        }
+
+        $normalized = [
+            'version' => 1,
+            'steps' => $steps,
+        ];
+
+        foreach (['source_provider', 'destination_provider'] as $key) {
+            $value = $mapping[$key] ?? null;
+
+            if (is_string($value) && preg_match('/^[a-z0-9_]{1,40}$/', $value) === 1) {
+                $normalized[$key] = $value;
+            }
         }
 
         return $normalized;

@@ -39,6 +39,8 @@
      */
     const NODE_WIDTH = 216;
     const NODE_HEIGHT = 72;
+    const ARROW_LENGTH = 11;
+    const ARROW_WIDTH = 11;
     const HANDLE_R = 7;
     const GRID = 8;
     const ZOOM_MIN = 0.25;
@@ -53,10 +55,21 @@
     const permissions = payload.permissions || {};
     const settingsData = payload.settings || {};
     const nodeTypes = new Map((catalog.node_types || []).map((type) => [type.type, type]));
-    const filterRuleTypes = catalog.filter_rule_types || [];
-    const transformRuleTypes = catalog.transform_rule_types || [];
-    const filterFields = catalog.filter_fields || {};
-    const placeholders = catalog.placeholders || [];
+    const textFilterOps = [
+        { value: 'contains', label: 'Contains', param: 'value' },
+        { value: 'does_not_contain', label: 'Does not contain', param: 'value' },
+        { value: 'title_matches', label: 'Matches pattern', param: 'value' },
+        { value: 'author_equals', label: 'Equals', param: 'value' },
+    ];
+    const timeFilterOps = [
+        { value: 'published_after', label: 'Within the last', param: 'hours' },
+        { value: 'published_before', label: 'More than', param: 'hours' },
+    ];
+    const transformOps = [
+        { value: 'strip_html', label: 'Strip HTML', param: null },
+        { value: 'truncate', label: 'Truncate', param: 'length' },
+        { value: 'replace', label: 'Replace pattern', param: 'pattern' },
+    ];
     const sourceTypes = catalog.source_types || [];
     const destinationTypes = catalog.destination_types || [];
 
@@ -65,6 +78,7 @@
         world: root.querySelector('[data-world]'),
         edgeLayer: root.querySelector('[data-edge-layer]'),
         draftEdge: root.querySelector('[data-draft-edge]'),
+        draftArrow: root.querySelector('[data-draft-arrow]'),
         nodesLayer: root.querySelector('[data-nodes]'),
         inspector: root.querySelector('[data-inspector]'),
         emptyState: root.querySelector('[data-empty-state]'),
@@ -172,6 +186,7 @@
         source: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-4"><path d="M12 3.5v10" /><path d="m8 10 4 4 4-4" /><path d="M5 17.5h14" /><path d="M7 20.5h10" /></svg>',
         filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-4"><path d="M4 5h16l-6.5 7.5V19l-3 1.5V12.5L4 5Z" /></svg>',
         transform: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-4"><path d="M3.5 7h10" /><circle cx="17" cy="7" r="2.5" /><path d="M20.5 17h-10" /><circle cx="7" cy="17" r="2.5" /></svg>',
+        mapping: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-4"><path d="M4 7h5M4 12h5M4 17h5M15 7h5M15 12h5M15 17h5M9.5 12h5" /><path d="M12.5 10l2 2-2 2" /></svg>',
         destination: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-4"><path d="M12 20.5V10.5" /><path d="m8 14 4-4 4 4" /><path d="M5 6.5h14" /><path d="M7 3.5h10" /></svg>',
     };
     const CLOSE_ICON = '<svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>';
@@ -257,6 +272,256 @@
         return null;
     }
 
+    function upstreamNodes(nodeId, type) {
+        const incoming = new Map();
+
+        state.edges.forEach((edge) => {
+            const list = incoming.get(edge.to) || [];
+            list.push(edge.from);
+            incoming.set(edge.to, list);
+        });
+
+        const found = [];
+        const seen = new Set([nodeId]);
+        const stack = [...(incoming.get(nodeId) || [])];
+
+        while (stack.length > 0) {
+            const id = stack.pop();
+
+            if (seen.has(id)) {
+                continue;
+            }
+
+            seen.add(id);
+            const node = state.nodes.get(id);
+
+            if (!node) {
+                continue;
+            }
+
+            if (node.type === type) {
+                found.push(node);
+            }
+
+            (incoming.get(id) || []).forEach((from) => stack.push(from));
+        }
+
+        return found;
+    }
+
+    /*
+     * Fields available at a node are whatever earlier steps have contributed.
+     * A source contributes its schema. A mapping adds each field it sets.
+     * Other nodes pass that set through. A new node type joins by returning
+     * the fields it adds from fieldsAddedBy.
+     */
+    function fieldsAddedBy(node) {
+        if (node.type === 'source') {
+            const record = recordFor(node);
+            const type = record ? providerType('source', record.type) : null;
+
+            return (type ? type.schema : []).map((field) => ({
+                name: field.name,
+                label: field.label,
+                type: field.type,
+                description: field.description,
+            }));
+        }
+
+        if (node.type === 'mapping') {
+            const steps = node.config.mapping && Array.isArray(node.config.mapping.steps) ? node.config.mapping.steps : [];
+            const labels = new Map();
+
+            downstreamNodes(node.id, 'destination').forEach((destination) => {
+                const record = recordFor(destination);
+                const type = record ? providerType('destination', record.type) : null;
+
+                (type ? type.schema : []).forEach((field) => {
+                    if (!labels.has(field.name)) {
+                        labels.set(field.name, field.label);
+                    }
+                });
+            });
+
+            return steps
+                .filter((step) => step && step.config && step.config.field)
+                .map((step) => ({
+                    name: step.config.field,
+                    label: labels.get(step.config.field) || step.config.field,
+                    type: 'text',
+                }));
+        }
+
+        return [];
+    }
+
+    function fieldsEntering(nodeId) {
+        const incoming = new Map();
+
+        state.edges.forEach((edge) => {
+            const list = incoming.get(edge.to) || [];
+            list.push(edge.from);
+            incoming.set(edge.to, list);
+        });
+
+        const bag = new Map();
+        const seen = new Set();
+
+        const absorb = (id) => {
+            if (seen.has(id)) {
+                return;
+            }
+
+            seen.add(id);
+            (incoming.get(id) || []).forEach(absorb);
+            const node = state.nodes.get(id);
+
+            if (!node) {
+                return;
+            }
+
+            fieldsAddedBy(node).forEach((field) => {
+                if (field.name && !bag.has(field.name)) {
+                    bag.set(field.name, field);
+                }
+            });
+        };
+
+        (incoming.get(nodeId) || []).forEach(absorb);
+
+        return Array.from(bag.values());
+    }
+
+    function ruleFields(node) {
+        return fieldsEntering(node.id).map((field) => ({
+            value: field.name,
+            label: field.label || field.name,
+        }));
+    }
+
+    function operationsFor(node, fieldName) {
+        if (node.type === 'transform') {
+            return transformOps;
+        }
+
+        return fieldName === 'published_at' ? timeFilterOps : textFilterOps;
+    }
+
+    function downstreamNodes(nodeId, type) {
+        const outgoing = new Map();
+
+        state.edges.forEach((edge) => {
+            const list = outgoing.get(edge.from) || [];
+            list.push(edge.to);
+            outgoing.set(edge.from, list);
+        });
+
+        const found = [];
+        const seen = new Set([nodeId]);
+        const stack = [...(outgoing.get(nodeId) || [])];
+
+        while (stack.length > 0) {
+            const id = stack.pop();
+
+            if (seen.has(id)) {
+                continue;
+            }
+
+            seen.add(id);
+            const node = state.nodes.get(id);
+
+            if (!node) {
+                continue;
+            }
+
+            if (node.type === type) {
+                found.push(node);
+            }
+
+            (outgoing.get(id) || []).forEach((to) => stack.push(to));
+        }
+
+        return found;
+    }
+
+    function destinationFieldOptions(node) {
+        const options = [];
+        const seen = new Set();
+
+        downstreamNodes(node.id, 'destination').forEach((destination) => {
+            const record = recordFor(destination);
+            const type = record ? providerType('destination', record.type) : null;
+
+            (type ? type.schema : []).forEach((field) => {
+                if (seen.has(field.name)) {
+                    return;
+                }
+
+                seen.add(field.name);
+                options.push({
+                    value: field.name,
+                    label: field.label + (field.required ? ' (required)' : ''),
+                });
+            });
+        });
+
+        return options;
+    }
+
+    function suggestedMapping(node) {
+        const defaults = catalog.default_mappings || {};
+        const destinations = downstreamNodes(node.id, 'destination').map(recordFor).filter(Boolean);
+
+        if (destinations.length === 0) {
+            return null;
+        }
+
+        for (const source of upstreamNodes(node.id, 'source')) {
+            const sourceRecord = recordFor(source);
+
+            if (!sourceRecord) {
+                continue;
+            }
+
+            for (const destination of destinations) {
+                const suggestion = defaults[sourceRecord.type + '->' + destination.type];
+
+                if (suggestion) {
+                    return suggestion;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    function assignMapping(node, steps) {
+        const record = downstreamNodes(node.id, 'destination').map(recordFor).find(Boolean);
+        const sourceRecord = upstreamNodes(node.id, 'source').map(recordFor).find(Boolean);
+        const mapping = {
+            version: 1,
+            steps: steps.map((step, index) => ({
+                id: step.id || uid('map'),
+                operation: 'set_field',
+                order: index,
+                config: {
+                    field: step.config && step.config.field ? step.config.field : 'text',
+                    value: step.config && typeof step.config.value === 'string' ? step.config.value : '',
+                },
+            })),
+        };
+
+        if (sourceRecord) {
+            mapping.source_provider = sourceRecord.type;
+        }
+
+        if (record) {
+            mapping.destination_provider = record.type;
+        }
+
+        node.config.mapping = mapping;
+    }
+
     function providerType(kind, type) {
         return (kind === 'source' ? sourceTypes : destinationTypes).find((entry) => entry.type === type) || null;
     }
@@ -283,26 +548,28 @@
                 return node.config.label || 'Filter';
             case 'transform':
                 return node.config.label || 'Transform';
+            case 'mapping':
+                return node.config.label || 'Mapping';
             default:
                 return typeDef(node.type).label;
         }
     }
 
     function filterRuleSummary(rule) {
-        const def = filterRuleTypes.find((type) => type.value === rule.type);
+        const ops = rule.field === 'published_at' ? timeFilterOps : textFilterOps;
+        const def = ops.find((type) => type.value === rule.type) || textFilterOps.find((type) => type.value === rule.type);
 
         if (!def) {
             return 'Rule';
         }
 
-        if (def.needs_hours) {
-            return def.label + ' ' + (rule.hours || '…') + ' h';
+        const field = rule.field === 'published_at' ? 'Published' : (rule.field || 'Title');
+
+        if (def.param === 'hours') {
+            return field + ' · ' + def.label.toLowerCase() + ' ' + (rule.hours || '…') + ' h';
         }
 
-        const field = def.needs_field && filterFields[rule.field] ? filterFields[rule.field] : null;
-        const label = field ? def.label.replace('Title or body', field) : def.label;
-
-        return label + ' “' + (rule.value || '…') + '”';
+        return field + ' · ' + def.label.toLowerCase() + ' “' + (rule.value || '…') + '”';
     }
 
     function nodeMeta(node) {
@@ -327,24 +594,36 @@
                 return rules.length === 1 ? filterRuleSummary(rules[0]) : rules.length + ' rules, all must match';
             }
             case 'transform': {
-                const template = String(node.config.template || '').trim();
                 const rules = Array.isArray(node.config.rules) ? node.config.rules : [];
-                const first = template.split('\n').find((line) => line.trim() !== '') || '';
-                const parts = [];
 
-                if (first !== '') {
-                    parts.push(first.length > 36 ? first.slice(0, 34) + '…' : first);
-                } else if (rules.length === 0) {
-                    parts.push('Empty transform');
-                } else {
-                    parts.push('Default template');
+                if (rules.length === 0) {
+                    return node.config.template ? 'Message template' : 'No rules yet';
                 }
 
-                if (rules.length > 0) {
-                    parts.push(plural(rules.length, 'rule'));
+                if (rules.length === 1) {
+                    const def = transformOps.find((type) => type.value === rules[0].type);
+                    const field = rules[0].field || 'text';
+
+                    return field + (def ? ' · ' + def.label.toLowerCase() : '');
                 }
 
-                return parts.join(' · ');
+                return rules.length + ' rules';
+            }
+            case 'mapping': {
+                const steps = node.config.mapping && Array.isArray(node.config.mapping.steps) ? node.config.mapping.steps : [];
+                const filled = steps.filter((step) => step.config && String(step.config.value || '').trim() !== '');
+
+                if (filled.length === 0) {
+                    return 'No fields yet';
+                }
+
+                if (filled.length === 1) {
+                    const value = String(filled[0].config.value).trim().split('\n')[0];
+
+                    return (filled[0].config.field || 'field') + ': ' + (value.length > 28 ? value.slice(0, 26) + '…' : value);
+                }
+
+                return filled.length + ' fields';
             }
             default:
                 return '';
@@ -508,7 +787,16 @@
     }
 
     function applyView() {
-        els.world.style.transform = 'translate(' + view.x + 'px, ' + view.y + 'px) scale(' + view.zoom + ')';
+        // Zoom with CSS zoom, not transform: scale(). A scale transform is
+        // rasterized at 1x and stretched, so text and strokes go blurry.
+        // zoom reflows and repaints at the real size. Translate is snapped
+        // to device pixels so the sharp layer is not shifted half a pixel.
+        const pixel = window.devicePixelRatio || 1;
+        const x = Math.round(view.x * pixel) / pixel;
+        const y = Math.round(view.y * pixel) / pixel;
+        els.world.style.left = x + 'px';
+        els.world.style.top = y + 'px';
+        els.world.style.zoom = String(view.zoom);
         els.canvas.style.setProperty('--grid-size', 24 * view.zoom + 'px');
         els.canvas.style.setProperty('--grid-offset-x', view.x + 'px');
         els.canvas.style.setProperty('--grid-offset-y', view.y + 'px');
@@ -733,12 +1021,13 @@
         }
 
         if (nodeIssues.length > 0) {
-            const hasError = nodeIssues.some((issue) => issue.level === 'error');
-            const tone = hasError ? 'fail' : 'warn';
+            const errorCount = nodeIssues.filter((issue) => issue.level === 'error').length;
+            const tone = errorCount > 0 ? 'fail' : 'warn';
+            const label = errorCount > 0 ? plural(errorCount, 'issue') : plural(nodeIssues.length, 'warning');
             html +=
                 '<span class="grid size-4 place-items-center rounded-full bg-state-' + tone + '/15 font-mono text-[0.625rem] font-semibold leading-none text-state-' + tone + '" title="' +
                 esc(nodeIssues.map((issue) => issue.message).join('\n')) +
-                '" aria-label="' + esc(plural(nodeIssues.length, 'issue')) + '">!</span>';
+                '" aria-label="' + esc(label) + '">!</span>';
         }
 
         flags.innerHTML = html;
@@ -859,14 +1148,46 @@
      * connections into one node share their last vertical leg and meet as
      * one line. Aligned ends draw a straight line.
      */
-    function edgePath(a, aSide, b, bSide) {
+    function shortenEnd(from, to, inset) {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const length = Math.hypot(dx, dy);
+
+        if (inset <= 0 || length <= inset + 0.5) {
+            return to;
+        }
+
+        return {
+            x: to.x - (dx / length) * inset,
+            y: to.y - (dy / length) * inset,
+        };
+    }
+
+    function straightEdge(a, b, endInset) {
+        const end = shortenEnd(a, b, endInset);
+
+        return 'M' + a.x + ' ' + a.y + ' L' + end.x + ' ' + end.y;
+    }
+
+    /* Filled triangle at the tip, pointing back along the side it arrives on. */
+    function arrowPath(tip, side) {
+        const base = outward(tip, side, ARROW_LENGTH);
+        const half = ARROW_WIDTH / 2;
+        const horizontal = side === 'left' || side === 'right';
+        const left = horizontal ? { x: base.x, y: base.y - half } : { x: base.x - half, y: base.y };
+        const right = horizontal ? { x: base.x, y: base.y + half } : { x: base.x + half, y: base.y };
+
+        return 'M' + tip.x + ' ' + tip.y + ' L' + left.x + ' ' + left.y + ' L' + right.x + ' ' + right.y + ' Z';
+    }
+
+    function edgePath(a, aSide, b, bSide, endInset = 0) {
         const stub = 20;
         const approach = 28;
         const points = [a];
 
         if (aSide === 'right' && bSide === 'left') {
             if (Math.abs(a.y - b.y) < 0.5 && b.x >= a.x) {
-                return 'M' + a.x + ' ' + a.y + ' L' + b.x + ' ' + b.y;
+                return straightEdge(a, b, endInset);
             }
 
             if (b.x - a.x >= stub + approach) {
@@ -878,7 +1199,7 @@
             }
         } else if (aSide === 'left' && bSide === 'right') {
             if (Math.abs(a.y - b.y) < 0.5 && b.x <= a.x) {
-                return 'M' + a.x + ' ' + a.y + ' L' + b.x + ' ' + b.y;
+                return straightEdge(a, b, endInset);
             }
 
             if (a.x - b.x >= stub + approach) {
@@ -890,7 +1211,7 @@
             }
         } else if (aSide === 'bottom' && bSide === 'top') {
             if (Math.abs(a.x - b.x) < 0.5 && b.y >= a.y) {
-                return 'M' + a.x + ' ' + a.y + ' L' + b.x + ' ' + b.y;
+                return straightEdge(a, b, endInset);
             }
 
             if (b.y - a.y >= stub + approach) {
@@ -902,7 +1223,7 @@
             }
         } else if (aSide === 'top' && bSide === 'bottom') {
             if (Math.abs(a.x - b.x) < 0.5 && b.y <= a.y) {
-                return 'M' + a.x + ' ' + a.y + ' L' + b.x + ' ' + b.y;
+                return straightEdge(a, b, endInset);
             }
 
             if (a.y - b.y >= stub + approach) {
@@ -927,7 +1248,7 @@
             points.push(b1);
         }
 
-        points.push(b);
+        points.push(shortenEnd(points[points.length - 1], b, endInset));
 
         return roundedPolyline(points, 10);
     }
@@ -979,8 +1300,12 @@
         const from = state.nodes.get(edge.from);
         const to = state.nodes.get(edge.to);
         const sides = anchorSides(from, to);
+        const tip = rimPoint(to, sides.to);
 
-        return edgePath(rimPoint(from, sides.from), sides.from, rimPoint(to, sides.to), sides.to);
+        return {
+            d: edgePath(rimPoint(from, sides.from), sides.from, tip, sides.to, ARROW_LENGTH),
+            arrow: arrowPath(tip, sides.to),
+        };
     }
 
     function renderEdges() {
@@ -993,7 +1318,7 @@
                 return;
             }
 
-            const d = edgeGeometry(edge);
+            const geometry = edgeGeometry(edge);
             const trace = traces.get(edge.id) || null;
             const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             group.classList.add('pipeline-edge-group');
@@ -1005,19 +1330,24 @@
 
             const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             hit.setAttribute('class', 'pipeline-edge-hit');
-            hit.setAttribute('d', d);
+            hit.setAttribute('d', geometry.d);
 
             const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             const incomplete = complete.size > 0 && !complete.has(edge.from + '>' + edge.to);
             const failed = trace && trace.status === 'failed';
-            line.setAttribute('class', 'pipeline-edge' + (incomplete ? ' is-incomplete' : '') + (failed ? ' is-failed' : ''));
-            line.setAttribute('d', d);
-            line.setAttribute(
-                'marker-end',
-                selection.edge === edge.id ? 'url(#pipeline-arrow-accent)' : failed ? 'url(#pipeline-arrow-fail)' : 'url(#pipeline-arrow)',
-            );
 
-            group.append(hit, line);
+            if (failed) {
+                group.classList.add('is-failed');
+            }
+
+            line.setAttribute('class', 'pipeline-edge' + (incomplete ? ' is-incomplete' : '') + (failed ? ' is-failed' : ''));
+            line.setAttribute('d', geometry.d);
+
+            const head = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            head.setAttribute('class', 'pipeline-arrowhead');
+            head.setAttribute('d', geometry.arrow);
+
+            group.append(hit, line, head);
 
             if (trace && (trace.status === 'flowed' || trace.status === 'failed' || trace.status === 'empty')) {
                 badges.push({ group, line, trace });
@@ -1060,7 +1390,7 @@
         });
     }
 
-    function showDraftEdge(d, tone) {
+    function showDraftEdge(d, arrow, tone) {
         if (!els.draftEdge) {
             return;
         }
@@ -1069,12 +1399,23 @@
         els.draftEdge.classList.toggle('is-valid', tone === 'valid');
         els.draftEdge.classList.toggle('is-invalid', tone === 'invalid');
         els.draftEdge.removeAttribute('hidden');
+
+        if (els.draftArrow) {
+            els.draftArrow.setAttribute('d', arrow);
+            els.draftArrow.classList.toggle('is-invalid', tone === 'invalid');
+            els.draftArrow.removeAttribute('hidden');
+        }
     }
 
     function hideDraftEdge() {
         if (els.draftEdge) {
             els.draftEdge.setAttribute('hidden', '');
             els.draftEdge.classList.remove('is-valid', 'is-invalid');
+        }
+
+        if (els.draftArrow) {
+            els.draftArrow.setAttribute('hidden', '');
+            els.draftArrow.classList.remove('is-invalid');
         }
     }
 
@@ -1100,19 +1441,24 @@
             return;
         }
 
-        const errors = issues.filter((issue) => issue.level === 'error').length;
-        const total = issues.length;
+        const errorCount = issues.filter((issue) => issue.level === 'error').length;
+        const warningCount = issues.filter((issue) => issue.level === 'warning').length;
+        const onlyErrors = errorCount > 0 && warningCount === 0;
+        const onlyWarnings = warningCount > 0 && errorCount === 0;
+        const mixed = errorCount > 0 && warningCount > 0;
 
-        els.issues.hidden = total === 0;
-        els.issuesCount.textContent = String(total);
-        els.issuesLabel.textContent = total === 1 ? 'issue' : 'issues';
-        els.issues.title = total === 0 ? '' : errors > 0 ? plural(errors, 'error') + ' to fix before this broadcast can play' : 'Warnings that do not block playing';
-        els.issues.classList.toggle('border-state-fail/40', errors > 0);
-        els.issues.classList.toggle('bg-state-fail/10', errors > 0);
-        els.issues.classList.toggle('text-state-fail', errors > 0);
-        els.issues.classList.toggle('border-state-warn/40', errors === 0);
-        els.issues.classList.toggle('bg-state-warn/10', errors === 0);
-        els.issues.classList.toggle('text-state-warn', errors === 0);
+        els.issues.hidden = errorCount + warningCount === 0;
+        els.issues.innerHTML = issueChip(errorCount, 'issue', mixed ? 'text-state-fail' : '') + issueChip(warningCount, 'warning', mixed ? 'text-state-warn' : '');
+        els.issues.title = issueChipTitle(errorCount, warningCount);
+        els.issues.classList.toggle('border-state-fail/40', onlyErrors);
+        els.issues.classList.toggle('bg-state-fail/10', onlyErrors);
+        els.issues.classList.toggle('text-state-fail', onlyErrors);
+        els.issues.classList.toggle('border-state-warn/40', onlyWarnings);
+        els.issues.classList.toggle('bg-state-warn/10', onlyWarnings);
+        els.issues.classList.toggle('text-state-warn', onlyWarnings);
+        els.issues.classList.toggle('border-line', mixed);
+        els.issues.classList.toggle('bg-paper', mixed);
+        els.issues.classList.toggle('text-ink', mixed);
 
         if (panel.kind === 'issues') {
             renderPanel();
@@ -1530,9 +1876,10 @@
                 return { destination_id: live.length === 1 ? live[0].id : null };
             }
             case 'filter':
-                return { rules: [{ type: 'contains', field: 'title', value: '' }] };
             case 'transform':
-                return { template: catalog.default_template || '{{title}}\n\n{{body}}', rules: [] };
+                return { rules: [] };
+            case 'mapping':
+                return { mapping: { version: 1, steps: [] } };
             default:
                 return {};
         }
@@ -1758,6 +2105,9 @@
         panel.frequency = null;
         panel.serial += 1;
         panel.focusField = extra.focusField || null;
+        panel.showAllFields = false;
+        panel.sampleOpen = false;
+        panel.openRuns = {};
 
         if (kind !== 'node' && kind !== 'edge' && (selection.nodes.size > 0 || selection.edge !== null)) {
             selection.nodes.clear();
@@ -1811,8 +2161,7 @@
             const nodeId = selection.nodes.size === 1 ? selection.nodes.values().next().value : null;
 
             if (panel.kind !== 'node' || panel.nodeId !== nodeId) {
-                const previousTab = panel.kind === 'node' ? panel.tab : 'configure';
-                openPanel('node', { nodeId, tab: nodeId && previousTab ? previousTab : 'configure' });
+                openPanel('node', { nodeId, tab: tabForSelection(nodeId) });
             } else {
                 renderPanel();
             }
@@ -1823,6 +2172,29 @@
         if (panel.kind === 'node' || panel.kind === 'edge') {
             closePanel();
         }
+    }
+
+    function tabForSelection(nodeId) {
+        const node = nodeId ? state.nodes.get(nodeId) : null;
+        const previous = panel.kind === 'node' && panel.nodeId ? state.nodes.get(panel.nodeId) : null;
+
+        if (node && node.type === 'source') {
+            if (previous && previous.type === 'source' && ['fields', 'configure', 'activity'].includes(panel.tab)) {
+                return panel.tab;
+            }
+
+            return 'fields';
+        }
+
+        if (node && node.type === 'destination') {
+            if (previous && previous.type === 'destination' && ['fields', 'configure', 'activity'].includes(panel.tab)) {
+                return panel.tab;
+            }
+
+            return 'fields';
+        }
+
+        return 'configure';
     }
 
     function isCurrent(serial) {
@@ -1843,16 +2215,34 @@
         );
     }
 
-    function panelTabs(tabs, active) {
+    function panelTabs(tabs, active, balanced) {
         return (
-            '<div class="flex gap-1 border-b border-line px-2" role="tablist">' +
+            '<div class="' + (balanced ? 'grid grid-cols-3' : 'flex gap-1') + ' border-b border-line px-2" role="tablist">' +
             tabs
-                .map((tab) =>
-                    '<button type="button" role="tab" aria-selected="' + (tab.id === active ? 'true' : 'false') + '" class="cursor-pointer border-b-2 px-2 py-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent ' +
-                    (tab.id === active ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink') + '" data-panel-tab="' + esc(tab.id) + '">' + esc(tab.label) + '</button>')
+                .map((tab) => {
+                    const on = tab.id === active;
+
+                    return (
+                        '<button type="button" role="tab" aria-selected="' + (on ? 'true' : 'false') + '" class="inline-flex cursor-pointer items-center justify-center gap-1.5 border-b-2 px-2 py-2.5 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent ' +
+                        (on ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-ink') + '" data-panel-tab="' + esc(tab.id) + '">' + esc(tab.label) +
+                        (tab.count === null || tab.count === undefined ? '' : '<span class="rounded px-1 font-mono text-[0.625rem] ' + (on ? 'bg-accent/10 text-accent' : 'bg-paper text-muted') + '">' + esc(tab.count) + '</span>') +
+                        '</button>'
+                    );
+                })
                 .join('') +
             '</div>'
         );
+    }
+
+    function statusPill(label, tone) {
+        const toneClass = {
+            ok: 'bg-state-ok/10 text-state-ok',
+            fail: 'bg-state-fail/10 text-state-fail',
+            warn: 'bg-state-warn/15 text-state-warn',
+            source: 'bg-node-source/10 text-node-source',
+        }[tone] || 'border border-line bg-paper text-muted';
+
+        return '<span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.625rem] font-medium ' + toneClass + '">' + esc(label) + '</span>';
     }
 
     function panelBody(html, extraClass = '') {
@@ -1861,6 +2251,17 @@
 
     function emptyNote(text) {
         return '<p class="rounded-md border border-dashed border-line px-3 py-3 text-center text-xs text-muted">' + esc(text) + '</p>';
+    }
+
+    function sourceEmptyState(heading, message, action) {
+        return (
+            '<div class="house-edge flex flex-col items-center gap-3 rounded-lg border px-4 py-8 text-center">' +
+            '<img src="/images/brand/logo-day-full.svg" alt="" class="h-14">' +
+            '<h3 class="font-display text-lg tracking-tight text-ink">' + esc(heading) + '</h3>' +
+            '<p class="max-w-64 text-xs text-muted">' + esc(message) + '</p>' +
+            (action || '') +
+            '</div>'
+        );
     }
 
     function loadingNote(text) {
@@ -2034,19 +2435,35 @@
         }
 
         const def = typeDef(node.type);
-        const isRecord = node.type === 'source' || node.type === 'destination';
+        const isSource = node.type === 'source';
+        const isRecord = isSource || node.type === 'destination';
         let body;
         let tabs = '';
 
         if (isRecord) {
-            tabs = panelTabs(
-                [
-                    { id: 'configure', label: 'Configure' },
-                    { id: 'fields', label: 'Fields' },
-                    { id: 'activity', label: node.type === 'source' ? 'Activity' : 'Deliveries' },
-                ],
-                panel.tab,
-            );
+            if (isSource) {
+                const counts = sourceTabCounts(node);
+                tabs = panelTabs(
+                    [
+                        { id: 'fields', label: 'Fields', count: counts.fields },
+                        { id: 'configure', label: 'Configure' },
+                        { id: 'activity', label: 'Activity', count: counts.activity },
+                    ],
+                    panel.tab,
+                    true,
+                );
+            } else {
+                const counts = destinationTabCounts(node);
+                tabs = panelTabs(
+                    [
+                        { id: 'fields', label: 'Fields', count: counts.fields },
+                        { id: 'configure', label: 'Configure' },
+                        { id: 'activity', label: 'Deliveries', count: counts.activity },
+                    ],
+                    panel.tab,
+                    true,
+                );
+            }
 
             if (panel.tab === 'fields') {
                 body = renderFieldsTab(node);
@@ -2057,15 +2474,127 @@
             }
         } else if (node.type === 'filter') {
             body = issueList(issuesFor(node.id)) + labelField(node) + filterRulesEditor(node);
+        } else if (node.type === 'mapping') {
+            body = issueList(issuesFor(node.id)) + labelField(node) + mappingEditor(node);
         } else {
             body = issueList(issuesFor(node.id)) + labelField(node) + transformEditor(node);
         }
 
         const footer = canEdit && panel.mode === 'view'
-            ? '<footer class="flex items-center justify-between gap-2 border-t border-line px-4 py-3"><button type="button" class="' + GHOST_BUTTON_CLASS + ' hover:border-state-fail hover:text-state-fail" data-delete-selection>Delete node</button><span class="font-mono text-[0.625rem] text-muted">' + esc(node.id) + '</span></footer>'
+            ? '<footer class="flex items-center justify-between gap-2 border-t border-line px-4 py-3">' +
+            (isRecord
+                ? '<span class="flex min-w-0 items-center gap-2"><button type="button" class="cursor-pointer text-xs text-state-fail hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-delete-selection>Delete node</button><span class="h-4 w-px bg-line" aria-hidden="true"></span><span class="truncate font-mono text-[0.625rem] text-muted">' + esc(node.id) + '</span></span><button type="button" class="shrink-0 cursor-pointer font-mono text-[0.625rem] text-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-copy-node-id="' + esc(node.id) + '">Copy id</button>'
+                : '<button type="button" class="' + GHOST_BUTTON_CLASS + ' hover:border-state-fail hover:text-state-fail" data-delete-selection>Delete node</button><span class="truncate font-mono text-[0.625rem] text-muted">' + esc(node.id) + '</span>') +
+            '</footer>'
             : '';
 
-        return panelHeader(nodeTitle(node), def.label, def.category) + tabs + panelBody(body) + footer;
+        const header = isRecord ? recordPanelHeader(node) : panelHeader(nodeTitle(node), def.label, def.category);
+
+        return header + tabs + panelBody(body) + footer;
+    }
+
+    function sourceTabCounts(node) {
+        const record = recordFor(node);
+        const type = record ? providerType('source', record.type) : null;
+        const summary = record ? summaryFor('source', record) : null;
+        const fields = type && type.schema ? type.schema.length : summary && summary.ok && summary.data.fields ? summary.data.fields.length : null;
+
+        return {
+            fields: fields,
+            activity: summary && summary.ok ? summary.data.activity.length : null,
+        };
+    }
+
+    function destinationTabCounts(node) {
+        const record = recordFor(node);
+        const summary = record ? summaryFor('destination', record) : null;
+        const loaded = summary && summary.ok;
+
+        return {
+            fields: loaded && summary.data.fields ? summary.data.fields.length : null,
+            activity: loaded ? (summary.data.delivery_count ?? summary.data.deliveries.length) : null,
+        };
+    }
+
+    function recordPanelHeader(node) {
+        const kind = node.type === 'source' ? 'source' : 'destination';
+        const isSource = kind === 'source';
+        const record = recordFor(node);
+        const summary = record && panel.mode === 'view' ? summaryFor(kind, record) : null;
+        let title = nodeTitle(node);
+        const bits = [];
+        let dot = 'bg-muted';
+
+        if (panel.mode === 'create') {
+            title = isSource ? 'New source' : 'New destination';
+            bits.push('Choose a type');
+        } else if (panel.mode === 'edit' && record) {
+            bits.push('Editing', record.type_label);
+            dot = 'bg-state-warn';
+        } else if (!record) {
+            bits.push('Nothing connected');
+        } else {
+            // View mode: the type is the subtitle; status (archived, health, last fetch) lives in the pill row below.
+            bits.push(record.type_label);
+            dot = record.archived ? 'bg-state-warn' : 'bg-state-ok';
+        }
+
+        let meta = '';
+
+        if (record && panel.mode === 'view') {
+            const pills = [];
+
+            if (record.archived) {
+                pills.push(statusPill('Archived', 'warn'));
+            }
+
+            if (record.last_tested_at) {
+                pills.push(statusPill(record.last_test_successful ? 'Healthy' : 'Check failed', record.last_test_successful ? 'ok' : 'fail'));
+            }
+
+            if (isSource) {
+                const fetchedAt = summary && summary.ok && summary.data.sample
+                    ? summary.data.sample.observed_at
+                    : summary && summary.ok && summary.data.activity && summary.data.activity[0]
+                        ? summary.data.activity[0].started_at
+                        : null;
+
+                if (fetchedAt) {
+                    pills.push(statusPill('Fetched ' + formatTime(fetchedAt), 'neutral'));
+                }
+            } else {
+                const delivery = summary && summary.ok && summary.data.deliveries ? summary.data.deliveries[0] : null;
+
+                if (delivery) {
+                    pills.push(statusPill('Delivered ' + formatTime(delivery.finished_at || delivery.attempted_at), 'neutral'));
+                }
+            }
+
+            const test = record.supports_connection_test && canEdit
+                ? '<button type="button" class="' + LINK_CLASS + ' ml-auto" data-record-test' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'test' ? 'Testing…' : 'Test ' + kind) + '</button>'
+                : '';
+
+            if (pills.length > 0 || test) {
+                meta = '<div class="mt-2 flex flex-wrap items-center justify-start gap-1.5 text-left">' + pills.join('') + test + '</div>';
+            }
+        }
+
+        return (
+            '<header class="border-b border-line px-4 py-3" data-node-category="' + kind + '">' +
+            '<div class="flex items-start gap-3">' +
+            '<span class="pipeline-node-tile grid size-9 shrink-0 place-items-center rounded-md">' + ICONS[kind] + '</span>' +
+            '<div class="min-w-0 flex-1">' +
+            '<p class="pipeline-node-kicker ' + KICKER_CLASS + '">' + (isSource ? 'Source' : 'Destination') + '</p>' +
+            '<h2 class="truncate font-display text-lg leading-tight tracking-tight text-ink" data-panel-title>' + esc(title) + '</h2>' +
+            '</div>' +
+            '<button type="button" class="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted hover:bg-paper hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-panel-close aria-label="Close">' + CLOSE_ICON + '</button>' +
+            '</div>' +
+            // Subtitle and status pills span the full card width, starting at the card's left edge (under the icon).
+            '<p class="mt-2 flex flex-wrap items-center justify-start gap-x-1.5 gap-y-0.5 text-left text-xs text-muted"><span class="inline-block size-1.5 rounded-full ' + dot + '"></span>' +
+            bits.map((bit, index) => (index === 0 ? '<span>' + esc(bit) + '</span>' : '<span class="inline-block size-0.5 rounded-full bg-line-strong"></span><span>' + esc(bit) + '</span>')).join('') +
+            '</p>' + meta +
+            '</header>'
+        );
     }
 
     function labelField(node) {
@@ -2078,24 +2607,36 @@
     }
 
     function filterRulesEditor(node) {
+        return ruleListEditor(node, 'Every rule must match. Published time is the one field that takes hours instead of text.', 'Connect a source before this filter. Its fields are what a rule can check.');
+    }
+
+    function transformEditor(node) {
+        return ruleListEditor(node, 'Each rule changes one field that reaches this step.', 'Connect a source, or a mapping that has set fields, before this transform. Those are the fields a rule can change.');
+    }
+
+    function ruleListEditor(node, hint, empty) {
         const rules = Array.isArray(node.config.rules) ? node.config.rules : [];
-        const typeOptions = filterRuleTypes.map((type) => ({ value: type.value, label: type.label }));
-        const fieldOptions = Object.entries(filterFields).map(([value, label]) => ({ value, label }));
-        let html = '<div class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Rules <span class="font-normal text-muted">— every rule must match</span></p>';
+        const fields = ruleFields(node);
+        let html = '<div class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Rules</p><p class="' + HINT_CLASS + '">' + esc(hint) + '</p>';
+
+        if (fields.length === 0) {
+            return html + emptyNote(empty) + '</div>';
+        }
 
         rules.forEach((rule, index) => {
-            const def = filterRuleTypes.find((type) => type.value === rule.type) || filterRuleTypes[0] || {};
+            const fieldName = rule.field || fields[0].value;
+            const ops = operationsFor(node, fieldName);
+            const def = ops.find((type) => type.value === rule.type) || ops[0] || {};
             const prefix = 'rules.' + index + '.';
             html +=
                 '<fieldset class="flex flex-col gap-2 rounded-md border border-line bg-paper p-2.5" data-rule="' + index + '">' +
                 '<legend class="sr-only">Rule ' + (index + 1) + '</legend>' +
                 '<div class="flex items-center gap-2">' +
-                '<select class="' + INPUT_CLASS + '" data-field="' + prefix + 'type" aria-label="Rule type"' + (canEdit ? '' : ' disabled') + '>' + optionList(typeOptions, rule.type, 'Rule type') + '</select>' +
+                '<select class="' + INPUT_CLASS + '" data-field="' + prefix + 'field" aria-label="Field"' + (canEdit ? '' : ' disabled') + '>' + optionList(fields, fieldName, null) + '</select>' +
                 (canEdit ? '<button type="button" class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted hover:bg-paper-raised hover:text-state-fail focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-rule-remove="' + index + '" aria-label="Remove rule ' + (index + 1) + '">' + CLOSE_ICON + '</button>' : '') +
                 '</div>' +
-                (def.needs_field ? '<select class="' + INPUT_CLASS + '" data-field="' + prefix + 'field" aria-label="Field"' + (canEdit ? '' : ' disabled') + '>' + optionList(fieldOptions, rule.field || 'title', 'Field') + '</select>' : '') +
-                (def.needs_value ? '<input type="text" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'value" value="' + esc(rule.value || '') + '" placeholder="' + (rule.type === 'title_matches' ? 'regular expression' : 'text to look for') + '" aria-label="Value" maxlength="500"' + (canEdit ? '' : ' disabled') + '>' : '') +
-                (def.needs_hours ? '<div class="flex items-center gap-2"><input type="number" min="1" max="8760" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'hours" data-kind="int" value="' + esc(rule.hours || '') + '" aria-label="Hours"' + (canEdit ? '' : ' disabled') + '><span class="text-xs text-muted">hours</span></div>' : '') +
+                '<select class="' + INPUT_CLASS + '" data-field="' + prefix + 'type" aria-label="Operation"' + (canEdit ? '' : ' disabled') + '>' + optionList(ops, rule.type, null) + '</select>' +
+                ruleParam(def, prefix, rule) +
                 '</fieldset>';
         });
 
@@ -2106,45 +2647,25 @@
         return html + '</div>';
     }
 
-    function transformEditor(node) {
-        const rules = Array.isArray(node.config.rules) ? node.config.rules : [];
-        const typeOptions = transformRuleTypes.map((type) => ({ value: type.value, label: type.label }));
-        let html =
-            '<div class="flex flex-col gap-1.5">' +
-            '<label class="' + LABEL_CLASS + '" for="pipeline-template">Message template</label>' +
-            '<textarea id="pipeline-template" rows="6" maxlength="5000" class="' + INPUT_CLASS + ' font-mono leading-relaxed" data-field="template" placeholder="' + esc(catalog.default_template || '') + '"' + (canEdit ? '' : ' disabled') + '>' + esc(node.config.template || '') + '</textarea>' +
-            '<div class="flex flex-wrap gap-1">' +
-            placeholders
-                .map((placeholder) => '<button type="button" class="cursor-pointer rounded-md border border-line bg-paper px-1.5 py-0.5 font-mono text-[0.6875rem] text-ink hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-insert-placeholder="' + esc(placeholder.name) + '" title="' + esc(placeholder.description) + '"' + (canEdit ? '' : ' disabled') + '>{{' + esc(placeholder.name) + '}}</button>')
-                .join('') +
-            '</div>' +
-            '</div>' +
-            '<div class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Formatting rules <span class="font-normal text-muted">— applied in order</span></p>';
-
-        rules.forEach((rule, index) => {
-            const def = transformRuleTypes.find((type) => type.value === rule.type) || transformRuleTypes[0] || {};
-            const prefix = 'rules.' + index + '.';
-            html +=
-                '<fieldset class="flex flex-col gap-2 rounded-md border border-line bg-paper p-2.5" data-rule="' + index + '">' +
-                '<legend class="sr-only">Formatting rule ' + (index + 1) + '</legend>' +
-                '<div class="flex items-center gap-2">' +
-                '<select class="' + INPUT_CLASS + '" data-field="' + prefix + 'type" aria-label="Rule type"' + (canEdit ? '' : ' disabled') + '>' + optionList(typeOptions, rule.type, 'Rule type') + '</select>' +
-                (canEdit ? '<button type="button" class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted hover:bg-paper-raised hover:text-state-fail focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-rule-remove="' + index + '" aria-label="Remove rule ' + (index + 1) + '">' + CLOSE_ICON + '</button>' : '') +
-                '</div>' +
-                (def.needs_value ? '<input type="text" class="' + INPUT_CLASS + '" data-field="' + prefix + 'value" value="' + esc(rule.value || '') + '" placeholder="Text" aria-label="Text" maxlength="1000"' + (canEdit ? '' : ' disabled') + '>' : '') +
-                (def.needs_length ? '<div class="flex items-center gap-2"><input type="number" min="1" max="10000" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'length" data-kind="int" value="' + esc(rule.length || '') + '" aria-label="Length"' + (canEdit ? '' : ' disabled') + '><span class="text-xs text-muted">characters</span></div>' : '') +
-                (def.needs_pattern
-                    ? '<input type="text" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'pattern" value="' + esc(rule.pattern || '') + '" placeholder="pattern" aria-label="Pattern" maxlength="500"' + (canEdit ? '' : ' disabled') + '>' +
-                      '<input type="text" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'replacement" value="' + esc(rule.replacement || '') + '" placeholder="replacement" aria-label="Replacement" maxlength="1000"' + (canEdit ? '' : ' disabled') + '>'
-                    : '') +
-                '</fieldset>';
-        });
-
-        if (canEdit) {
-            html += '<button type="button" class="' + GHOST_BUTTON_CLASS + ' self-start" data-rule-add>+ Add rule</button>';
+    function ruleParam(def, prefix, rule) {
+        if (def.param === 'hours') {
+            return '<div class="flex items-center gap-2"><input type="number" min="1" max="8760" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'hours" data-kind="int" value="' + esc(rule.hours || '') + '" aria-label="Hours"' + (canEdit ? '' : ' disabled') + '><span class="text-xs text-muted">hours</span></div>';
         }
 
-        return html + '</div>';
+        if (def.param === 'length') {
+            return '<div class="flex items-center gap-2"><input type="number" min="1" max="10000" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'length" data-kind="int" value="' + esc(rule.length || '') + '" aria-label="Length"' + (canEdit ? '' : ' disabled') + '><span class="text-xs text-muted">characters</span></div>';
+        }
+
+        if (def.param === 'pattern') {
+            return '<input type="text" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'pattern" value="' + esc(rule.pattern || '') + '" placeholder="pattern" aria-label="Pattern" maxlength="500"' + (canEdit ? '' : ' disabled') + '>' +
+                '<input type="text" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'replacement" value="' + esc(rule.replacement || '') + '" placeholder="replacement" aria-label="Replacement" maxlength="1000"' + (canEdit ? '' : ' disabled') + '>';
+        }
+
+        if (def.param === 'value') {
+            return '<input type="text" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'value" value="' + esc(rule.value || '') + '" placeholder="' + (rule.type === 'title_matches' ? 'regular expression' : 'text') + '" aria-label="Value" maxlength="500"' + (canEdit ? '' : ' disabled') + '>';
+        }
+
+        return '';
     }
 
     function routeStatus(node) {
@@ -2211,11 +2732,39 @@
             '<select id="pipeline-record" class="' + INPUT_CLASS + '" data-field="' + key + '" data-kind="int"' + (canEdit ? '' : ' disabled') + '>' +
             optionList(options, current, options.length === 0 ? 'No ' + noun + 's yet' : 'Choose a ' + noun) +
             '</select>' +
-            (canCreate ? '<button type="button" class="' + GHOST_BUTTON_CLASS + ' shrink-0" data-record-create title="Create a new ' + noun + '">New</button>' : '') +
+            (canCreate && !(isSource && !record) ? '<button type="button" class="' + GHOST_BUTTON_CLASS + ' shrink-0" data-record-create title="Create a new ' + noun + '">New</button>' : '') +
             '</div>' +
+            (isSource ? '<p class="' + HINT_CLASS + '">The source this node reads.</p>' : '') +
             '</div>';
 
-        if (record) {
+        if (record && isSource) {
+            const lines = recordConfigLines(kind, record);
+            html +=
+                '<section class="flex flex-col gap-3 rounded-lg border border-line p-3" data-node-category="source">' +
+                '<div class="flex items-start gap-2.5">' +
+                '<span class="pipeline-node-tile grid size-8 shrink-0 place-items-center rounded-md">' + ICONS.source + '</span>' +
+                '<div class="min-w-0 flex-1">' +
+                '<p class="truncate text-sm font-medium text-ink">' + esc(record.name) + '</p>' +
+                '<p class="text-xs text-muted">' + esc(record.type_label) + (record.archived ? ' · archived' : '') + '</p>' +
+                '</div></div>' +
+                (lines.length > 0
+                    ? '<dl class="flex flex-col gap-1.5">' + lines.map((line) => '<div class="min-w-0"><dt class="text-[0.6875rem] text-muted">' + esc(line.label) + '</dt><dd class="truncate font-mono text-xs text-ink" title="' + esc(line.value) + '">' + esc(line.value) + '</dd></div>').join('') + '</dl>'
+                    : '') +
+                recordTestLine(record) +
+                '<div class="flex flex-wrap items-center gap-2">' +
+                (canEdit ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-edit>Edit</button>' : '') +
+                (record.supports_connection_test && canEdit ? '<button type="button" class="' + GHOST_BUTTON_CLASS + '" data-record-test' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'test' ? SPINNER : '') + 'Test</button>' : '') +
+                '<a class="' + LINK_CLASS + ' ml-auto" href="' + esc(record.edit_url) + '">Full settings</a>' +
+                '</div>' +
+                (users > 1 ? '<p class="' + HINT_CLASS + '">Used by ' + users + ' nodes. Editing changes all of them.</p>' : '') +
+                '</section>';
+        } else if (!record && isSource) {
+            html += sourceEmptyState(
+                'No source connected',
+                options.length === 0 ? 'This broadcast has no sources yet. Create one for this node.' : 'Choose a source above, or create one for this node.',
+                canCreate ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-create>Create source</button>' : '',
+            );
+        } else if (record) {
             const lines = recordConfigLines(kind, record);
             html +=
                 '<section class="flex flex-col gap-2 rounded-md border border-line bg-paper p-3">' +
@@ -2228,7 +2777,7 @@
                     : '') +
                 recordTestLine(record) +
                 '<p class="' + HINT_CLASS + '">' +
-                (users > 1 ? 'Used by ' + users + ' nodes in this pipeline. Editing it changes all of them.' : 'Used only by this node. Sources and destinations belong to this broadcast.') +
+                (users > 1 ? 'Used by ' + users + ' nodes in this pipeline. Editing it changes all of them.' : 'Used only by this node.') +
                 '</p>' +
                 '<div class="flex flex-wrap items-center gap-x-3 gap-y-1">' +
                 (record.supports_connection_test && canEdit ? '<button type="button" class="' + LINK_CLASS + '" data-record-test>Test connection</button>' : '') +
@@ -2338,7 +2887,9 @@
         const configValue = (name) => (draft && draft.config && draft.config[name] !== undefined ? draft.config[name] : record && record.config ? record.config[name] : '');
         let html = '<form class="flex flex-col gap-3" data-record-form data-kind="' + kind + '" data-mode="' + mode + '"' + (record ? ' data-record-id="' + esc(record.id) + '"' : '') + ' novalidate>';
 
-        html += '<p class="' + KICKER_CLASS + ' text-muted">' + (mode === 'edit' ? 'Edit ' + noun : 'New ' + noun) + '</p>';
+        if (kind !== 'source') {
+            html += '<p class="' + KICKER_CLASS + ' text-muted">' + (mode === 'edit' ? 'Edit ' + noun : 'New ' + noun) + '</p>';
+        }
 
         if (mode === 'create') {
             if (offered.length === 0) {
@@ -2607,23 +3158,45 @@
         return { loading: true };
     }
 
+    function destinationFieldNotes(capabilities) {
+        if (!capabilities) {
+            return {};
+        }
+
+        const notes = {};
+
+        if (capabilities.max_text_length) {
+            notes.text = capabilities.max_text_length + ' characters';
+        }
+
+        notes.media = capabilities.supports_media ? 'sent' : 'not sent';
+
+        return notes;
+    }
+
     function schemaFieldList(fields, options = {}) {
         if (!fields || fields.length === 0) {
             return emptyNote('No field documentation is available for this type.');
         }
 
         return (
-            '<ul class="flex flex-col divide-y divide-line/60 rounded-md border border-line">' +
+            '<ul class="overflow-hidden rounded-lg border border-line">' +
             fields
                 .map((field) => {
                     const example = options.sample && options.sample[field.name] !== undefined ? options.sample[field.name] : undefined;
+                    const exampleText = example === undefined ? '' : typeof example === 'object' ? JSON.stringify(example) : String(example);
+                    const note = options.notes && options.notes[field.name] ? options.notes[field.name] : '';
 
                     return (
-                        '<li class="flex flex-col gap-0.5 px-3 py-2">' +
-                        '<div class="flex items-center justify-between gap-2"><code class="font-mono text-xs text-ink">' + esc(field.name) + '</code>' +
-                        '<span class="font-mono text-[0.625rem] text-muted">' + esc(field.type) + (field.required ? ' · required' : ' · optional') + '</span></div>' +
-                        (field.description ? '<p class="' + HINT_CLASS + '">' + esc(field.description) + '</p>' : '') +
-                        (example !== undefined ? '<p class="truncate font-mono text-[0.6875rem] text-node-source" title="' + esc(typeof example === 'object' ? JSON.stringify(example) : example) + '">e.g. ' + esc(typeof example === 'object' ? JSON.stringify(example) : example) + '</p>' : '') +
+                        '<li class="border-b border-line px-3 py-2.5 last:border-b-0">' +
+                        '<div class="flex items-center justify-between gap-2">' +
+                        '<code class="truncate font-mono text-xs text-ink">' + esc(field.name) + '</code>' +
+                        '<span class="flex shrink-0 items-center gap-1.5">' +
+                        '<span class="rounded bg-paper px-1 py-0.5 font-mono text-[0.625rem] text-muted">' + esc(field.type) + '</span>' +
+                        '<span class="text-[0.625rem] text-muted">' + (field.required ? 'Required' : 'Optional') + '</span>' +
+                        (note ? '<span class="text-[0.625rem] text-muted">' + esc(note) + '</span>' : '') +
+                        '</span></div>' +
+                        (exampleText !== '' ? '<p class="mt-1 truncate font-mono text-[0.6875rem] text-node-source" title="' + esc(exampleText) + '"><span class="text-muted">e.g. </span>' + esc(exampleText) + '</p>' : '') +
                         '</li>'
                     );
                 })
@@ -2632,12 +3205,64 @@
         );
     }
 
+    function sourceSampleCard(sample, itemCount) {
+        const fields = sample.fields || {};
+        const title = fields.title || fields.text || 'Fetched item';
+        const meta = [];
+
+        if (fields.author) {
+            meta.push(String(fields.author));
+        }
+
+        if (fields.published_at) {
+            meta.push(formatTime(fields.published_at));
+        }
+
+        let link = '';
+
+        if (fields.link) {
+            let host = String(fields.link);
+
+            try {
+                host = new URL(String(fields.link)).host;
+            } catch {
+                host = String(fields.link);
+            }
+
+            link = '<a class="block truncate font-mono text-[0.6875rem] text-accent hover:underline" href="' + esc(fields.link) + '" target="_blank" rel="noreferrer">' + esc(host) + '</a>';
+        }
+
+        const json = JSON.stringify(fields, null, 2);
+
+        return (
+            '<div class="overflow-hidden rounded-lg border border-line">' +
+            '<div class="flex items-center justify-between gap-2 border-b border-line bg-paper px-3 py-2">' +
+            '<div class="flex min-w-0 items-center gap-2"><span class="grid size-7 shrink-0 place-items-center rounded-md bg-accent/10 text-accent">' + ICONS.source + '</span>' +
+            '<div class="min-w-0"><p class="text-xs font-medium text-ink">Latest item</p>' +
+            '<p class="font-mono text-[0.625rem] text-muted">' + esc(formatTime(sample.observed_at)) + (itemCount ? ' · ' + plural(itemCount, 'item') + ' stored' : '') + '</p></div></div>' +
+            '<button type="button" class="' + LINK_CLASS + '" data-copy-sample>Copy</button></div>' +
+            '<div class="flex flex-col gap-1.5 px-3 py-2.5">' +
+            '<p class="text-sm font-medium leading-snug text-ink">' + esc(title) + '</p>' +
+            (meta.length > 0 ? '<p class="text-[0.6875rem] text-muted">' + meta.map((bit) => esc(bit)).join(' · ') + '</p>' : '') +
+            link + '</div>' +
+            '<div class="border-t border-line bg-paper">' +
+            '<div class="flex items-center justify-between px-3 py-1.5"><span class="font-mono text-[0.625rem] tracking-wide text-muted">JSON</span>' +
+            '<button type="button" class="' + LINK_CLASS + '" data-toggle-sample>' + (panel.sampleOpen ? 'Hide payload' : 'Show payload') + '</button></div>' +
+            (panel.sampleOpen ? '<pre class="max-h-48 overflow-auto px-3 pb-2 font-mono text-[0.6875rem] leading-relaxed text-ink" data-sample-json>' + esc(json) + '</pre>' : '<pre class="hidden" data-sample-json>' + esc(json) + '</pre>') +
+            '</div></div>'
+        );
+    }
+
     function renderFieldsTab(node) {
         const kind = node.type;
         const record = recordFor(node);
 
         if (!record) {
-            return emptyNote('Choose a ' + kind + ' first to see the fields it ' + (kind === 'source' ? 'provides' : 'accepts') + '.');
+            if (kind === 'source') {
+                return sourceEmptyState('No fields yet', 'Connect a source to see the fields it provides.', '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-go-tab="configure">Choose a source</button>');
+            }
+
+            return emptyNote('Choose a destination first to see the fields it accepts.');
         }
 
         const type = providerType(kind, record.type);
@@ -2646,36 +3271,108 @@
 
         if (kind === 'source') {
             const sample = summary && summary.ok && summary.data.sample ? summary.data.sample : null;
-            html += '<section class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Fields this source provides</p>' +
-                '<p class="' + HINT_CLASS + '">Documented by the ' + esc(record.type_label) + ' adapter. Example values come from the most recent item actually fetched.</p>' +
-                schemaFieldList(type ? type.schema : (summary && summary.ok ? summary.data.fields : []), { sample: sample ? sample.fields : null }) + '</section>';
+            const fields = type ? type.schema : (summary && summary.ok ? summary.data.fields : []);
 
-            html += '<section class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Observed</p>';
+            const visibleFields = panel.showAllFields || fields.length <= 5 ? fields : fields.slice(0, 5);
+            html += '<section class="flex flex-col gap-2">' +
+                '<div class="flex items-center justify-between gap-2"><p class="' + LABEL_CLASS + '">Output fields</p>' +
+                (fields.length > 0 ? '<button type="button" class="' + LINK_CLASS + '" data-copy-fields="' + esc(fields.map((field) => field.name).join('\n')) + '">Copy schema</button>' : '') +
+                '</div>' +
+                schemaFieldList(visibleFields, { sample: sample ? sample.fields : null }) +
+                (fields.length > 5 ? '<button type="button" class="' + LINK_CLASS + ' self-center" data-show-all-fields>' + (panel.showAllFields ? 'Show fewer' : 'Show all ' + fields.length + ' fields') + '</button>' : '') +
+                '</section>';
+
+            html += '<section class="flex flex-col gap-2">' +
+                '<div class="flex items-center justify-between gap-2"><p class="' + LABEL_CLASS + '">Latest sample</p>' +
+                (sample ? statusPill('Observed', 'ok') : '') +
+                '</div>';
 
             if (summary && summary.loading) {
-                html += loadingNote('Looking for fetched items…');
+                html += loadingNote('Looking for a fetched item…');
             } else if (summary && !summary.ok) {
                 html += errorNote(summary.error);
             } else if (sample) {
-                html += '<p class="' + HINT_CLASS + '">Latest item, fetched ' + esc(formatTime(sample.observed_at)) + '. ' + plural(summary.data.item_count, 'item') + ' stored in total.</p>' + jsonBlock(sample.fields);
+                html += sourceSampleCard(sample, summary.data.item_count);
             } else {
-                html += emptyNote('No items have been fetched from this source yet. Run a test to see real values.');
+                html += emptyNote('Nothing fetched yet. Test the source to see a real item.');
             }
 
             html += '</section>';
         } else {
+            const fields = type ? type.schema : (summary && summary.ok ? summary.data.fields : []);
             const capabilities = summary && summary.ok ? summary.data.capabilities : type ? { supports_media: type.supports_media, max_text_length: type.max_text_length } : null;
-            html += '<section class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Fields this destination accepts</p>' +
-                '<p class="' + HINT_CLASS + '">From the ' + esc(record.type_label) + ' adapter. The transform renders the message text; the adapter formats and sends it.</p>' +
-                schemaFieldList(type ? type.schema : (summary && summary.ok ? summary.data.fields : [])) + '</section>';
 
-            if (capabilities) {
-                html += '<section class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Limits</p><dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">' +
-                    '<dt class="text-muted">Text length</dt><dd class="font-mono text-ink">' + (capabilities.max_text_length ? 'up to ' + capabilities.max_text_length + ' characters' : 'no documented limit') + '</dd>' +
-                    '<dt class="text-muted">Media</dt><dd class="font-mono text-ink">' + (capabilities.supports_media ? 'attached when the item has any' : 'not sent') + '</dd>' +
-                    '</dl></section>';
-            }
+            html += schemaFieldList(fields, { notes: destinationFieldNotes(capabilities) });
         }
+
+        return html;
+    }
+
+    function mappingEditor(node) {
+        const stored = node.config.mapping && Array.isArray(node.config.mapping.steps) ? node.config.mapping.steps : null;
+        const fields = fieldsEntering(node.id);
+        const destFields = destinationFieldOptions(node);
+        const reached = downstreamNodes(node.id, 'destination').length;
+        let html = '<section class="flex flex-col gap-3">';
+
+        html += '<div class="flex flex-col gap-1"><p class="' + LABEL_CLASS + '">Fields this path sends</p>' +
+            '<p class="' + HINT_CLASS + '">Set each field from the fields that reach this mapping. A value can combine several of them, with any words around them. Later steps can use the fields you set here.</p></div>';
+
+        if (destFields.length === 0) {
+            html += emptyNote('Connect a destination after this mapping. Its fields are the ones you can set.');
+
+            if (fields.length === 0) {
+                html += emptyNote('Connect a source, or an earlier mapping that has set fields, to insert them into a value.');
+            }
+
+            html += '</section>';
+
+            return html;
+        }
+
+        html += '<p class="' + HINT_CLASS + '">' + (reached > 1
+            ? 'Every destination after this mapping receives these fields. Add another mapping node when a destination should receive something else.'
+            : 'These are that destination’s fields. Add another mapping node when a second destination should receive something else.') + '</p>';
+
+        if (fields.length === 0) {
+            html += emptyNote('No fields reach this mapping yet. Connect a source, or an earlier mapping that has set fields.');
+        }
+
+        if (!stored || stored.length === 0) {
+            if (suggestedMapping(node)) {
+                html += '<button type="button" class="' + GHOST_BUTTON_CLASS + ' self-start" data-mapping-use' + (canEdit ? '' : ' disabled') + '>Use suggested mapping</button>';
+            }
+
+            html += '<button type="button" class="' + GHOST_BUTTON_CLASS + ' self-start" data-mapping-add' + (canEdit ? '' : ' disabled') + '>+ Set a field</button></section>';
+
+            return html;
+        }
+
+        stored.forEach((step, index) => {
+            const config = step.config || {};
+            const prefix = 'mapping.steps.' + index + '.config.';
+
+            html += '<div class="flex flex-col gap-2 rounded-md border border-line p-2.5" data-mapping-step>' +
+                '<div class="flex items-center justify-between gap-2"><label class="' + LABEL_CLASS + '" for="map-field-' + index + '">Destination field</label>' +
+                (canEdit ? '<button type="button" class="cursor-pointer text-xs text-muted hover:text-state-fail" data-mapping-remove="' + index + '">Remove</button>' : '') +
+                '</div>' +
+                '<select id="map-field-' + index + '" class="' + INPUT_CLASS + '" data-field="' + prefix + 'field" aria-label="Destination field"' + (canEdit ? '' : ' disabled') + '>' +
+                optionList(destFields, config.field || destFields[0].value, null) + '</select>' +
+                '<label class="' + LABEL_CLASS + '" for="map-value-' + index + '">Value</label>' +
+                '<textarea id="map-value-' + index + '" rows="4" maxlength="5000" class="' + INPUT_CLASS + ' font-mono" data-field="' + prefix + 'value" aria-label="Value"' + (canEdit ? '' : ' disabled') + '>' + esc(config.value || '') + '</textarea>';
+
+            if (fields.length > 0) {
+                html += '<div class="flex flex-wrap gap-1">';
+                fields.forEach((field) => {
+                    html += '<button type="button" class="cursor-pointer rounded-md border border-line bg-paper px-1.5 py-0.5 font-mono text-[0.6875rem] text-ink hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-insert-placeholder="' + esc(field.name) + '" title="' + esc(field.description || field.label) + '"' + (canEdit ? '' : ' disabled') + '>{{' + esc(field.name) + '}}</button>';
+                });
+                html += '</div>';
+            }
+
+            html += '</div>';
+        });
+
+        html += '<button type="button" class="' + GHOST_BUTTON_CLASS + ' self-start" data-mapping-add' + (canEdit ? '' : ' disabled') + '>+ Set a field</button></section>';
 
         return html;
     }
@@ -2685,15 +3382,18 @@
         const record = recordFor(node);
 
         if (!record) {
-            return emptyNote('Choose a ' + kind + ' first.');
+            if (kind === 'source') {
+                return sourceEmptyState('No activity yet', 'Connect a source to see its fetches.', '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-go-tab="configure">Choose a source</button>');
+            }
+
+            return emptyNote('Choose a destination first.');
         }
 
         const summary = summaryFor(kind, record);
         let html = '';
 
         if (kind === 'source') {
-            html += '<section class="flex flex-col gap-2"><div class="flex items-center justify-between gap-2"><p class="' + LABEL_CLASS + '">Recent fetches</p>' +
-                (record.supports_connection_test && canEdit ? '<button type="button" class="' + GHOST_BUTTON_CLASS + '" data-record-test' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'test' ? SPINNER : '') + 'Test source</button>' : '') + '</div>';
+            html += '<section class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Recent activity</p>';
 
             html += recordTestLine(record);
 
@@ -2702,18 +3402,36 @@
             }
 
             if (summary && summary.loading) {
-                html += loadingNote('Loading recent runs…');
+                html += loadingNote('Loading fetches…');
             } else if (summary && !summary.ok) {
                 html += errorNote(summary.error);
             } else if (summary && summary.data.activity.length === 0) {
-                html += emptyNote('No run has read from this source yet. Test the pipeline to fetch without sending.');
+                html += sourceEmptyState(
+                    'No fetches yet',
+                    'Test the source to read it without sending.',
+                    record.supports_connection_test && canEdit ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-test' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'test' ? SPINNER : '') + 'Test source</button>' : '',
+                );
             } else if (summary) {
-                html += '<ul class="flex flex-col gap-1.5">' + summary.data.activity.map((run) =>
-                    '<li class="flex flex-col gap-1 rounded-md border border-line bg-paper px-3 py-2 text-xs">' +
-                    '<div class="flex items-center justify-between gap-2"><span class="font-mono text-muted">' + esc(formatTime(run.started_at)) + (run.is_dry ? ' · test' : '') + '</span>' + statusChip(run.status_label, run.status) + '</div>' +
-                    '<p class="text-ink">Found ' + run.items_found + ', new ' + run.items_new + (run.route ? ' <span class="text-muted">· ' + esc(run.route) + '</span>' : '') + '</p>' +
-                    (run.error ? '<p class="text-state-fail">' + esc(run.error) + '</p>' : '') +
-                    '</li>').join('') + '</ul>';
+                html += '<ol class="flex flex-col">' + summary.data.activity.map((run, index) => {
+                    const tone = statusTone(run.status);
+                    const last = index === summary.data.activity.length - 1;
+                    const open = Boolean(panel.openRuns && panel.openRuns[run.id]);
+                    const detail = run.error || (run.route ? 'Route ' + run.route : '');
+
+                    return (
+                        '<li class="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-x-3">' +
+                        '<div class="flex h-full flex-col items-center"><span class="mt-1.5 size-2 shrink-0 rounded-full bg-state-' + tone + '"></span>' +
+                        (last ? '' : '<span class="mt-1 w-px flex-1 bg-line"></span>') + '</div>' +
+                        '<div class="' + (last ? '' : 'pb-4') + '">' +
+                        '<div class="flex items-center justify-between gap-2"><p class="text-xs font-medium text-ink">' + (run.is_dry ? 'Source test' : 'Fetch') + '</p>' + statusPill(run.status_label, tone) + '</div>' +
+                        '<p class="mt-0.5 text-[0.6875rem] text-muted">' + esc(formatTime(run.started_at)) + ' · found ' + (run.items_found ?? 0) + ', new ' + (run.items_new ?? 0) + '</p>' +
+                        (detail ? '<button type="button" class="' + LINK_CLASS + ' mt-1" data-toggle-run="' + esc(run.id) + '">' + (open ? 'Hide details' : run.error ? 'View error' : 'View details') + '</button>' +
+                            (open ? '<p class="mt-1.5 rounded-md border border-line bg-paper px-2.5 py-2 text-xs ' + (run.error ? 'text-state-fail' : 'text-muted') + '">' + esc(detail) + (run.run_id ? '<span class="mt-1 block font-mono text-[0.625rem] text-muted">Run ' + esc(run.run_id) + '</span>' : '') + '</p>' : '') : '') +
+                        '</div></li>'
+                    );
+                }).join('') + '</ol>' +
+                '<div class="flex items-center justify-between gap-2 border-t border-line pt-3"><span class="' + HINT_CLASS + '">' + plural(summary.data.activity.length, 'recent event') + '</span>' +
+                (urls.activity ? '<a class="' + LINK_CLASS + '" href="' + esc(urls.activity) + '">All activity</a>' : '') + '</div>';
             }
 
             html += '</section>';
@@ -3238,30 +3956,72 @@
     /* Inspector: issues                                                    */
     /* ------------------------------------------------------------------ */
 
-    function renderIssuesPanel() {
-        let body;
-
-        if (issues.length === 0) {
-            body = emptyNote('No issues. Every route compiles.');
-        } else {
-            body =
-                '<ul class="flex flex-col gap-1.5">' +
-                issues.map((issue, index) => {
-                    const tone = issue.level === 'error' ? 'fail' : 'warn';
-                    const node = issue.node_id ? state.nodes.get(issue.node_id) : null;
-                    const target = node ? typeDef(node.type).label + ' · ' + nodeTitle(node) : issue.edge_id ? 'Connection' : 'Pipeline';
-
-                    return (
-                        '<li><button type="button" class="flex w-full cursor-pointer flex-col gap-0.5 rounded-md border border-state-' + tone + '/30 bg-state-' + tone + '/5 px-3 py-2 text-left hover:border-state-' + tone + ' focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-issue-index="' + index + '">' +
-                        '<span class="' + KICKER_CLASS + ' text-state-' + tone + '">' + esc(issue.level === 'error' ? 'Error' : 'Warning') + ' · ' + esc(target) + '</span>' +
-                        '<span class="text-xs text-ink">' + esc(issue.message) + '</span>' +
-                        '</button></li>'
-                    );
-                }).join('') +
-                '</ul>';
+    function issueChip(count, noun, toneClass) {
+        if (count === 0) {
+            return '';
         }
 
-        return panelHeader(plural(issues.length, 'issue'), 'Validation', null) + panelBody(body);
+        const label = count === 1 ? noun : noun + 's';
+
+        return '<span class="' + toneClass + '">' + count + ' <span class="hidden sm:inline">' + label + '</span></span>';
+    }
+
+    function issueChipTitle(errorCount, warningCount) {
+        const parts = [];
+
+        if (errorCount > 0) {
+            parts.push(plural(errorCount, 'error') + ' to fix before every route can play');
+        }
+
+        if (warningCount > 0) {
+            parts.push(plural(warningCount, 'warning') + ' that do not block playing');
+        }
+
+        return parts.join('. ');
+    }
+
+    function renderIssuesPanel() {
+        const indexed = issues.map((issue, index) => ({ issue, index }));
+        const errors = indexed.filter((entry) => entry.issue.level === 'error');
+        const warnings = indexed.filter((entry) => entry.issue.level === 'warning');
+        let body;
+
+        if (indexed.length === 0) {
+            body = emptyNote('No issues. Every route compiles.');
+        } else {
+            body = issueSection('Issues', errors) + issueSection('Warnings', warnings);
+        }
+
+        const heading = errors.length > 0 && warnings.length > 0
+            ? 'Issues and warnings'
+            : errors.length > 0
+                ? plural(errors.length, 'issue')
+                : plural(warnings.length, 'warning');
+
+        return panelHeader(heading, 'Validation', null) + panelBody(body);
+    }
+
+    function issueSection(title, entries) {
+        if (entries.length === 0) {
+            return '';
+        }
+
+        return (
+            '<section class="flex flex-col gap-1.5"><p class="' + LABEL_CLASS + '">' + esc(title) + '</p><ul class="flex flex-col gap-1.5">' +
+            entries.map(({ issue, index }) => {
+                const tone = issue.level === 'error' ? 'fail' : 'warn';
+                const node = issue.node_id ? state.nodes.get(issue.node_id) : null;
+                const target = node ? typeDef(node.type).label + ' · ' + nodeTitle(node) : issue.edge_id ? 'Connection' : 'Pipeline';
+
+                return (
+                    '<li><button type="button" class="flex w-full cursor-pointer flex-col gap-0.5 rounded-md border border-state-' + tone + '/30 bg-state-' + tone + '/5 px-3 py-2 text-left hover:border-state-' + tone + ' focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent" data-issue-index="' + index + '">' +
+                    '<span class="' + KICKER_CLASS + ' text-state-' + tone + '">' + esc(issue.level === 'error' ? 'Error' : 'Warning') + ' · ' + esc(target) + '</span>' +
+                    '<span class="text-xs text-ink">' + esc(issue.message) + '</span>' +
+                    '</button></li>'
+                );
+            }).join('') +
+            '</ul></section>'
+        );
     }
 
     function focusIssue(issue) {
@@ -3324,11 +4084,11 @@
             return;
         }
 
-        const tab = target.closest('[data-panel-tab]');
+        const tab = target.closest('[data-panel-tab], [data-go-tab]');
 
         if (tab) {
             if (leavePanel()) {
-                panel.tab = tab.getAttribute('data-panel-tab');
+                panel.tab = tab.getAttribute('data-panel-tab') || tab.getAttribute('data-go-tab');
                 panel.mode = 'view';
                 panel.notice = null;
                 panel.errors = {};
@@ -3394,6 +4154,64 @@
             return;
         }
 
+        if (target.closest('[data-copy-sample]')) {
+            const sample = els.inspector.querySelector('[data-sample-json]');
+            const text = sample ? sample.textContent : '';
+
+            if (text && navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => toast('Copied the latest item.')).catch(() => toast('Could not copy the latest item.'));
+            }
+
+            return;
+        }
+
+        const copyFields = target.closest('[data-copy-fields]');
+
+        if (copyFields) {
+            const names = copyFields.getAttribute('data-copy-fields') || '';
+
+            if (names && navigator.clipboard) {
+                navigator.clipboard.writeText(names).then(() => toast('Copied the field names.')).catch(() => toast('Could not copy the fields.'));
+            }
+
+            return;
+        }
+
+        if (target.closest('[data-copy-node-id]')) {
+            const id = target.closest('[data-copy-node-id]').getAttribute('data-copy-node-id');
+
+            if (id && navigator.clipboard) {
+                navigator.clipboard.writeText(id).then(() => toast('Copied the node id.')).catch(() => toast('Could not copy the node id.'));
+            }
+
+            return;
+        }
+
+        if (target.closest('[data-show-all-fields]')) {
+            panel.showAllFields = !panel.showAllFields;
+            renderPanel();
+
+            return;
+        }
+
+        if (target.closest('[data-toggle-sample]')) {
+            panel.sampleOpen = !panel.sampleOpen;
+            renderPanel();
+
+            return;
+        }
+
+        const runToggle = target.closest('[data-toggle-run]');
+
+        if (runToggle) {
+            const id = runToggle.getAttribute('data-toggle-run');
+            panel.openRuns = panel.openRuns || {};
+            panel.openRuns[id] = !panel.openRuns[id];
+            renderPanel();
+
+            return;
+        }
+
         const node = currentNode();
 
         if (!node || !canEdit) {
@@ -3442,7 +4260,8 @@
         const insert = target.closest('[data-insert-placeholder]');
 
         if (insert) {
-            const textarea = els.inspector.querySelector('[data-field="template"]');
+            const step = insert.closest('[data-mapping-step]');
+            const textarea = step ? step.querySelector('textarea') : els.inspector.querySelector('[data-field="template"]');
 
             if (textarea) {
                 const token = '{{' + insert.getAttribute('data-insert-placeholder') + '}}';
@@ -3457,10 +4276,78 @@
             return;
         }
 
+        if (target.closest('[data-mapping-use]')) {
+            const suggestion = suggestedMapping(node);
+
+            if (suggestion) {
+                commit(() => {
+                    node.config.mapping = JSON.parse(JSON.stringify(suggestion));
+                });
+            }
+
+            return;
+        }
+
+        if (target.closest('[data-mapping-add]')) {
+            commit(() => {
+                const steps = node.config.mapping && Array.isArray(node.config.mapping.steps) ? node.config.mapping.steps.slice() : [];
+                const options = destinationFieldOptions(node);
+
+                if (options.length === 0) {
+                    return;
+                }
+
+                steps.push({
+                    id: uid('map'),
+                    operation: 'set_field',
+                    order: steps.length,
+                    config: { field: options[0].value, value: '' },
+                });
+                assignMapping(node, steps);
+            });
+
+            const added = els.inspector.querySelectorAll('[data-mapping-step] textarea');
+            const last = added[added.length - 1];
+
+            if (last) {
+                last.focus({ preventScroll: true });
+            }
+
+            return;
+        }
+
+        const removeMapping = target.closest('[data-mapping-remove]');
+
+        if (removeMapping) {
+            const index = Number(removeMapping.getAttribute('data-mapping-remove'));
+
+            commit(() => {
+                const steps = node.config.mapping && Array.isArray(node.config.mapping.steps) ? node.config.mapping.steps.slice() : [];
+                steps.splice(index, 1);
+
+                if (steps.length === 0) {
+                    delete node.config.mapping;
+                } else {
+                    assignMapping(node, steps);
+                }
+            });
+
+            return;
+        }
+
         if (target.closest('[data-rule-add]')) {
             commit(() => {
                 const rules = Array.isArray(node.config.rules) ? node.config.rules : [];
-                rules.push(node.type === 'filter' ? { type: 'contains', field: 'title', value: '' } : { type: 'strip_html' });
+                const available = fieldsEntering(node.id);
+                const field = available[0] ? available[0].name : '';
+
+                if (field === '') {
+                    return;
+                }
+
+                rules.push(node.type === 'filter'
+                    ? { field: field, type: field === 'published_at' ? 'published_after' : 'contains', value: '' }
+                    : { field: field, type: 'strip_html' });
                 node.config.rules = rules;
             });
 
@@ -3602,13 +4489,16 @@
             commit(() => {
                 setConfig(node.id, field, readFieldValue(input));
 
-                if (field.endsWith('.type')) {
+                if (field.endsWith('.type') || field.endsWith('.field')) {
                     const index = Number(field.split('.')[1]);
                     const rule = node.config.rules[index];
-                    const def = (node.type === 'filter' ? filterRuleTypes : transformRuleTypes).find((type) => type.value === rule.type) || {};
 
-                    if (def.needs_field && !rule.field) {
-                        rule.field = 'title';
+                    if (rule) {
+                        const ops = operationsFor(node, rule.field);
+
+                        if (!ops.some((type) => type.value === rule.type)) {
+                            rule.type = ops[0] ? ops[0].value : rule.type;
+                        }
                     }
                 }
             });
@@ -3732,24 +4622,36 @@
         const origin = state.nodes.get(drag.fromId);
         const pointer = toWorld(clientX, clientY);
         const other = drag.target ? state.nodes.get(drag.target) : drag.invalid ? state.nodes.get(drag.invalid) : null;
-        let d;
+        let geometry;
 
         if (other) {
             const pair = drag.direction === 'out' ? anchorSides(origin, other) : anchorSides(other, origin);
 
-            d = drag.direction === 'out'
-                ? edgePath(rimPoint(origin, pair.from), pair.from, rimPoint(other, pair.to), pair.to)
-                : edgePath(rimPoint(other, pair.from), pair.from, rimPoint(origin, pair.to), pair.to);
+            geometry = drag.direction === 'out'
+                ? {
+                    d: edgePath(rimPoint(origin, pair.from), pair.from, rimPoint(other, pair.to), pair.to, ARROW_LENGTH),
+                    arrow: arrowPath(rimPoint(other, pair.to), pair.to),
+                }
+                : {
+                    d: edgePath(rimPoint(other, pair.from), pair.from, rimPoint(origin, pair.to), pair.to, ARROW_LENGTH),
+                    arrow: arrowPath(rimPoint(origin, pair.to), pair.to),
+                };
         } else {
             const ghost = { x: pointer.x - NODE_WIDTH / 2, y: pointer.y - NODE_HEIGHT / 2 };
             const pair = drag.direction === 'out' ? anchorSides(origin, ghost) : anchorSides(ghost, origin);
 
-            d = drag.direction === 'out'
-                ? edgePath(rimPoint(origin, pair.from), pair.from, pointer, pair.to)
-                : edgePath(pointer, pair.from, rimPoint(origin, pair.to), pair.to);
+            geometry = drag.direction === 'out'
+                ? {
+                    d: edgePath(rimPoint(origin, pair.from), pair.from, pointer, pair.to, ARROW_LENGTH),
+                    arrow: arrowPath(pointer, pair.to),
+                }
+                : {
+                    d: edgePath(pointer, pair.from, rimPoint(origin, pair.to), pair.to, ARROW_LENGTH),
+                    arrow: arrowPath(rimPoint(origin, pair.to), pair.to),
+                };
         }
 
-        showDraftEdge(d, drag.target ? 'valid' : drag.invalid ? 'invalid' : null);
+        showDraftEdge(geometry.d, geometry.arrow, drag.target ? 'valid' : drag.invalid ? 'invalid' : null);
     }
 
     function nodeUnderPointer(clientX, clientY) {
@@ -3777,7 +4679,9 @@
         const rect = root.getBoundingClientRect();
         const x = clientX - rect.left - (NODE_WIDTH / 2) * view.zoom;
         const y = clientY - rect.top - (NODE_HEIGHT / 2) * view.zoom;
-        els.ghost.style.transform = 'translate(' + x + 'px, ' + y + 'px) scale(' + view.zoom + ')';
+        els.ghost.style.left = x + 'px';
+        els.ghost.style.top = y + 'px';
+        els.ghost.style.zoom = String(view.zoom);
         const inside = canvasHit(clientX, clientY);
         els.ghost.classList.toggle('is-outside', !inside);
         els.canvas.classList.toggle('is-dropping', inside);

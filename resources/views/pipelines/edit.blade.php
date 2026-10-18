@@ -178,19 +178,9 @@
         >
             <div class="pipeline-world" data-world>
                 <svg class="pipeline-edges" data-edges width="1" height="1" aria-hidden="true">
-                    <defs>
-                        <marker id="pipeline-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                            <path class="pipeline-arrow" d="M 1 1.5 L 9 5 L 1 8.5 Z" />
-                        </marker>
-                        <marker id="pipeline-arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                            <path class="pipeline-arrow is-accent" d="M 1 1.5 L 9 5 L 1 8.5 Z" />
-                        </marker>
-                        <marker id="pipeline-arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                            <path class="pipeline-arrow is-fail" d="M 1 1.5 L 9 5 L 1 8.5 Z" />
-                        </marker>
-                    </defs>
                     <g data-edge-layer></g>
                     <path class="pipeline-edge is-draft" data-draft-edge hidden d="" />
+                    <path class="pipeline-arrowhead is-draft" data-draft-arrow hidden d="" />
                 </svg>
                 <div class="pipeline-nodes" data-nodes></div>
             </div>
@@ -224,7 +214,8 @@
                 @foreach ([
                     ['source', 'Source', 'source', 'Where items come from'],
                     ['filter', 'Filter', 'transform', 'Keep only matching items'],
-                    ['transform', 'Transform', 'transform', 'Shape the message'],
+                    ['transform', 'Transform', 'transform', 'Change a field'],
+                    ['mapping', 'Mapping', 'transform', 'Choose which fields go where'],
                     ['destination', 'Destination', 'destination', 'Where messages go'],
                 ] as [$type, $label, $category, $hint])
                     <button

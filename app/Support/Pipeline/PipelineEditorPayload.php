@@ -14,6 +14,7 @@ use App\Models\Source;
 use App\Support\BroadcastTransforms\TemplatePlaceholders;
 use App\Support\ConfigurationField;
 use App\Support\DestinationProviderRegistry;
+use App\Support\Mapping\DefaultMappings;
 use App\Support\Mapping\ProviderSchemas;
 use App\Support\ScheduleSummary;
 use App\Support\SecretRedactor;
@@ -36,6 +37,7 @@ class PipelineEditorPayload
         private SecretRedactor $secrets,
         private ProviderSchemas $schemas,
         private PipelineTraceRecorder $traces,
+        private DefaultMappings $defaultMappings,
     ) {}
 
     /**
@@ -243,6 +245,9 @@ class PipelineEditorPayload
      */
     private function catalog(array $extraSourceTypes = [], array $extraDestinationTypes = []): array
     {
+        $sourceTypes = $this->sourceTypes($extraSourceTypes);
+        $destinationTypes = $this->destinationTypes($extraDestinationTypes);
+
         return [
             'node_types' => array_map(static fn (PipelineNodeType $type): array => [
                 'type' => $type->value,
@@ -273,8 +278,12 @@ class PipelineEditorPayload
                 TemplatePlaceholders::descriptions(),
             ),
             'default_template' => TemplatePlaceholders::DEFAULT_TEMPLATE,
-            'source_types' => $this->sourceTypes($extraSourceTypes),
-            'destination_types' => $this->destinationTypes($extraDestinationTypes),
+            'source_types' => $sourceTypes,
+            'destination_types' => $destinationTypes,
+            'default_mappings' => $this->defaultMappings->catalog(
+                array_map(static fn (array $type): string => $type['type'], $sourceTypes),
+                array_map(static fn (array $type): string => $type['type'], $destinationTypes),
+            ),
             'limits' => [
                 'nodes' => PipelineGraph::MAX_NODES,
                 'edges' => PipelineGraph::MAX_EDGES,

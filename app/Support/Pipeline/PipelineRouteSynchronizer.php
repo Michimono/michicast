@@ -39,11 +39,20 @@ class PipelineRouteSynchronizer
                 );
 
                 if ($match instanceof Broadcast) {
+                    // A second canvas path for the same source and destination
+                    // shares this row. The first path owns the filter, transform,
+                    // and mapping; rewriting them would drop that sending.
+                    if (isset($kept[(int) $match->getKey()])) {
+                        $live[] = $match;
+
+                        continue;
+                    }
+
                     $match->fill([
                         'name' => $route->name,
                         'filter' => $route->filter,
                         'transform' => $route->transform,
-                        'mapping' => null,
+                        'mapping' => $route->mapping,
                     ]);
                     $match->save();
 
@@ -65,12 +74,13 @@ class PipelineRouteSynchronizer
                     'destination_id' => $route->destinationId,
                     'filter' => $route->filter,
                     'transform' => $route->transform,
-                    'mapping' => null,
+                    'mapping' => $route->mapping,
                     'enabled' => ! $this->quotas->wouldExceed($project->organization, QuotaMetric::ActiveBroadcasts),
                 ]);
 
                 $kept[(int) $created->getKey()] = true;
                 $live[] = $created;
+                $existing->push($created);
             }
 
             foreach ($existing as $broadcast) {

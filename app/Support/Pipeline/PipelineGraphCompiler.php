@@ -18,15 +18,26 @@ use Illuminate\Support\Collection;
  * Every path from a source node to a destination node becomes one route:
  * the filters met along the way are ANDed (the evaluator already does that
  * with a rule list) and the single transform on the path becomes the route's
- * template. A source may reach a destination through one path only, because
- * deliveries are unique per route and destination — two routes for the same
- * pair would publish twice. Nodes whose settings are incomplete keep every
+ * template, kept for a transform that still stores one. Field rules on a
+ * transform and Set field steps on a mapping are written in path order, so
+ * a transform can change a field before or after the mapping. One source
+ * record reaches a destination through one broadcast
+ * row, so the item is delivered once. Extra nodes for that same pair stay
+ * on the route (their connections stay live) and are reported as a warning.
+ * Two different paths out of the same node are an error: their filters
+ * would disagree, so neither compiles. Nodes whose settings are incomplete keep every
  * path through them from compiling, so a half-built filter never lets
  * everything through.
  */
 class PipelineGraphCompiler
 {
     private const MAX_PATHS = 200;
+
+    /**
+     * Text fields a visual filter or transform rule may name. Published time
+     * is separate: those rules take a number of hours.
+     */
+    private const TEXT_FIELDS = ['title', 'body', 'author', 'link'];
 
     public function compile(PipelineGraph $graph, Project $project): PipelineCompilation
     {
@@ -137,19 +148,18 @@ class PipelineGraphCompiler
             $recordPair = $route->key();
 
             if (isset($byRecordPair[$recordPair])) {
-                $issues[] = PipelineIssue::error(
+                $issues[] = PipelineIssue::warning(
                     sprintf(
-                        '%s already reaches %s through another node. Keep one path per source and destination.',
+                        '%s already reaches %s through another node. Both connections stay live, and each item is delivered once.',
                         $this->sourceName($sourceNode, $sources),
                         $this->destinationName($destinationNode, $destinations),
                     ),
-                    $destinationNode->id,
+                    $sourceNode->id,
                 );
-
-                continue;
+            } else {
+                $byRecordPair[$recordPair] = true;
             }
 
-            $byRecordPair[$recordPair] = true;
             $routes[] = $route;
         }
 
@@ -173,7 +183,9 @@ class PipelineGraphCompiler
         $sourceNode = $nodesById[$path[0]];
         $destinationNode = $nodesById[$path[array_key_last($path)]];
         $rules = [];
-        $transform = null;
+        $steps = [];
+        $sourceProvider = null;
+        $destinationProvider = null;
 
         foreach ($path as $id) {
             $node = $nodesById[$id];
@@ -185,7 +197,43 @@ class PipelineGraphCompiler
             }
 
             if ($node->type === PipelineNodeType::Transform) {
-                $transform = $this->normalizeTransform($node);
+                array_push($steps, ...$this->transformSteps($node));
+            }
+
+            if ($node->type === PipelineNodeType::Mapping) {
+                $stored = $node->mapping();
+
+                if (is_array($stored)) {
+                    $sourceProvider = is_string($stored['source_provider'] ?? null) ? $stored['source_provider'] : $sourceProvider;
+                    $destinationProvider = is_string($stored['destination_provider'] ?? null) ? $stored['destination_provider'] : $destinationProvider;
+                }
+
+                foreach (is_array($stored) ? ($stored['steps'] ?? []) : [] as $step) {
+                    if (is_array($step)) {
+                        $steps[] = $step;
+                    }
+                }
+            }
+        }
+
+        $mapping = null;
+
+        if ($steps !== []) {
+            $ordered = [];
+
+            foreach ($steps as $index => $step) {
+                $step['order'] = $index;
+                $ordered[] = $step;
+            }
+
+            $mapping = ['version' => 1, 'steps' => $ordered];
+
+            if ($sourceProvider !== null) {
+                $mapping['source_provider'] = $sourceProvider;
+            }
+
+            if ($destinationProvider !== null) {
+                $mapping['destination_provider'] = $destinationProvider;
             }
         }
 
@@ -202,7 +250,8 @@ class PipelineGraphCompiler
             name: $this->sourceName($sourceNode, $sources).' → '.$this->destinationName($destinationNode, $destinations),
             nodeIds: $path,
             filter: $rules === [] ? null : ['rules' => $rules],
-            transform: $transform,
+            transform: null,
+            mapping: $mapping,
         );
     }
 
@@ -248,12 +297,19 @@ class PipelineGraphCompiler
 
                 return null;
 
+            case PipelineNodeType::Mapping:
+                if ($node->mapping() === null) {
+                    return 'Set at least one field, or remove this mapping.';
+                }
+
+                return null;
+
             case PipelineNodeType::Transform:
                 $template = $node->template();
                 $rules = $node->rules();
 
                 if ($template === '' && $rules === []) {
-                    return 'Write a message template or add a formatting rule, or remove this transform.';
+                    return 'Add at least one rule, or remove this transform.';
                 }
 
                 $unknown = TemplatePlaceholders::unknownIn($template);
@@ -291,8 +347,20 @@ class PipelineGraphCompiler
             return 'choose a rule type.';
         }
 
-        if ($type->needsField() && ! array_key_exists((string) ($rule['field'] ?? ''), BroadcastFilterRuleType::fieldOptions())) {
+        $field = isset($rule['field']) && is_string($rule['field']) ? $rule['field'] : '';
+
+        if ($type->needsField() && ! in_array($field, self::TEXT_FIELDS, true)) {
             return 'choose the field to check.';
+        }
+
+        if (in_array($type, [BroadcastFilterRuleType::TitleMatches, BroadcastFilterRuleType::AuthorEquals], true)
+            && $field !== ''
+            && ! in_array($field, self::TEXT_FIELDS, true)) {
+            return 'choose the field to check.';
+        }
+
+        if ($type->needsHours() && $field !== '' && $field !== 'published_at') {
+            return 'this rule checks when the item was published.';
         }
 
         if ($type->needsValue() && blank($rule['value'] ?? null)) {
@@ -380,45 +448,56 @@ class PipelineGraphCompiler
     }
 
     /**
-     * @return array{template?: string, rules?: list<array<string, mixed>>}
+     * A stored template becomes a Set field on the message, then each rule
+     * adjusts one field. A rule with no field still adjusts the message, which
+     * is how an older transform was stored.
+     *
+     * @return list<array<string, mixed>>
      */
-    private function normalizeTransform(PipelineNode $node): array
+    private function transformSteps(PipelineNode $node): array
     {
-        $payload = [];
+        $steps = [];
         $template = $node->template();
 
         if ($template !== '') {
-            $payload['template'] = $template;
+            $steps[] = [
+                'id' => $node->id.'-template',
+                'operation' => 'set_field',
+                'order' => 0,
+                'config' => ['field' => 'text', 'value' => $template],
+            ];
         }
 
-        $rules = [];
-
-        foreach ($node->rules() as $rule) {
+        foreach ($node->rules() as $index => $rule) {
             /** @var BroadcastTransformRuleType $type */
             $type = BroadcastTransformRuleType::from((string) $rule['type']);
-            $normalized = ['type' => $type->value];
+            $field = isset($rule['field']) && is_string($rule['field']) && $rule['field'] !== ''
+                ? $rule['field']
+                : 'text';
+            $config = ['field' => $field, 'op' => $type->value];
 
             if ($type->needsLength()) {
-                $normalized['length'] = (int) $rule['length'];
+                $config['length'] = (int) $rule['length'];
             }
 
             if ($type->needsValue()) {
-                $normalized['value'] = (string) $rule['value'];
+                $config['value'] = (string) $rule['value'];
             }
 
             if ($type->needsPattern()) {
-                $normalized['pattern'] = (string) $rule['pattern'];
-                $normalized['replacement'] = (string) ($rule['replacement'] ?? '');
+                $config['pattern'] = (string) $rule['pattern'];
+                $config['replacement'] = (string) ($rule['replacement'] ?? '');
             }
 
-            $rules[] = $normalized;
+            $steps[] = [
+                'id' => $node->id.'-rule-'.$index,
+                'operation' => 'adjust_field',
+                'order' => count($steps),
+                'config' => $config,
+            ];
         }
 
-        if ($rules !== []) {
-            $payload['rules'] = $rules;
-        }
-
-        return $payload;
+        return $steps;
     }
 
     /**
@@ -444,7 +523,7 @@ class PipelineGraphCompiler
     private function unconnectedMessage(PipelineNode $node): string
     {
         return match ($node->type) {
-            PipelineNodeType::Source => 'Not connected. Drag from its handle to a filter, transform or destination.',
+            PipelineNodeType::Source => 'Not connected. Drag from its handle to a filter, mapping, transform or destination.',
             PipelineNodeType::Destination => 'Not connected. Nothing reaches this destination yet.',
             default => 'Not connected. Place it between a source and a destination.',
         };

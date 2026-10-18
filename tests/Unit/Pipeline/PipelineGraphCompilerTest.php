@@ -48,11 +48,122 @@ class PipelineGraphCompilerTest extends TestCase
         $this->assertSame(['s1', 'f', 't', 'd1'], $filtered->nodeIds);
         $this->assertSame('Feed one → Channel ten', $filtered->name);
         $this->assertSame(['rules' => [['type' => 'contains', 'field' => 'title', 'value' => 'cats']]], $filtered->filter);
-        $this->assertSame(['template' => 'News: {{title}}', 'rules' => [['type' => 'truncate', 'length' => 140]]], $filtered->transform);
+        $this->assertNull($filtered->transform);
+        $this->assertSame('set_field', $filtered->mapping['steps'][0]['operation']);
+        $this->assertSame(['field' => 'text', 'value' => 'News: {{title}}'], $filtered->mapping['steps'][0]['config']);
+        $this->assertSame('adjust_field', $filtered->mapping['steps'][1]['operation']);
+        $this->assertSame(['field' => 'text', 'op' => 'truncate', 'length' => 140], $filtered->mapping['steps'][1]['config']);
 
         $direct = $this->routeByKey($compilation, '2:20');
         $this->assertNull($direct->filter);
         $this->assertNull($direct->transform);
+    }
+
+    public function test_each_mapping_node_sets_the_fields_its_path_sends(): void
+    {
+        $mapping = [
+            'version' => 1,
+            'steps' => [
+                ['id' => 'news-text', 'operation' => 'set_field', 'order' => 0, 'config' => ['field' => 'text', 'value' => 'News: {{title}}']],
+            ],
+            'source_provider' => 'fake',
+            'destination_provider' => 'recording',
+        ];
+
+        $compilation = $this->compile([
+            'nodes' => [
+                $this->node('s', 'source', ['source_id' => 1]),
+                $this->node('m', 'mapping', ['mapping' => $mapping]),
+                $this->node('t', 'transform', ['template' => 'Alert: {{title}}']),
+                $this->node('d1', 'destination', ['destination_id' => 10]),
+                $this->node('d2', 'destination', ['destination_id' => 20]),
+            ],
+            'edges' => [
+                $this->edge('s', 'm'),
+                $this->edge('m', 'd1'),
+                $this->edge('s', 't'),
+                $this->edge('t', 'd2'),
+            ],
+        ]);
+
+        $this->assertFalse($compilation->hasErrors());
+
+        $mapped = $this->routeByKey($compilation, '1:10');
+        $this->assertSame(['s', 'm', 'd1'], $mapped->nodeIds);
+        $this->assertSame($mapping, $mapped->mapping);
+        $this->assertNull($mapped->transform);
+
+        $templated = $this->routeByKey($compilation, '1:20');
+        $this->assertNull($templated->transform);
+        $this->assertSame('Alert: {{title}}', $templated->mapping['steps'][0]['config']['value']);
+    }
+
+    public function test_a_transform_runs_before_or_after_the_mapping_in_path_order(): void
+    {
+        $mapping = [
+            'version' => 1,
+            'steps' => [
+                ['id' => 'text', 'operation' => 'set_field', 'order' => 0, 'config' => ['field' => 'text', 'value' => '{{title}}']],
+            ],
+        ];
+
+        $before = $this->compile([
+            'nodes' => [
+                $this->node('s', 'source', ['source_id' => 1]),
+                $this->node('t', 'transform', ['rules' => [['type' => 'strip_html', 'field' => 'title']]]),
+                $this->node('m', 'mapping', ['mapping' => $mapping]),
+                $this->node('d', 'destination', ['destination_id' => 10]),
+            ],
+            'edges' => [$this->edge('s', 't'), $this->edge('t', 'm'), $this->edge('m', 'd')],
+        ]);
+
+        $after = $this->compile([
+            'nodes' => [
+                $this->node('s', 'source', ['source_id' => 1]),
+                $this->node('m', 'mapping', ['mapping' => $mapping]),
+                $this->node('t', 'transform', ['rules' => [['type' => 'strip_html', 'field' => 'text']]]),
+                $this->node('d', 'destination', ['destination_id' => 10]),
+            ],
+            'edges' => [$this->edge('s', 'm'), $this->edge('m', 't'), $this->edge('t', 'd')],
+        ]);
+
+        $this->assertFalse($before->hasErrors());
+        $this->assertSame(
+            ['adjust_field', 'set_field'],
+            array_map(static fn (array $step): string => $step['operation'], $this->routeByKey($before, '1:10')->mapping['steps']),
+        );
+        $this->assertSame('title', $this->routeByKey($before, '1:10')->mapping['steps'][0]['config']['field']);
+
+        $this->assertFalse($after->hasErrors());
+        $this->assertSame(
+            ['set_field', 'adjust_field'],
+            array_map(static fn (array $step): string => $step['operation'], $this->routeByKey($after, '1:10')->mapping['steps']),
+        );
+        $this->assertSame('text', $this->routeByKey($after, '1:10')->mapping['steps'][1]['config']['field']);
+    }
+
+    public function test_a_blank_mapping_blocks_its_path(): void
+    {
+        $compilation = $this->compile([
+            'nodes' => [
+                $this->node('s', 'source', ['source_id' => 1]),
+                $this->node('m', 'mapping', ['mapping' => [
+                    'steps' => [
+                        ['id' => 'blank', 'operation' => 'set_field', 'order' => 0, 'config' => ['field' => 'text', 'value' => '   ']],
+                    ],
+                ]]),
+                $this->node('d', 'destination', ['destination_id' => 10]),
+            ],
+            'edges' => [
+                $this->edge('s', 'm'),
+                $this->edge('m', 'd'),
+            ],
+        ]);
+
+        $this->assertTrue($compilation->hasErrors());
+        $this->assertSame([], $compilation->routes);
+        $messages = array_map(static fn ($issue): string => $issue->message, $compilation->issues);
+        $this->assertContains('Set at least one field, or remove this mapping.', $messages);
     }
 
     public function test_chained_filters_are_anded_into_one_rule_list(): void
@@ -102,9 +213,15 @@ class PipelineGraphCompilerTest extends TestCase
             'edges' => [$this->edge('s1', 'd'), $this->edge('s2', 'd')],
         ]);
 
-        $this->assertCount(1, $compilation->routes);
-        $this->assertTrue($compilation->hasErrors());
+        $this->assertCount(2, $compilation->routes);
+        $this->assertSame(['1:10', '1:10'], array_map(static fn (CompiledRoute $route): string => $route->key(), $compilation->routes));
+        $this->assertSame(['s1', 'd'], $compilation->routes[0]->nodeIds);
+        $this->assertSame(['s2', 'd'], $compilation->routes[1]->nodeIds);
+        $this->assertFalse($compilation->hasErrors());
+        $this->assertSame('warning', $compilation->issues[0]->level);
+        $this->assertSame('s2', $compilation->issues[0]->nodeId);
         $this->assertStringContainsString('already reaches', $compilation->issues[0]->message);
+        $this->assertStringContainsString('delivered once', $compilation->issues[0]->message);
     }
 
     public function test_a_broken_node_blocks_its_paths_and_is_reported(): void

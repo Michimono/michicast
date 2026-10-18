@@ -319,6 +319,7 @@ class PipelineTraceRecorder
                         break;
 
                     case PipelineNodeType::Transform:
+                    case PipelineNodeType::Mapping:
                         $payloadAfter = $this->renderedPayload($broadcast, $item);
                         break;
 

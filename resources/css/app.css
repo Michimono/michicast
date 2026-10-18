@@ -212,7 +212,6 @@
     top: 0;
     left: 0;
     transform-origin: 0 0;
-    will-change: transform;
 }
 
 .pipeline-edges {
@@ -312,17 +311,22 @@
     stroke: var(--color-accent);
 }
 
-.pipeline-arrow {
+.pipeline-arrowhead {
     fill: var(--color-line-strong);
+    pointer-events: none;
 }
 
-.pipeline-edge-group:hover .pipeline-arrow,
-.pipeline-edge-group.is-selected .pipeline-arrow,
-.pipeline-arrow.is-accent {
+.pipeline-edge-group.is-failed .pipeline-arrowhead {
+    fill: var(--color-state-fail);
+}
+
+.pipeline-edge-group:hover .pipeline-arrowhead,
+.pipeline-edge-group.is-selected .pipeline-arrowhead,
+.pipeline-arrowhead.is-draft {
     fill: var(--color-accent);
 }
 
-.pipeline-arrow.is-fail {
+.pipeline-arrowhead.is-draft.is-invalid {
     fill: var(--color-state-fail);
 }
 
@@ -498,7 +502,6 @@
 .pipeline-ghost {
     transform-origin: 0 0;
     opacity: 0.85;
-    will-change: transform;
 }
 
 .pipeline-ghost .pipeline-node {

@@ -11,6 +11,30 @@ use Illuminate\Support\Str;
  */
 final class DefaultMappings
 {
+    /**
+     * Suggested Set field mappings for the provider pairs the editor can draw.
+     *
+     * @param  list<string>  $sourceTypes
+     * @param  list<string>  $destinationTypes
+     * @return array<string, array<string, mixed>>
+     */
+    public function catalog(array $sourceTypes, array $destinationTypes): array
+    {
+        $catalog = [];
+
+        foreach ($sourceTypes as $sourceType) {
+            foreach ($destinationTypes as $destinationType) {
+                $definition = $this->for($sourceType, $destinationType);
+
+                if ($definition !== null) {
+                    $catalog[$sourceType.'->'.$destinationType] = $definition->toArray();
+                }
+            }
+        }
+
+        return $catalog;
+    }
+
     public function for(string $sourceType, string $destinationType): ?MappingDefinition
     {
         return match ($sourceType.'->'.$destinationType) {

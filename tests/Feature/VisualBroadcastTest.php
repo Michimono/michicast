@@ -15,6 +15,7 @@ use App\Models\Source;
 use App\Models\User;
 use App\Support\DestinationProviderRegistry;
 use App\Support\ExecutingProjectRunner;
+use App\Support\PreparedMessage;
 use App\Support\RecordingDestinationProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -175,8 +176,8 @@ class VisualBroadcastTest extends TestCase
         $this->assertNotNull($filtered);
         $this->assertTrue($filtered->enabled);
         $this->assertSame([['type' => 'contains', 'field' => 'title', 'value' => 'pokemon']], $filtered->filter['rules']);
-        $this->assertSame('News: {{title}}', $filtered->transform['template']);
-        $this->assertNull($filtered->mapping);
+        $this->assertNull($filtered->transform);
+        $this->assertSame('News: {{title}}', $filtered->mapping['steps'][0]['config']['value']);
 
         $direct = $rows->first(fn (Broadcast $row): bool => $row->source_id === $other->getKey() && $row->destination_id === $alerts->getKey());
         $this->assertNotNull($direct);
@@ -261,6 +262,199 @@ class VisualBroadcastTest extends TestCase
 
         $this->assertNull($project->refresh()->graph);
         $this->assertSame(0, Broadcast::query()->where('project_id', $project->getKey())->count());
+    }
+
+    public function test_two_nodes_for_the_same_source_stay_live_and_deliver_once(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
+
+        [$user, $organization, $project] = $this->visualProject(active: true);
+        [$feed] = $this->twoSources($project);
+        [$news] = $this->twoDestinations($project);
+
+        $response = $this->actingAs($user)->patchJson(route('pipelines.update', [$organization, $project]), ['graph' => [
+            'nodes' => [
+                ['id' => 's1', 'type' => 'source', 'x' => 0, 'y' => 0, 'config' => ['source_id' => $feed->getKey()]],
+                ['id' => 's2', 'type' => 'source', 'x' => 0, 'y' => 160, 'config' => ['source_id' => $feed->getKey()]],
+                ['id' => 'd', 'type' => 'destination', 'x' => 320, 'y' => 80, 'config' => ['destination_id' => $news->getKey()]],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'from' => 's1', 'to' => 'd'],
+                ['id' => 'e2', 'from' => 's2', 'to' => 'd'],
+            ],
+        ]]);
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'routes');
+        $response->assertJsonPath('routes.0.node_ids', ['s1', 'd']);
+        $response->assertJsonPath('routes.1.node_ids', ['s2', 'd']);
+        $response->assertJsonPath('issues.0.level', 'warning');
+        $response->assertJsonPath('issues.0.node_id', 's2');
+
+        $this->assertSame(1, Broadcast::query()->where('project_id', $project->getKey())->count());
+
+        Broadcast::query()->where('project_id', $project->getKey())->update([
+            'created_at' => Carbon::parse('2026-03-01 00:00:00', 'UTC'),
+        ]);
+
+        $this->recordingDestination();
+        $this->assertTrue($this->app->make(ExecutingProjectRunner::class)->run($project->refresh()));
+
+        $this->assertSame(
+            2,
+            ContentDelivery::query()->where('status', DeliveryStatus::Delivered)->count(),
+            'Both feed items are sent once, including through the repeated source node.',
+        );
+    }
+
+    public function test_each_mapping_node_sends_its_own_fields(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
+
+        [$user, $organization, $project] = $this->visualProject(active: true);
+        $feed = Source::factory()->create([
+            'project_id' => $project->getKey(),
+            'name' => 'Main feed',
+            'config' => [
+                'feed_url' => 'https://example.com/feed.xml',
+                'items' => [[
+                    'external_id' => 'pokemon-1',
+                    'title' => 'Pokemon',
+                    'body' => 'A card',
+                    'canonical_url' => 'https://example.com/posts/pokemon-1',
+                    'published_at' => '2026-03-15 09:00:00',
+                ]],
+            ],
+        ]);
+        [$news, $alerts] = $this->twoDestinations($project);
+
+        $response = $this->actingAs($user)->patchJson(route('pipelines.update', [$organization, $project]), ['graph' => [
+            'nodes' => [
+                ['id' => 'feed', 'type' => 'source', 'x' => 0, 'y' => 0, 'config' => ['source_id' => $feed->getKey()]],
+                ['id' => 'news-map', 'type' => 'mapping', 'x' => 200, 'y' => 0, 'config' => [
+                    'mapping' => [
+                        'version' => 1,
+                        'source_provider' => 'fake',
+                        'destination_provider' => 'recording',
+                        'steps' => [[
+                            'id' => 'news-text',
+                            'operation' => 'set_field',
+                            'order' => 0,
+                            'config' => ['field' => 'text', 'value' => 'News: {{title}}'],
+                        ]],
+                    ],
+                ]],
+                ['id' => 'news', 'type' => 'destination', 'x' => 400, 'y' => 0, 'config' => ['destination_id' => $news->getKey()]],
+                ['id' => 'tpl', 'type' => 'transform', 'x' => 200, 'y' => 160, 'config' => ['template' => 'Alert: {{title}}']],
+                ['id' => 'alerts', 'type' => 'destination', 'x' => 400, 'y' => 160, 'config' => ['destination_id' => $alerts->getKey()]],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'from' => 'feed', 'to' => 'news-map'],
+                ['id' => 'e2', 'from' => 'news-map', 'to' => 'news'],
+                ['id' => 'e3', 'from' => 'feed', 'to' => 'tpl'],
+                ['id' => 'e4', 'from' => 'tpl', 'to' => 'alerts'],
+            ],
+        ]]);
+
+        $response->assertOk();
+
+        $newsRow = Broadcast::query()->where('source_id', $feed->getKey())->where('destination_id', $news->getKey())->sole();
+        $alertsRow = Broadcast::query()->where('source_id', $feed->getKey())->where('destination_id', $alerts->getKey())->sole();
+        $this->assertSame('News: {{title}}', $newsRow->mapping['steps'][0]['config']['value']);
+        $this->assertNull($alertsRow->transform);
+        $this->assertSame('Alert: {{title}}', $alertsRow->mapping['steps'][0]['config']['value']);
+
+        Broadcast::query()->where('project_id', $project->getKey())->update([
+            'created_at' => Carbon::parse('2026-03-01 00:00:00', 'UTC'),
+        ]);
+
+        $this->recordingDestination();
+        $this->assertTrue($this->app->make(ExecutingProjectRunner::class)->run($project->refresh()));
+
+        $bodies = array_map(
+            static fn (PreparedMessage $message): string => $message->body,
+            $this->recordingDestination()->published(),
+        );
+        sort($bodies);
+        $this->assertSame(['Alert: Pokemon', 'News: Pokemon'], $bodies);
+    }
+
+    public function test_a_transform_changes_a_field_before_or_after_the_mapping(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
+
+        [$user, $organization, $project] = $this->visualProject(active: true);
+        $feed = Source::factory()->create([
+            'project_id' => $project->getKey(),
+            'config' => [
+                'feed_url' => 'https://example.com/feed.xml',
+                'items' => [[
+                    'external_id' => 'pokemon-1',
+                    'title' => '<b>Pokemon</b>',
+                    'canonical_url' => 'https://example.com/posts/pokemon-1',
+                    'published_at' => '2026-03-15 09:00:00',
+                ]],
+            ],
+        ]);
+        [$news, $alerts] = $this->twoDestinations($project);
+
+        $this->actingAs($user)->patchJson(route('pipelines.update', [$organization, $project]), ['graph' => [
+            'nodes' => [
+                ['id' => 'feed', 'type' => 'source', 'x' => 0, 'y' => 0, 'config' => ['source_id' => $feed->getKey()]],
+                ['id' => 'clean', 'type' => 'transform', 'x' => 160, 'y' => 0, 'config' => [
+                    'rules' => [['type' => 'strip_html', 'field' => 'title']],
+                ]],
+                ['id' => 'news-map', 'type' => 'mapping', 'x' => 320, 'y' => 0, 'config' => [
+                    'mapping' => [
+                        'version' => 1,
+                        'steps' => [[
+                            'id' => 'news-text',
+                            'operation' => 'set_field',
+                            'order' => 0,
+                            'config' => ['field' => 'text', 'value' => '{{title}}'],
+                        ]],
+                    ],
+                ]],
+                ['id' => 'news', 'type' => 'destination', 'x' => 480, 'y' => 0, 'config' => ['destination_id' => $news->getKey()]],
+                ['id' => 'alerts-map', 'type' => 'mapping', 'x' => 160, 'y' => 160, 'config' => [
+                    'mapping' => [
+                        'version' => 1,
+                        'steps' => [[
+                            'id' => 'alerts-text',
+                            'operation' => 'set_field',
+                            'order' => 0,
+                            'config' => ['field' => 'text', 'value' => 'Hello <b>there</b>'],
+                        ]],
+                    ],
+                ]],
+                ['id' => 'strip', 'type' => 'transform', 'x' => 320, 'y' => 160, 'config' => [
+                    'rules' => [['type' => 'strip_html', 'field' => 'text']],
+                ]],
+                ['id' => 'alerts', 'type' => 'destination', 'x' => 480, 'y' => 160, 'config' => ['destination_id' => $alerts->getKey()]],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'from' => 'feed', 'to' => 'clean'],
+                ['id' => 'e2', 'from' => 'clean', 'to' => 'news-map'],
+                ['id' => 'e3', 'from' => 'news-map', 'to' => 'news'],
+                ['id' => 'e4', 'from' => 'feed', 'to' => 'alerts-map'],
+                ['id' => 'e5', 'from' => 'alerts-map', 'to' => 'strip'],
+                ['id' => 'e6', 'from' => 'strip', 'to' => 'alerts'],
+            ],
+        ]])->assertOk();
+
+        Broadcast::query()->where('project_id', $project->getKey())->update([
+            'created_at' => Carbon::parse('2026-03-01 00:00:00', 'UTC'),
+        ]);
+
+        $this->recordingDestination();
+        $this->assertTrue($this->app->make(ExecutingProjectRunner::class)->run($project->refresh()));
+
+        $bodies = array_map(
+            static fn (PreparedMessage $message): string => $message->body,
+            $this->recordingDestination()->published(),
+        );
+        sort($bodies);
+        $this->assertSame(['Hello there', 'Pokemon'], $bodies);
     }
 
     public function test_semantic_problems_save_with_issues_but_compile_no_route_through_them(): void
