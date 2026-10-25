@@ -148,6 +148,8 @@
 
                     @if ($organization?->isSuspended())
                         <x-organization-suspended-banner :organization="$organization" />
+                    @elseif ($organization?->isPendingApproval())
+                        <x-organization-pending-banner :organization="$organization" />
                     @endif
 
                     {{ $slot }}

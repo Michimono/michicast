@@ -22,7 +22,7 @@ class RunClaimedProject
 
         // Suspended after claim (or a race with the dispatcher): release cleanly
         // and schedule from now so a long suspension does not burst on reinstate.
-        if ($project->organization->isSuspended()) {
+        if ($project->organization->isDisabled()) {
             $project->claimed_at = null;
             $project->refreshNextRunAt();
             $project->save();

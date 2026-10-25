@@ -27,8 +27,9 @@ use Illuminate\Auth\Access\AuthorizationException;
  * grants them. Do not read the current organization here — a policy answers for
  * the record it is given.
  *
- * When the organization is suspended, viewer-level reads still pass. Anything
- * that asks for a minimum above viewer is refused with a readable message.
+ * When the organization is suspended or still waiting for approval,
+ * viewer-level reads still pass. Anything that asks for a minimum above viewer
+ * is refused with a readable message.
  */
 trait ChecksOrganizationRole
 {
@@ -41,6 +42,12 @@ trait ChecksOrganizationRole
         if ($minimum !== Role::Viewer && $organization->isSuspended()) {
             throw new AuthorizationException(
                 'This organization is suspended. You can still view it, but changes are disabled until an admin reinstates it.',
+            );
+        }
+
+        if ($minimum !== Role::Viewer && $organization->isPendingApproval()) {
+            throw new AuthorizationException(
+                'This organization is waiting for approval. You can look around, and changes unlock as soon as an admin approves it.',
             );
         }
 
