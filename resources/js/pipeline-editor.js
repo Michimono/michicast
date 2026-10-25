@@ -2253,7 +2253,7 @@
         return '<p class="rounded-md border border-dashed border-line px-3 py-3 text-center text-xs text-muted">' + esc(text) + '</p>';
     }
 
-    function sourceEmptyState(heading, message, action) {
+    function recordEmptyState(heading, message, action) {
         return (
             '<div class="house-edge flex flex-col items-center gap-3 rounded-lg border px-4 py-8 text-center">' +
             '<img src="/images/brand/logo-day-full.svg" alt="" class="h-14">' +
@@ -2732,17 +2732,17 @@
             '<select id="pipeline-record" class="' + INPUT_CLASS + '" data-field="' + key + '" data-kind="int"' + (canEdit ? '' : ' disabled') + '>' +
             optionList(options, current, options.length === 0 ? 'No ' + noun + 's yet' : 'Choose a ' + noun) +
             '</select>' +
-            (canCreate && !(isSource && !record) ? '<button type="button" class="' + GHOST_BUTTON_CLASS + ' shrink-0" data-record-create title="Create a new ' + noun + '">New</button>' : '') +
+            (canCreate && record ? '<button type="button" class="' + GHOST_BUTTON_CLASS + ' shrink-0" data-record-create title="Create a new ' + noun + '">New</button>' : '') +
             '</div>' +
-            (isSource ? '<p class="' + HINT_CLASS + '">The source this node reads.</p>' : '') +
+            '<p class="' + HINT_CLASS + '">' + (isSource ? 'The source this node reads.' : 'The destination this node sends to.') + '</p>' +
             '</div>';
 
-        if (record && isSource) {
+        if (record) {
             const lines = recordConfigLines(kind, record);
             html +=
-                '<section class="flex flex-col gap-3 rounded-lg border border-line p-3" data-node-category="source">' +
+                '<section class="flex flex-col gap-3 rounded-lg border border-line p-3" data-node-category="' + kind + '">' +
                 '<div class="flex items-start gap-2.5">' +
-                '<span class="pipeline-node-tile grid size-8 shrink-0 place-items-center rounded-md">' + ICONS.source + '</span>' +
+                '<span class="pipeline-node-tile grid size-8 shrink-0 place-items-center rounded-md">' + ICONS[kind] + '</span>' +
                 '<div class="min-w-0 flex-1">' +
                 '<p class="truncate text-sm font-medium text-ink">' + esc(record.name) + '</p>' +
                 '<p class="text-xs text-muted">' + esc(record.type_label) + (record.archived ? ' · archived' : '') + '</p>' +
@@ -2758,34 +2758,12 @@
                 '</div>' +
                 (users > 1 ? '<p class="' + HINT_CLASS + '">Used by ' + users + ' nodes. Editing changes all of them.</p>' : '') +
                 '</section>';
-        } else if (!record && isSource) {
-            html += sourceEmptyState(
-                'No source connected',
-                options.length === 0 ? 'This broadcast has no sources yet. Create one for this node.' : 'Choose a source above, or create one for this node.',
-                canCreate ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-create>Create source</button>' : '',
+        } else {
+            html += recordEmptyState(
+                'No ' + noun + ' connected',
+                options.length === 0 ? 'This broadcast has no ' + noun + 's yet. Create one for this node.' : 'Choose a ' + noun + ' above, or create one for this node.',
+                canCreate ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-create>Create ' + noun + '</button>' : '',
             );
-        } else if (record) {
-            const lines = recordConfigLines(kind, record);
-            html +=
-                '<section class="flex flex-col gap-2 rounded-md border border-line bg-paper p-3">' +
-                '<div class="flex items-start justify-between gap-2">' +
-                '<div class="min-w-0"><p class="truncate text-sm font-medium text-ink">' + esc(record.name) + '</p><p class="' + HINT_CLASS + '">' + esc(record.type_label) + (record.archived ? ' · archived' : '') + '</p></div>' +
-                (canEdit ? '<button type="button" class="' + GHOST_BUTTON_CLASS + ' shrink-0" data-record-edit>Edit</button>' : '') +
-                '</div>' +
-                (lines.length > 0
-                    ? '<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">' + lines.map((line) => '<dt class="text-muted">' + esc(line.label) + '</dt><dd class="min-w-0 truncate font-mono text-ink" title="' + esc(line.value) + '">' + esc(line.value) + '</dd>').join('') + '</dl>'
-                    : '') +
-                recordTestLine(record) +
-                '<p class="' + HINT_CLASS + '">' +
-                (users > 1 ? 'Used by ' + users + ' nodes in this pipeline. Editing it changes all of them.' : 'Used only by this node.') +
-                '</p>' +
-                '<div class="flex flex-wrap items-center gap-x-3 gap-y-1">' +
-                (record.supports_connection_test && canEdit ? '<button type="button" class="' + LINK_CLASS + '" data-record-test>Test connection</button>' : '') +
-                '<a class="' + LINK_CLASS + '" href="' + esc(record.edit_url) + '">Open full settings</a>' +
-                '</div>' +
-                '</section>';
-        } else if (options.length === 0 && canCreate) {
-            html += emptyNote('This broadcast has no ' + noun + 's yet. Create one to give this node something to ' + (isSource ? 'read' : 'send to') + '.');
         }
 
         if (panel.notice) {
@@ -3259,10 +3237,10 @@
 
         if (!record) {
             if (kind === 'source') {
-                return sourceEmptyState('No fields yet', 'Connect a source to see the fields it provides.', '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-go-tab="configure">Choose a source</button>');
+                return recordEmptyState('No fields yet', 'Connect a source to see the fields it provides.', '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-go-tab="configure">Choose a source</button>');
             }
 
-            return emptyNote('Choose a destination first to see the fields it accepts.');
+            return recordEmptyState('No fields yet', 'Connect a destination to see the fields it accepts.', '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-go-tab="configure">Choose a destination</button>');
         }
 
         const type = providerType(kind, record.type);
@@ -3383,10 +3361,10 @@
 
         if (!record) {
             if (kind === 'source') {
-                return sourceEmptyState('No activity yet', 'Connect a source to see its fetches.', '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-go-tab="configure">Choose a source</button>');
+                return recordEmptyState('No activity yet', 'Connect a source to see its fetches.', '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-go-tab="configure">Choose a source</button>');
             }
 
-            return emptyNote('Choose a destination first.');
+            return recordEmptyState('No deliveries yet', 'Connect a destination to see what it was sent.', '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-go-tab="configure">Choose a destination</button>');
         }
 
         const summary = summaryFor(kind, record);
@@ -3406,7 +3384,7 @@
             } else if (summary && !summary.ok) {
                 html += errorNote(summary.error);
             } else if (summary && summary.data.activity.length === 0) {
-                html += sourceEmptyState(
+                html += recordEmptyState(
                     'No fetches yet',
                     'Test the source to read it without sending.',
                     record.supports_connection_test && canEdit ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-test' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'test' ? SPINNER : '') + 'Test source</button>' : '',
@@ -3436,8 +3414,7 @@
 
             html += '</section>';
         } else {
-            html += '<section class="flex flex-col gap-2"><div class="flex items-center justify-between gap-2"><p class="' + LABEL_CLASS + '">Recent deliveries</p>' +
-                (record.supports_connection_test && canEdit ? '<button type="button" class="' + GHOST_BUTTON_CLASS + '" data-record-test' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'test' ? SPINNER : '') + 'Test connection</button>' : '') + '</div>';
+            html += '<section class="flex flex-col gap-2"><p class="' + LABEL_CLASS + '">Recent deliveries</p>';
 
             html += recordTestLine(record);
 
@@ -3450,7 +3427,11 @@
             } else if (summary && !summary.ok) {
                 html += errorNote(summary.error);
             } else if (summary && summary.data.deliveries.length === 0) {
-                html += emptyNote('Nothing has been delivered here yet. Tests never deliver; a live run will.');
+                html += recordEmptyState(
+                    'No deliveries yet',
+                    'Test the destination to check the connection. Tests never deliver; a live run will.',
+                    record.supports_connection_test && canEdit ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-test' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'test' ? SPINNER : '') + 'Test destination</button>' : '',
+                );
             } else if (summary) {
                 html += '<ul class="flex flex-col gap-1.5">' + summary.data.deliveries.map((delivery) => {
                     const label = delivery.status === 'pending' ? (delivery.retry_queued ? 'Retry queued' : 'Attempted') : delivery.status_label;
