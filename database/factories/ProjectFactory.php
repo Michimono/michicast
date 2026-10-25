@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ProjectKind;
 use App\Enums\ProjectStatus;
 use App\Models\Organization;
 use App\Models\Project;
@@ -26,6 +27,8 @@ class ProjectFactory extends Factory
             'name' => fake()->unique()->words(3, true),
             'slug' => fn (array $attributes): string => Str::slug((string) $attributes['name']).'-'.fake()->unique()->numerify('####'),
             'description' => null,
+            'kind' => ProjectKind::Simple,
+            'graph' => null,
             'status' => ProjectStatus::Draft,
             'schedule' => null,
             'timezone' => null,
@@ -79,6 +82,19 @@ class ProjectFactory extends Factory
                 'time' => '09:00',
             ],
             'next_run_at' => $at ?? now()->subMinute(),
+        ]);
+    }
+
+    /**
+     * A visual broadcast, optionally with a saved graph document.
+     *
+     * @param  array<string, mixed>|null  $graph
+     */
+    public function visual(?array $graph = null): static
+    {
+        return $this->state(fn (): array => [
+            'kind' => ProjectKind::Visual,
+            'graph' => $graph,
         ]);
     }
 

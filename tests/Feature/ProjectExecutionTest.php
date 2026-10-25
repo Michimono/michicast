@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ContentItemLifecycle;
 use App\Enums\DeliveryStatus;
+use App\Enums\QuotaMetric;
 use App\Enums\RunStatus;
 use App\Models\Broadcast;
 use App\Models\ContentDelivery;
@@ -16,9 +17,13 @@ use App\Support\DeliveryResult;
 use App\Support\DestinationDefinition;
 use App\Support\DestinationProviderRegistry;
 use App\Support\ExecutingProjectRunner;
+use App\Support\FakeSourceProvider;
 use App\Support\PreparedMessage;
 use App\Support\ProjectRunner;
+use App\Support\QuotaMeter;
 use App\Support\RecordingDestinationProvider;
+use App\Support\SourceDefinition;
+use App\Support\SourceProviderRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -353,6 +358,50 @@ class ProjectExecutionTest extends TestCase
         $this->assertTrue($project->next_run_at->equalTo(Carbon::parse('2026-03-15 10:01:30', 'UTC')));
     }
 
+    public function test_broadcasts_that_share_a_source_fetch_once_and_each_still_sends(): void
+    {
+        CountingFakeSourceProvider::$fetches = 0;
+        $this->app->make(SourceProviderRegistry::class)->register('fake', CountingFakeSourceProvider::class);
+
+        $project = Project::factory()->due()->create();
+        $source = Source::factory()->create([
+            'project_id' => $project->getKey(),
+            'config' => [
+                'feed_url' => 'https://example.com/feed.xml',
+                'items' => [[
+                    'external_id' => 'shared-1',
+                    'title' => 'Shared item',
+                    'body' => 'Sent from one fetch.',
+                    'canonical_url' => 'https://example.com/posts/shared-1',
+                ]],
+            ],
+        ]);
+        $first = Destination::factory()->create(['project_id' => $project->getKey(), 'name' => 'First channel']);
+        $second = Destination::factory()->create(['project_id' => $project->getKey(), 'name' => 'Second channel']);
+
+        foreach ([$first, $second] as $destination) {
+            Broadcast::factory()->create([
+                'project_id' => $project->getKey(),
+                'source_id' => $source->getKey(),
+                'destination_id' => $destination->getKey(),
+                'created_at' => Carbon::parse('2026-03-01 00:00:00', 'UTC'),
+            ]);
+        }
+
+        $this->assertTrue($this->runner()->run($project));
+
+        $this->assertSame(1, CountingFakeSourceProvider::$fetches);
+        $this->assertSame(1, ContentItem::query()->where('source_id', $source->getKey())->count());
+        $this->assertSame(2, ContentDelivery::query()->where('status', DeliveryStatus::Delivered)->count());
+        $this->assertSame(1, $this->app->make(QuotaMeter::class)->used($project->organization, QuotaMetric::SourceFetches));
+
+        $this->assertTrue($this->runner()->run($project->fresh()));
+
+        $this->assertSame(2, CountingFakeSourceProvider::$fetches, 'The next run polls the source once for new posts.');
+        $this->assertSame(2, ContentDelivery::query()->where('status', DeliveryStatus::Delivered)->count());
+        $this->assertSame(1, ContentItem::query()->where('source_id', $source->getKey())->count());
+    }
+
     public function test_the_application_binds_the_executing_project_runner(): void
     {
         $this->assertInstanceOf(ExecutingProjectRunner::class, $this->app->make(ProjectRunner::class));
@@ -361,5 +410,17 @@ class ProjectExecutionTest extends TestCase
     private function runner(): ExecutingProjectRunner
     {
         return $this->app->make(ExecutingProjectRunner::class);
+    }
+}
+
+class CountingFakeSourceProvider extends FakeSourceProvider
+{
+    public static int $fetches = 0;
+
+    public function fetch(SourceDefinition $source): array
+    {
+        self::$fetches++;
+
+        return parent::fetch($source);
     }
 }

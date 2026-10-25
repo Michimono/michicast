@@ -6,10 +6,12 @@ use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Support\Pipeline\PipelineEditorPayload;
 use App\Support\ProjectHealthResolver;
 use App\Support\ProjectScheduleForm;
 use App\Support\ScheduleSummary;
 use App\Support\SecretRedactor;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -41,10 +43,17 @@ class ProjectController extends Controller
             'name' => $name,
             'slug' => Project::uniqueSlugFrom($name, $organization),
             'description' => $request->nullableDescription(),
+            'kind' => $request->kind(),
         ]);
 
         if ($request->hasSchedule()) {
             $project->applySchedule($request->schedule(), $request->timezoneOverride());
+        }
+
+        if ($project->isVisual()) {
+            return redirect()
+                ->route('pipelines.edit', $project)
+                ->with('success', 'The broadcast has been created. Draw its pipeline to get started.');
         }
 
         return redirect()
@@ -58,8 +67,13 @@ class ProjectController extends Controller
         ProjectHealthResolver $health,
         ScheduleSummary $scheduleSummary,
         SecretRedactor $secrets,
-    ): View {
+    ): View|RedirectResponse {
         Gate::authorize('view', $project);
+
+        // The canvas is the overview of a visual broadcast.
+        if ($project->isVisual()) {
+            return redirect()->route('pipelines.edit', $project);
+        }
 
         $project->setRelation('organization', $organization);
         $broadcast = $project->ensureDefaultBroadcast();
@@ -114,8 +128,12 @@ class ProjectController extends Controller
         return view('projects.edit', $scheduleForm->toArray($project));
     }
 
-    public function update(UpdateProjectRequest $request, Organization $organization, Project $project): RedirectResponse
-    {
+    public function update(
+        UpdateProjectRequest $request,
+        Organization $organization,
+        Project $project,
+        PipelineEditorPayload $payload,
+    ): RedirectResponse|JsonResponse {
         $project->update([
             'name' => $request->string('name')->toString(),
             'description' => $request->nullableDescription(),
@@ -123,6 +141,14 @@ class ProjectController extends Controller
 
         if ($request->hasSchedule()) {
             $project->applySchedule($request->schedule(), $request->timezoneOverride());
+        }
+
+        // The pipeline editor edits name and schedule from its settings panel.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'The broadcast has been updated.',
+                'project' => $payload->project($project->refresh()),
+            ]);
         }
 
         return redirect()

@@ -36,9 +36,14 @@
 
                             <div class="relative flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex flex-col gap-2">
-                                    <div class="flex items-center gap-2 text-muted" title="Broadcast">
+                                    <div class="flex items-center gap-2 text-muted" title="{{ $project->kind->label() }}">
                                         <x-icons.antenna class="size-4 shrink-0" />
                                         <span class="font-mono text-[0.625rem] tracking-[0.12em] uppercase">Broadcast</span>
+                                        <span @class([
+                                            'rounded-sm px-1.5 py-px font-mono text-[0.5625rem] tracking-[0.12em] uppercase',
+                                            'bg-accent/10 text-accent' => $project->isVisual(),
+                                            'bg-ink/5 text-muted' => ! $project->isVisual(),
+                                        ])>{{ $project->kind->shortLabel() }}</span>
                                     </div>
                                     <h2 class="truncate font-display text-xl tracking-tight">
                                         <a

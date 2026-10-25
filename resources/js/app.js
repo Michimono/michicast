@@ -405,6 +405,7 @@ document.addEventListener('click', (event) => {
 })();
 
 import './mapping-editor';
+import './pipeline-editor';
 
 /*
  * Timezone combobox (<x-timezone-picker>: first organization and broadcast

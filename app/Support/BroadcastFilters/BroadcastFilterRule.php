@@ -13,9 +13,6 @@ use Illuminate\Support\Str;
  */
 readonly class BroadcastFilterRule
 {
-    /**
-     * @param  'title'|'body'|null  $field
-     */
     public function __construct(
         public BroadcastFilterRuleType $type,
         public ?string $field = null,
@@ -70,7 +67,8 @@ readonly class BroadcastFilterRule
                 $this->value ?? '',
             ),
             BroadcastFilterRuleType::TitleMatches => sprintf(
-                'Title does not match “%s”',
+                '%s does not match “%s”',
+                $this->fieldLabel(),
                 $this->value ?? '',
             ),
             BroadcastFilterRuleType::PublishedAfter => sprintf(
@@ -82,7 +80,8 @@ readonly class BroadcastFilterRule
                 $this->hours ?? 0,
             ),
             BroadcastFilterRuleType::AuthorEquals => sprintf(
-                'Author is not “%s”',
+                '%s is not “%s”',
+                $this->field === null ? 'Author' : $this->fieldLabel(),
                 $this->value ?? '',
             ),
         };
@@ -90,10 +89,7 @@ readonly class BroadcastFilterRule
 
     private function fieldContains(ContentItem $item, bool $mustContain): bool
     {
-        $haystack = match ($this->field) {
-            'body' => (string) ($item->body ?? ''),
-            default => (string) ($item->title ?? ''),
-        };
+        $haystack = $this->textOf($item);
 
         $needle = (string) ($this->value ?? '');
 
@@ -114,7 +110,7 @@ readonly class BroadcastFilterRule
             return false;
         }
 
-        return BoundedRegex::matches($pattern, (string) ($item->title ?? ''));
+        return BoundedRegex::matches($pattern, $this->textOf($item));
     }
 
     private function publishedWithinHours(ContentItem $item, CarbonInterface $now): bool
@@ -138,7 +134,9 @@ readonly class BroadcastFilterRule
     private function authorEquals(ContentItem $item): bool
     {
         $expected = trim((string) ($this->value ?? ''));
-        $actual = trim((string) ($item->author ?? ''));
+        $actual = trim($this->field === null || $this->field === 'author'
+            ? (string) ($item->author ?? '')
+            : $this->textOf($item));
 
         if ($expected === '') {
             return false;
@@ -147,10 +145,23 @@ readonly class BroadcastFilterRule
         return Str::lower($actual) === Str::lower($expected);
     }
 
+    private function textOf(ContentItem $item): string
+    {
+        return match ($this->field) {
+            'body' => (string) ($item->body ?? ''),
+            'author' => (string) ($item->author ?? ''),
+            'link' => (string) ($item->canonical_url ?? ''),
+            default => (string) ($item->title ?? ''),
+        };
+    }
+
     private function fieldLabel(): string
     {
         return match ($this->field) {
             'body' => 'Body',
+            'author' => 'Author',
+            'link' => 'Link',
+            'published_at' => 'Published',
             default => 'Title',
         };
     }

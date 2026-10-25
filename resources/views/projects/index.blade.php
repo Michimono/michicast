@@ -21,7 +21,7 @@
                             <a class="text-sm text-accent underline hover:no-underline" href="{{ route('broadcasts.show', $project) }}">
                                 {{ $project->name }}
                             </a>
-                            <span class="font-mono text-xs text-muted">{{ $project->slug }}</span>
+                            <span class="font-mono text-xs text-muted">{{ $project->slug }} &middot; {{ $project->kind->shortLabel() }}</span>
                         </div>
 
                         <x-project-status :status="$project->status" />

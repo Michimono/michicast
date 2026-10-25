@@ -53,9 +53,10 @@ use Throwable;
 class ExecutingProjectRunner implements ProjectRunner
 {
     /**
-     * Normalized items already fetched for a source within this run, keyed by
-     * source id. Each entry is the persisted ContentItem plus whether persist
-     * created a new row.
+     * One external fetch per source for this run, keyed by source id. Later
+     * broadcasts that use the same source reuse these persisted rows instead
+     * of calling the provider again. The next run fetches once more so new
+     * posts are seen, then stores them on the same rows.
      *
      * @var array<int, list<array{item: ContentItem, isNew: bool}>>
      */
@@ -963,6 +964,7 @@ class ExecutingProjectRunner implements ProjectRunner
     ): void {
         $report = $broadcastRun->dry_report ?? [];
         $report[] = array_filter([
+            'content_item_id' => $item->getKey(),
             'title' => $this->itemLabel($item),
             'canonical_url' => $item->canonical_url,
             'outcome' => $outcome,

@@ -9,7 +9,9 @@ use App\Models\Destination;
 use App\Models\Organization;
 use App\Support\ConnectionTestOutcome;
 use App\Support\DestinationProviderRegistry;
+use App\Support\Pipeline\PipelineEditorPayload;
 use App\Support\SecretRedactor;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -20,6 +22,7 @@ class DestinationController extends Controller
     public function __construct(
         private DestinationProviderRegistry $providers,
         private SecretRedactor $secrets,
+        private PipelineEditorPayload $payload,
     ) {}
 
     public function edit(Organization $organization, Destination $destination): View
@@ -29,13 +32,20 @@ class DestinationController extends Controller
         return $this->form($destination);
     }
 
-    public function update(UpdateDestinationRequest $request, Organization $organization, Destination $destination): RedirectResponse
+    public function update(UpdateDestinationRequest $request, Organization $organization, Destination $destination): RedirectResponse|JsonResponse
     {
         $destination->update([
             'name' => $request->name(),
             'config' => $request->configuration(),
             'credentials' => $request->credentials(),
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'The destination has been updated.',
+                'destination' => $this->payload->destination($destination->refresh()),
+            ]);
+        }
 
         return redirect()
             ->route('destinations.edit', $destination)

@@ -59,6 +59,28 @@ class BroadcastFilterTest extends TestCase
         $this->assertSame('Title contains “spoiler”', $decision->skipReason);
     }
 
+    public function test_contains_and_equals_can_use_author_or_body(): void
+    {
+        $item = $this->item(['title' => 'Plain', 'body' => 'News: Pocket drop', 'author' => 'Ash']);
+
+        $this->assertTrue($this->evaluator->evaluate([
+            'rules' => [['type' => 'contains', 'field' => 'author', 'value' => 'ash']],
+        ], $item)->passed);
+
+        $this->assertTrue($this->evaluator->evaluate([
+            'rules' => [['type' => 'author_equals', 'field' => 'title', 'value' => 'Plain']],
+        ], $item)->passed);
+
+        $match = $this->evaluator->evaluate([
+            'rules' => [['type' => 'title_matches', 'field' => 'body', 'value' => '^News:']],
+        ], $item);
+
+        $this->assertTrue($match->passed);
+        $this->assertFalse($this->evaluator->evaluate([
+            'rules' => [['type' => 'title_matches', 'field' => 'body', 'value' => '^Alert:']],
+        ], $item)->passed);
+    }
+
     public function test_title_matches_uses_a_regular_expression(): void
     {
         $item = $this->item(['title' => 'News: Pocket drop']);

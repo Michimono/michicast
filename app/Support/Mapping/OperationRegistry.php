@@ -3,6 +3,7 @@
 namespace App\Support\Mapping;
 
 use App\Support\Mapping\Operations\AddText;
+use App\Support\Mapping\Operations\AdjustField;
 use App\Support\Mapping\Operations\Concatenate;
 use App\Support\Mapping\Operations\FirstItem;
 use App\Support\Mapping\Operations\FormatDate;
@@ -28,6 +29,7 @@ class OperationRegistry
     {
         foreach ([
             new SetField,
+            new AdjustField,
             new MapField,
             new AddText,
             new Concatenate,
@@ -70,6 +72,10 @@ class OperationRegistry
         $items = [];
 
         foreach ($this->operations as $operation) {
+            if ($operation->id() === 'adjust_field') {
+                continue;
+            }
+
             $item = [
                 'id' => $operation->id(),
                 'label' => $operation->label(),

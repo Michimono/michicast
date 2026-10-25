@@ -6,8 +6,10 @@ use App\Http\Requests\StoreSourceRequest;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\Source;
+use App\Support\Pipeline\PipelineEditorPayload;
 use App\Support\SourceFormData;
 use App\Support\SourceProviderRegistry;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -18,13 +20,14 @@ class ProjectSourceController extends Controller
     public function __construct(
         private SourceProviderRegistry $providers,
         private SourceFormData $form,
+        private PipelineEditorPayload $payload,
     ) {}
 
     public function create(Request $request, Organization $organization, Project $project): View|RedirectResponse
     {
         Gate::authorize('create', [Source::class, $project]);
 
-        if ($project->sources()->notArchived()->exists()) {
+        if (! $project->isVisual() && $project->sources()->notArchived()->exists()) {
             return redirect()
                 ->route('broadcasts.show', $project)
                 ->with('error', 'This broadcast already has a source. Manage it from Overview.');
@@ -37,15 +40,15 @@ class ProjectSourceController extends Controller
         return $this->form->view($project, $type);
     }
 
-    public function store(StoreSourceRequest $request, Organization $organization, Project $project): RedirectResponse
+    public function store(StoreSourceRequest $request, Organization $organization, Project $project): RedirectResponse|JsonResponse
     {
-        if ($project->sources()->notArchived()->exists()) {
+        if (! $project->isVisual() && $project->sources()->notArchived()->exists()) {
             return redirect()
                 ->route('broadcasts.show', $project)
                 ->with('error', 'This broadcast already has a source. Manage it from Overview.');
         }
 
-        $project->sources()->create([
+        $source = $project->sources()->create([
             'name' => $request->name(),
             'type' => $request->type(),
             'config' => $request->configuration(),
@@ -53,8 +56,16 @@ class ProjectSourceController extends Controller
 
         $project->ensureDefaultBroadcast();
 
+        // The pipeline editor adds sources from its inspector and keeps the canvas.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'The source has been added.',
+                'source' => $this->payload->source($source),
+            ], 201);
+        }
+
         return redirect()
-            ->route('broadcasts.show', $project)
+            ->route($project->isVisual() ? 'pipelines.edit' : 'broadcasts.show', $project)
             ->with('success', 'The source has been added.');
     }
 
