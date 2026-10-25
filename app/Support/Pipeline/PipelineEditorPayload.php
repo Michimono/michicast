@@ -91,6 +91,7 @@ class PipelineEditorPayload
                 'settings' => route('broadcasts.edit', $project),
                 'activity' => route('broadcast-runs.index', $project),
                 'exit' => route('organizations.show', $project->organization),
+                'sign_in' => route('session.create'),
             ],
             'csrf' => csrf_token(),
         ];

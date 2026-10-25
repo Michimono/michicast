@@ -46,6 +46,9 @@
     const ZOOM_MIN = 0.25;
     const ZOOM_MAX = 2.5;
     const SAVE_DELAY = 700;
+    // Waits before each automatic retry of a failed save. Once they run out,
+    // autosave stops and a dialog asks the user what to do.
+    const SAVE_RETRY_DELAYS = [2000, 5000, 10000];
     const HISTORY_LIMIT = 100;
     const DRAG_THRESHOLD = 4;
 
@@ -128,6 +131,9 @@
     let saving = false;
     let pendingSave = false;
     let saveTimer = null;
+    let saveFailures = 0;
+    let saveBlocked = null; // null, 'session' or 'network' while autosave waits on the user
+    let saveDialog = null;
     let liveEditKey = null;
     let toastTimer = null;
     let spaceHeld = false;
@@ -745,7 +751,7 @@
      * and a parsed body whatever the status, so callers only look at
      * `ok`, `status` and `data`.
      */
-    async function request(url, { method = 'GET', body = undefined } = {}) {
+    async function request(url, { method = 'GET', body = undefined, quiet = false } = {}) {
         const response = await fetch(url, {
             method,
             headers: requestHeaders(),
@@ -754,7 +760,7 @@
         });
         const data = await response.json().catch(() => ({}));
 
-        if (response.status === 419 || response.status === 401) {
+        if (!quiet && (response.status === 419 || response.status === 401)) {
             toast('Your session expired. Reload the page to keep going.');
         }
 
@@ -1710,8 +1716,14 @@
         }
 
         dirty = true;
-        setSaveStatus('dirty', 'Unsaved changes', 'Changes are saved automatically a moment after you stop');
         clearTimeout(saveTimer);
+
+        if (saveBlocked) {
+            // Autosave is paused until the user acts on the dialog; keep the edit locally.
+            return;
+        }
+
+        setSaveStatus('dirty', 'Unsaved changes', 'Changes are saved automatically a moment after you stop');
         saveTimer = setTimeout(save, SAVE_DELAY);
     }
 
@@ -1741,6 +1753,12 @@
 
         clearTimeout(saveTimer);
 
+        if (saveBlocked) {
+            openSaveDialog(saveBlocked);
+
+            return;
+        }
+
         if (saving) {
             pendingSave = true;
 
@@ -1751,11 +1769,19 @@
         dirty = false;
         setSaveStatus('saving', 'Saving…');
 
+        // What to do once this attempt settles: 'again' re-saves edits made meanwhile,
+        // 'retry' backs off after a failure, 'stop' waits for the next edit.
+        let next = 'again';
+        let failure = null;
+
         try {
-            const { ok, status, data } = await request(urls.update, { method: 'PATCH', body: { graph: graphDocument() } });
+            const { ok, status, data } = await request(urls.update, { method: 'PATCH', body: { graph: graphDocument() }, quiet: true });
 
             if (status === 422) {
+                // The graph itself was rejected; sending it again would fail the same way.
                 dirty = true;
+                next = 'stop';
+                saveFailures = 0;
                 setSaveStatus('error', 'Could not save', firstError(data, 'The pipeline could not be saved.'));
                 toast(firstError(data, 'The pipeline could not be saved.'));
 
@@ -1764,7 +1790,8 @@
 
             if (status === 419 || status === 401) {
                 dirty = true;
-                setSaveStatus('error', 'Session expired');
+                next = 'retry';
+                failure = 'session';
 
                 return;
             }
@@ -1773,6 +1800,7 @@
                 throw new Error('Save failed with ' + status);
             }
 
+            saveFailures = 0;
             issues = Array.isArray(data.issues) ? data.issues : [];
             routes = Array.isArray(data.routes) ? data.routes : [];
             project = data.project || project;
@@ -1790,23 +1818,147 @@
             renderPanel({ passive: true });
         } catch {
             dirty = true;
-            setSaveStatus('error', 'Could not save', 'Saving failed. Check your connection.');
-            toast('Saving failed. Check your connection and try again.');
+            next = 'retry';
+            failure = 'network';
         } finally {
             saving = false;
+            const queued = pendingSave;
+            pendingSave = false;
 
-            if (pendingSave || dirty) {
-                pendingSave = false;
-
-                if (dirty) {
-                    saveTimer = setTimeout(save, SAVE_DELAY);
-                }
+            if (next === 'retry') {
+                scheduleSaveRetry(failure);
+            } else if (next === 'again' && (queued || dirty) && dirty) {
+                saveTimer = setTimeout(save, SAVE_DELAY);
             }
+        }
+    }
+
+    function scheduleSaveRetry(reason) {
+        saveFailures += 1;
+
+        if (saveFailures > SAVE_RETRY_DELAYS.length) {
+            saveBlocked = reason;
+            setSaveStatus('error', reason === 'session' ? 'Session expired' : 'Not saved', reason === 'session' ? 'Sign in again to save your changes' : 'Saving failed. Check your connection.');
+            openSaveDialog(reason);
+
+            return;
+        }
+
+        const wait = SAVE_RETRY_DELAYS[saveFailures - 1];
+        setSaveStatus('error', 'Retrying in ' + Math.round(wait / 1000) + 's', reason === 'session' ? 'Your session may have expired' : 'Saving failed. Check your connection.');
+        saveTimer = setTimeout(save, wait);
+    }
+
+    function resumeSaving() {
+        saveBlocked = null;
+        saveFailures = 0;
+
+        if (saveDialog && saveDialog.open) {
+            saveDialog.close();
+        }
+
+        dirty = true;
+        save();
+    }
+
+    /*
+     * After signing in again (in another tab) the page's CSRF token belongs to
+     * the old session. Read the fresh one from the editor page itself; a
+     * redirect away from it means the user is still signed out.
+     */
+    async function refreshCsrf() {
+        try {
+            const response = await fetch(window.location.href, { credentials: 'same-origin', headers: { Accept: 'text/html' } });
+
+            if (!response.ok || new URL(response.url).pathname !== window.location.pathname) {
+                return false;
+            }
+
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const fresh = JSON.parse(doc.querySelector('[data-pipeline-editor]')?.getAttribute('data-pipeline-editor') || '{}');
+
+            if (!fresh.csrf) {
+                return false;
+            }
+
+            payload.csrf = fresh.csrf;
+
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function openSaveDialog(reason) {
+        if (!saveDialog) {
+            saveDialog = document.createElement('dialog');
+            saveDialog.className = 'm-auto w-[min(26rem,calc(100%-2rem))] rounded-lg border border-line bg-paper-raised p-0 text-ink shadow-lg backdrop:bg-ink/40';
+            saveDialog.setAttribute('aria-labelledby', 'pipeline-save-dialog-title');
+            saveDialog.addEventListener('cancel', (event) => {
+                // An expired session can't be waved away: nothing saves until the user signs in.
+                if (saveBlocked === 'session') {
+                    event.preventDefault();
+                }
+            });
+            saveDialog.addEventListener('click', async (event) => {
+                const action = event.target.closest('[data-save-dialog]')?.getAttribute('data-save-dialog');
+
+                if (action === 'retry') {
+                    resumeSaving();
+                } else if (action === 'dismiss') {
+                    saveDialog.close();
+                    saveBlocked = null;
+                    saveFailures = 0;
+                } else if (action === 'reload') {
+                    window.location.reload();
+                } else if (action === 'session-save') {
+                    const button = event.target.closest('button');
+                    const note = saveDialog.querySelector('[data-save-dialog-note]');
+                    button.disabled = true;
+
+                    if (await refreshCsrf()) {
+                        resumeSaving();
+                    } else if (note) {
+                        note.hidden = false;
+                    }
+
+                    button.disabled = false;
+                }
+            });
+            document.body.appendChild(saveDialog);
+        }
+
+        const session = reason === 'session';
+        saveDialog.innerHTML =
+            '<div class="flex flex-col gap-3 p-5">' +
+            '<h2 id="pipeline-save-dialog-title" class="font-display text-lg tracking-tight text-ink">' + (session ? 'Your session expired' : 'Your changes aren’t saved') + '</h2>' +
+            '<p class="text-sm text-muted">' + (session
+                ? 'Sign in again in a new tab, then come back and save. Your changes stay in this tab until then.'
+                : 'Saving failed ' + (SAVE_RETRY_DELAYS.length + 1) + ' times, so autosave is paused. Check your connection and try again. Your changes stay in this tab until they’re saved.') + '</p>' +
+            (session ? '<p class="rounded-md border border-state-fail/30 bg-state-fail/5 px-3 py-2 text-xs text-state-fail" data-save-dialog-note hidden>You’re still signed out. Sign in in the other tab first.</p>' : '') +
+            '<div class="mt-1 flex flex-wrap items-center justify-end gap-2">' +
+            (session
+                ? '<button type="button" class="' + LINK_CLASS + ' mr-auto" data-save-dialog="reload">Reload and discard</button>' +
+                  (urls.sign_in ? '<a class="' + GHOST_BUTTON_CLASS + '" href="' + esc(urls.sign_in) + '" target="_blank" rel="noopener">Sign in</a>' : '') +
+                  '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-save-dialog="session-save">I’ve signed in, save</button>'
+                : '<button type="button" class="' + GHOST_BUTTON_CLASS + '" data-save-dialog="dismiss">Keep editing</button>' +
+                  '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-save-dialog="retry">Try again</button>') +
+            '</div></div>';
+
+        if (!saveDialog.open) {
+            saveDialog.showModal();
         }
     }
 
     async function flushSave() {
         clearTimeout(saveTimer);
+
+        if (saveBlocked) {
+            openSaveDialog(saveBlocked);
+
+            return;
+        }
 
         if (dirty && !saving) {
             await save();
