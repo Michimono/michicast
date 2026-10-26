@@ -24,6 +24,7 @@ class OrganizationFactory extends Factory
             'slug' => fn (array $attributes) => Organization::uniqueSlugFrom((string) $attributes['name']),
             'timezone' => 'UTC',
             'plan' => fn () => config('michicast.quotas.default_plan'),
+            'approved_at' => now(),
         ];
     }
 
@@ -38,6 +39,14 @@ class OrganizationFactory extends Factory
             'suspended_at' => now(),
             'suspension_reason' => $reason,
             'suspended_by' => null,
+        ]);
+    }
+
+    public function pendingApproval(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'approved_at' => null,
+            'approved_by' => null,
         ]);
     }
 

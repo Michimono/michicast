@@ -27,6 +27,8 @@ class OrganizationController extends Controller
     public function index(Request $request): View
     {
         $search = trim($request->string('q')->toString());
+        $status = $request->string('status')->toString();
+        $status = in_array($status, ['pending', 'suspended'], true) ? $status : '';
         $since = now()->subDay();
 
         $organizations = Organization::query()
@@ -60,6 +62,8 @@ class OrganizationController extends Controller
                         ->orWhere('slug', 'like', '%'.$search.'%');
                 }),
             )
+            ->when($status === 'pending', fn (Builder $query) => $query->whereNull('approved_at'))
+            ->when($status === 'suspended', fn (Builder $query) => $query->whereNotNull('suspended_at'))
             ->orderBy('name')
             ->paginate(30)
             ->withQueryString();
@@ -67,6 +71,7 @@ class OrganizationController extends Controller
         return view('admin.organizations.index', [
             'organizations' => $organizations,
             'search' => $search,
+            'status' => $status,
         ]);
     }
 
@@ -77,7 +82,7 @@ class OrganizationController extends Controller
         QuotaMeter $meter,
         ResourceQuotas $resourceQuotas,
     ): View {
-        $organization->loadMissing('suspendedBy');
+        $organization->loadMissing(['suspendedBy', 'approvedBy']);
 
         $members = $organization->members()
             ->with('user')

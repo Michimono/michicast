@@ -18,6 +18,8 @@ use Illuminate\Support\Str;
  * @property Carbon|null $suspended_at
  * @property string|null $suspension_reason
  * @property int|null $suspended_by
+ * @property Carbon|null $approved_at
+ * @property int|null $approved_by
  */
 #[Fillable(['name', 'slug', 'timezone', 'plan'])]
 class Organization extends Model
@@ -60,6 +62,24 @@ class Organization extends Model
     }
 
     /**
+     * Whether this organization is still waiting for a platform admin to
+     * approve it. New organizations start here when approval is required.
+     */
+    public function isPendingApproval(): bool
+    {
+        return $this->approved_at === null;
+    }
+
+    /**
+     * Whether writes and dispatch are off, for either reason: suspended by an
+     * admin or not approved yet.
+     */
+    public function isDisabled(): bool
+    {
+        return $this->isSuspended() || $this->isPendingApproval();
+    }
+
+    /**
      * The role this user holds here, or null when they are not a member.
      */
     public function roleFor(User $user): ?Role
@@ -73,6 +93,14 @@ class Organization extends Model
     public function suspendedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'suspended_by');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     /**
@@ -175,6 +203,7 @@ class Organization extends Model
     {
         return [
             'suspended_at' => 'datetime',
+            'approved_at' => 'datetime',
         ];
     }
 }

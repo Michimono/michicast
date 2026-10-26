@@ -9,6 +9,7 @@ enum AdminAction: string
     case Unbanned = 'unbanned';
     case Suspended = 'suspended';
     case Reinstated = 'reinstated';
+    case Approved = 'approved';
     case PlanChanged = 'plan_changed';
     case QuotaOverrideSet = 'quota_override_set';
     case QuotaOverrideCleared = 'quota_override_cleared';
@@ -24,6 +25,7 @@ enum AdminAction: string
             self::Unbanned => 'Unbanned',
             self::Suspended => 'Suspended',
             self::Reinstated => 'Reinstated',
+            self::Approved => 'Approved',
             self::PlanChanged => 'Plan changed',
             self::QuotaOverrideSet => 'Quota override set',
             self::QuotaOverrideCleared => 'Quota override cleared',

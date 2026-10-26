@@ -33,6 +33,7 @@ class OverviewController extends Controller
         return view('admin.overview', [
             'userCount' => User::query()->count(),
             'organizationCount' => Organization::query()->count(),
+            'pendingOrganizationCount' => Organization::query()->whereNull('approved_at')->count(),
             'activeBroadcastCount' => Project::query()->where('status', ProjectStatus::Active)->count(),
             'runCounts' => $runCounts,
             'failedJobCount' => $this->failedJobCount(),

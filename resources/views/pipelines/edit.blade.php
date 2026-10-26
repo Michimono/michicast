@@ -164,6 +164,10 @@
         <div class="absolute inset-x-0 top-0 z-30 px-4 pt-3">
             <x-organization-suspended-banner :organization="$project->organization" />
         </div>
+    @elseif ($project->organization->isPendingApproval())
+        <div class="absolute inset-x-0 top-0 z-30 px-4 pt-3">
+            <x-organization-pending-banner :organization="$project->organization" />
+        </div>
     @endif
 
     <div class="absolute inset-0" data-pipeline-editor='@json($editor)'>

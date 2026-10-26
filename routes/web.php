@@ -3,6 +3,7 @@
 use App\Http\Controllers\AcceptedInvitationController;
 use App\Http\Controllers\ActiveProjectController;
 use App\Http\Controllers\Admin\ActivityController;
+use App\Http\Controllers\Admin\ApprovedOrganizationController as AdminApprovedOrganizationController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BannedUserController as AdminBannedUserController;
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
@@ -452,6 +453,10 @@ Route::middleware([
         ->name('users.ban.destroy');
 
     Route::resource('organizations', AdminOrganizationController::class)->only(['index', 'show']);
+
+    Route::post('organizations/{organization}/approve', [AdminApprovedOrganizationController::class, 'store'])
+        ->middleware('throttle:admin')
+        ->name('organizations.approve.store');
 
     Route::post('organizations/{organization}/suspend', [AdminSuspendedOrganizationController::class, 'store'])
         ->middleware('throttle:admin')

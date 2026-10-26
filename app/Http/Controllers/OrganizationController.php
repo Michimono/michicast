@@ -114,8 +114,19 @@ class OrganizationController extends Controller
                 'plan' => config('michicast.quotas.default_plan'),
             ]);
 
+            $creator = $request->user();
+
+            // New workspaces wait for a platform admin unless approval is off
+            // or the creator is an admin themselves.
+            if (! config('michicast.organizations.require_approval') || $creator->isPlatformAdmin()) {
+                $organization->forceFill([
+                    'approved_at' => now(),
+                    'approved_by' => $creator->isPlatformAdmin() ? $creator->getKey() : null,
+                ])->save();
+            }
+
             $organization->members()->create([
-                'user_id' => $request->user()->getKey(),
+                'user_id' => $creator->getKey(),
                 'role' => Role::Owner,
             ]);
 
