@@ -7,7 +7,9 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM php:8.4-fpm-bookworm AS app
+# Pinned to a release with the PHP2Shell fixes (CVE-2026-109618, CVE-2026-109619).
+# Only move this forward: never below 8.4.27.
+FROM php:8.4.27-fpm-bookworm AS app
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gosu libicu-dev libzip-dev unzip $PHPIZE_DEPS \

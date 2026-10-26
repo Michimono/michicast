@@ -9,7 +9,7 @@ if [ ! -f deploy/.env ]; then
 fi
 
 git pull --ff-only
-docker compose build
+docker compose build --pull
 docker compose up -d
 docker compose exec -T app php artisan migrate --force
 docker compose exec -T app php artisan horizon:terminate
