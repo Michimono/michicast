@@ -105,6 +105,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Organization Approval
+    |--------------------------------------------------------------------------
+    |
+    | When on, a new organization starts disabled (read-only, no broadcasts)
+    | until a platform admin approves it at /admin/organizations. Admins'
+    | own organizations are approved straight away. Turn it off for
+    | self-hosting or local development.
+    |
+    */
+
+    'organizations' => [
+        'require_approval' => filter_var(env('MICHICAST_ORGANIZATIONS_REQUIRE_APPROVAL', true), FILTER_VALIDATE_BOOL),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Due Project Dispatch
     |--------------------------------------------------------------------------
     |

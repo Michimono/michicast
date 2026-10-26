@@ -16,6 +16,8 @@
                 <dd>
                     @if ($organization->isSuspended())
                         <span class="inline-flex w-fit rounded-full border border-state-fail/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-fail uppercase">Suspended</span>
+                    @elseif ($organization->isPendingApproval())
+                        <span class="inline-flex w-fit rounded-full border border-accent/40 px-2 py-0.5 font-mono text-xs tracking-wide text-accent uppercase">Pending approval</span>
                     @else
                         <span class="inline-flex w-fit rounded-full border border-state-ok/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-ok uppercase">Active</span>
                     @endif
@@ -46,6 +48,26 @@
             <a class="text-accent underline hover:no-underline" href="{{ route('admin.organizations.index') }}">← All organizations</a>
         </p>
     </x-card>
+
+    @if ($organization->isPendingApproval())
+        <x-card heading="Approve organization" kicker="Review">
+            <p class="text-sm text-muted">
+                This workspace was created <x-timestamp :value="$organization->created_at" /> and is waiting for review.
+                Until it is approved, members can only look around: writes, invitations and broadcasts stay off.
+            </p>
+
+            <form
+                class="flex flex-col gap-4"
+                method="POST"
+                action="{{ route('admin.organizations.approve.store', $organization) }}"
+                data-confirm="Approve {{ $organization->name }}? Members will be able to build and run broadcasts."
+            >
+                @csrf
+
+                <x-button>Approve organization</x-button>
+            </form>
+        </x-card>
+    @endif
 
     @if ($organization->isSuspended())
         <x-card heading="Reinstate organization" kicker="Moderation">

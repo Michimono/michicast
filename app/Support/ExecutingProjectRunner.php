@@ -349,8 +349,8 @@ class ExecutingProjectRunner implements ProjectRunner
             $project->loadMissing('organization');
             $project->organization->refresh();
 
-            // Stop cleanly mid-run when the org is suspended after this job started.
-            if ($project->organization->isSuspended()) {
+            // Stop cleanly mid-run when the org is disabled after this job started.
+            if ($project->organization->isDisabled()) {
                 break;
             }
 

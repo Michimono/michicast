@@ -15,6 +15,16 @@
                 <dd class="font-display text-2xl tracking-tight">{{ $organizationCount }}</dd>
             </div>
 
+            <div class="flex flex-col gap-1 rounded-md border p-4 {{ $pendingOrganizationCount > 0 ? 'border-accent/40 bg-accent/5' : 'border-line bg-paper' }}">
+                <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Awaiting approval</dt>
+                <dd class="font-display text-2xl tracking-tight">{{ $pendingOrganizationCount }}</dd>
+                @if ($pendingOrganizationCount > 0)
+                    <dd>
+                        <a class="text-sm text-accent underline hover:no-underline" href="{{ route('admin.organizations.index', ['status' => 'pending']) }}">Review them</a>
+                    </dd>
+                @endif
+            </div>
+
             <div class="flex flex-col gap-1 rounded-md border border-line bg-paper p-4">
                 <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Active broadcasts</dt>
                 <dd class="font-display text-2xl tracking-tight">{{ $activeBroadcastCount }}</dd>

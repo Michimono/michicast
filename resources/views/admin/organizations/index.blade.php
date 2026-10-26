@@ -16,6 +16,18 @@
                 >
             </label>
 
+            <label class="flex flex-col gap-1.5 text-sm">
+                <span class="font-medium text-ink">Status</span>
+                <select
+                    class="rounded-md border border-line-strong bg-paper-raised px-3 py-2 text-ink"
+                    name="status"
+                >
+                    <option value="" @selected($status === '')>All</option>
+                    <option value="pending" @selected($status === 'pending')>Pending approval</option>
+                    <option value="suspended" @selected($status === 'suspended')>Suspended</option>
+                </select>
+            </label>
+
             <x-button :paw="false">Search</x-button>
         </form>
 
@@ -56,6 +68,8 @@
                                 <td class="py-3">
                                     @if ($listedOrganization->isSuspended())
                                         <span class="inline-flex w-fit rounded-full border border-state-fail/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-fail uppercase">Suspended</span>
+                                    @elseif ($listedOrganization->isPendingApproval())
+                                        <span class="inline-flex w-fit rounded-full border border-accent/40 px-2 py-0.5 font-mono text-xs tracking-wide text-accent uppercase">Pending approval</span>
                                     @else
                                         <span class="inline-flex w-fit rounded-full border border-state-ok/40 px-2 py-0.5 font-mono text-xs tracking-wide text-state-ok uppercase">Active</span>
                                     @endif
