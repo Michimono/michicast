@@ -49,48 +49,47 @@ Use the same hostname as `APP_URL` / `DOMAIN` in `deploy/.env` (for example `APP
 
 ## 3. App deploy (this repo)
 
-Log in as `michimono`, then:
+Log in as `michimono`, then clone once:
 
 ```sh
 # Clone into ~/michimono if the directory is still empty
 git clone https://github.com/Michimono/michicast.git ~/michimono
+```
 
+Every deploy, the first one included, is the same two steps:
+
+```sh
 cd ~/michimono
-cp deploy/.env.example deploy/.env
+git pull --ff-only
+bash deploy/deploy.sh
 ```
 
-Edit `deploy/.env` before the first deploy:
+`deploy/deploy.sh` makes sure `deploy/.env` is production-ready, then deploys.
 
-| Key | Value |
+On the first run it copies `deploy/.env.example` to `deploy/.env` (mode `600`) and asks only for what it can't generate:
+
+| Prompt | Key |
 | --- | --- |
-| `APP_KEY` | `base64:` followed by 32 random bytes, e.g. `echo "base64:$(openssl rand -base64 32)"`. Keep it: it decrypts destination credentials and 2FA secrets. |
-| `APP_URL`, `DOMAIN` | `https://<host>` and `<host>`. They must match. |
-| `ACME_EMAIL` | Let's Encrypt account contact. |
-| `DB_PASSWORD`, `MYSQL_PASSWORD` | The same strong password. `MYSQL_*` is only read when the MySQL volume is first created. |
-| `MYSQL_ROOT_PASSWORD` | A different strong password. |
-| `REDIS_PASSWORD` | Required by the `redis` service. Generate it with the command below. |
-| `PLATFORM_ADMIN_EMAILS` | Uncomment and set your own email so you can reach `/admin` after registering. |
-| `MAIL_*` | The example uses `MAIL_MAILER=log`; set a real mailer before inviting users. |
+| Domain | `DOMAIN`; `APP_URL` is set to `https://<domain>` from it. |
+| Let's Encrypt email | `ACME_EMAIL` |
+| Platform admin email(s) | `PLATFORM_ADMIN_EMAILS` (defaults to the Let's Encrypt email). |
+| Configure SMTP now? | Yes asks for `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` and `MAIL_FROM_ADDRESS`. No keeps `MAIL_MAILER=log` and sets `DEPLOY_ALLOW_LOG_MAILER=true` so it isn't asked again. |
 
-```sh
-sed -i "s/^REDIS_PASSWORD=.*/REDIS_PASSWORD=$(openssl rand -hex 32)/" deploy/.env
-```
+It generates every secret still empty or set to `change-me`: `APP_KEY`, `DB_PASSWORD` (copied to `MYSQL_PASSWORD`), `MYSQL_ROOT_PASSWORD` and `REDIS_PASSWORD`. It always enforces `APP_ENV=production`, `APP_DEBUG=false` and `SESSION_SECURE_COOKIE=true`.
 
-`SESSION_SECURE_COOKIE=true` is already set in the example (required behind TLS).
+**Back up `deploy/.env`.** `APP_KEY` decrypts destination credentials and 2FA secrets, and `MYSQL_*` is only read when the MySQL volume is first created. Once the `michicast_mysql-data` volume exists, the script refuses to generate a new `APP_KEY` or database password and tells you to restore the old one.
 
-Then deploy:
+Later runs ask nothing when `deploy/.env` is complete. If a required value is missing they prompt for it, or, without a terminal, stop and list the missing keys. To edit a value, change it in `deploy/.env` and re-run.
 
-```sh
-bash ~/michimono/deploy/deploy.sh
-```
+The deploy itself runs `docker compose build --pull`, `docker compose up -d --remove-orphans --wait`, `php artisan migrate --force` in the `app` container, and `php artisan horizon:terminate` so Horizon restarts on the new code. It finishes by checking `https://<DOMAIN>/up`.
 
-`deploy/deploy.sh` runs `git pull --ff-only`, `docker compose build`, `docker compose up -d`, `php artisan migrate --force` in the `app` container, and `php artisan horizon:terminate` so the Horizon container restarts on the new code. Re-run it for every later deploy.
+To only check or complete `deploy/.env` without deploying: `bash deploy/deploy.sh --env-only`.
 
 ### First certificate issuance
 
 After DNS points at the droplet and `deploy/.env` has `DOMAIN` + `ACME_EMAIL`:
 
-1. Run `bash ~/michimono/deploy/deploy.sh` (or `docker compose up -d` if images are already built).
+1. Run `bash deploy/deploy.sh` (or `docker compose up -d` if images are already built).
 2. Watch Caddy obtain the cert: `docker compose logs -f caddy`.
 3. Open `https://<DOMAIN>`; you should get a valid certificate. `http://<DOMAIN>` should redirect to HTTPS.
 4. Confirm `Strict-Transport-Security` on an HTTPS response and that session cookies include `Secure`.
