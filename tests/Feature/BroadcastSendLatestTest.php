@@ -36,11 +36,11 @@ class BroadcastSendLatestTest extends TestCase
             ->assertSee(route('broadcast-send-latests.store', [$organization, $project]), false);
     }
 
-    public function test_send_latest_publishes_backfill_item_that_run_now_skips(): void
+    public function test_run_now_publishes_items_published_before_the_broadcast_existed(): void
     {
         $this->travelTo(Carbon::parse('2026-03-15 12:00:00', 'UTC'));
 
-        [$user, $organization] = $this->memberHolding(Role::Editor);
+        [, $organization] = $this->memberHolding(Role::Editor);
         $project = Project::factory()->for($organization)->active()->create();
         $source = Source::factory()->create([
             'project_id' => $project->getKey(),
@@ -67,21 +67,11 @@ class BroadcastSendLatestTest extends TestCase
         $recording = $this->recording();
         $this->app->make(ExecutingProjectRunner::class)->run($project);
 
-        $this->assertCount(0, $recording->published());
-        $this->assertSame(DeliveryStatus::Skipped, ContentDelivery::query()->sole()->status);
-        $item = ContentItem::query()->sole();
-        $this->assertSame(ContentItemLifecycle::Skipped, $item->lifecycle);
-
-        $this->actingAs($user)
-            ->from(route('broadcasts.edit', [$organization, $project]))
-            ->post(route('broadcast-send-latests.store', [$organization, $project]))
-            ->assertRedirect(route('broadcasts.edit', [$organization, $project]))
-            ->assertSessionHas('success');
-
+        // Age is a filter choice now ("Published within the last N hours"), not a built-in skip (#224).
         $this->assertCount(1, $recording->published());
         $this->assertStringStartsWith('Archive piece', $recording->published()[0]->body);
         $this->assertSame(DeliveryStatus::Delivered, ContentDelivery::query()->sole()->status);
-        $this->assertSame(ContentItemLifecycle::Delivered, $item->fresh()->lifecycle);
+        $this->assertSame(ContentItemLifecycle::Delivered, ContentItem::query()->sole()->lifecycle);
     }
 
     public function test_send_latest_only_targets_the_newest_item(): void

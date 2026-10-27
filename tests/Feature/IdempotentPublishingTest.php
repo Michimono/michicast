@@ -104,7 +104,7 @@ class IdempotentPublishingTest extends TestCase
         ]);
     }
 
-    public function test_a_new_broadcast_does_not_publish_the_source_back_catalogue(): void
+    public function test_a_time_filter_keeps_a_new_broadcast_from_publishing_the_back_catalogue(): void
     {
         $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
 
@@ -136,6 +136,8 @@ class IdempotentPublishingTest extends TestCase
             'project_id' => $project->getKey(),
             'source_id' => $source->getKey(),
             'destination_id' => $destination->getKey(),
+            // No built-in back-catalogue skip (#224): age limits are a filter rule.
+            'filter' => ['rules' => [['type' => 'published_after', 'hours' => 24]]],
             'created_at' => Carbon::parse('2026-03-15 10:00:00', 'UTC'),
             'updated_at' => Carbon::parse('2026-03-15 10:00:00', 'UTC'),
         ]);
@@ -157,6 +159,51 @@ class IdempotentPublishingTest extends TestCase
         $run = ProjectRun::query()->sole();
         $this->assertSame(1, $run->items_skipped);
         $this->assertSame(1, $run->items_delivered);
+    }
+
+    public function test_a_skipped_item_is_checked_again_and_published_once_the_filter_lets_it_through(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
+
+        $project = Project::factory()->due()->create();
+        $source = Source::factory()->create([
+            'project_id' => $project->getKey(),
+            'config' => [
+                'feed_url' => 'https://example.com/feed.xml',
+                'items' => [[
+                    'external_id' => 'item-1',
+                    'title' => 'Weekly digest',
+                    'canonical_url' => 'https://example.com/item-1',
+                    'published_at' => '2026-03-15T09:00:00Z',
+                ]],
+            ],
+        ]);
+        $destination = Destination::factory()->create(['project_id' => $project->getKey()]);
+        $broadcast = Broadcast::factory()->create([
+            'project_id' => $project->getKey(),
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
+            'filter' => ['rules' => [['type' => 'contains', 'field' => 'title', 'value' => 'release']]],
+        ]);
+
+        $this->runner()->run($project);
+        $this->runner()->run($project);
+
+        // Still filtered on the second run: one skipped row, refreshed rather than duplicated.
+        $this->assertCount(0, $this->recording()->published());
+        $skipped = ContentDelivery::query()->sole();
+        $this->assertSame(DeliveryStatus::Skipped, $skipped->status);
+        $this->assertSame((int) ProjectRun::query()->latest('id')->first()?->broadcastRuns()->sole()->getKey(), (int) $skipped->broadcast_run_id);
+
+        $broadcast->update(['filter' => null]);
+        $this->runner()->run($project);
+
+        $this->assertCount(1, $this->recording()->published());
+        $this->assertSame(DeliveryStatus::Delivered, ContentDelivery::query()->sole()->status);
+
+        // Delivered still blocks a fourth run.
+        $this->runner()->run($project);
+        $this->assertCount(1, $this->recording()->published());
     }
 
     public function test_a_content_hash_change_does_not_republish_an_existing_delivery(): void

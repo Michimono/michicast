@@ -72,7 +72,7 @@ class BroadcastLatestResendTest extends TestCase
         $sendLatest = $xpath->query('//form[@data-confirm][@data-run-form][.//button[normalize-space(.)="Send latest"]]');
         $this->assertSame(1, $sendLatest->length);
         $this->assertSame(
-            'Publish only the latest received item to the destination now? This bypasses backfill and already-delivered blockers for that item alone.',
+            'Publish only the latest received item to the destination now? This bypasses already-delivered blockers for that item alone.',
             $this->domElement($sendLatest->item(0))->getAttribute('data-confirm'),
         );
 

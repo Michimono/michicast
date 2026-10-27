@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Routes are matched to rows by source and destination record, so redrawing
  * the graph around the same pair keeps the row — and with it the delivery
- * history, the backfill cut-off and any auto-pause. Rows no longer in the
+ * history and any auto-pause. Rows no longer in the
  * graph are archived, never deleted; a row that comes back is restored.
  */
 class PipelineRouteSynchronizer
