@@ -33,6 +33,8 @@ class RedditListingParser
      *     published_at: CarbonImmutable|null,
      *     is_self: bool,
      *     linked_url: string|null,
+     *     text: string|null,
+     *     preview_image: string|null,
      *     raw: array<string, mixed>
      * }>
      */
@@ -87,6 +89,8 @@ class RedditListingParser
      *     published_at: CarbonImmutable|null,
      *     is_self: bool,
      *     linked_url: string|null,
+     *     text: string|null,
+     *     preview_image: string|null,
      *     raw: array<string, mixed>
      * }|null
      */
@@ -137,6 +141,8 @@ class RedditListingParser
             'published_at' => $this->parseDate($published),
             'is_self' => $isSelf,
             'linked_url' => $linkedUrl,
+            'text' => $this->postText($selfText),
+            'preview_image' => $this->previewImage($linkedUrl, $this->thumbnail($entry)),
             'raw' => [
                 'id' => $externalId,
                 'title' => $title,
@@ -160,6 +166,36 @@ class RedditListingParser
         }
 
         return $linkedUrl === null ? $text : $text."\n\n".$linkedUrl;
+    }
+
+    private function postText(?string $text): ?string
+    {
+        return $text === '[removed]' || $text === '[deleted]' ? null : $text;
+    }
+
+    /**
+     * Posts that link straight to an image use the full-size image; galleries,
+     * articles and videos fall back to Reddit's preview thumbnail.
+     */
+    private function previewImage(?string $linkedUrl, ?string $thumbnail): ?string
+    {
+        if ($linkedUrl !== null && $this->isDirectImage($linkedUrl)) {
+            return $linkedUrl;
+        }
+
+        return $thumbnail;
+    }
+
+    private function isDirectImage(string $url): bool
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $path = strtolower((string) parse_url($url, PHP_URL_PATH));
+
+        if ($host === 'i.redd.it') {
+            return true;
+        }
+
+        return preg_match('/\.(jpe?g|png|gif|webp)$/', $path) === 1;
     }
 
     private function author(SimpleXMLElement $atom): ?string

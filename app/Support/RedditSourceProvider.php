@@ -169,6 +169,14 @@ class RedditSourceProvider implements SourceProvider
                     'provider' => $this->type(),
                     'post_kind' => $entry['is_self'] ? 'self' : 'link',
                     'linked_url' => $entry['linked_url'],
+                    // Extra origin fields the mapping editor exposes for Reddit sources.
+                    'source_fields' => [
+                        'text' => $entry['text'],
+                        'linked_url' => $entry['linked_url'],
+                        'preview_image' => $entry['preview_image'] === null ? [] : [
+                            ['type' => 'image', 'url' => $entry['preview_image']],
+                        ],
+                    ],
                 ],
                 'raw_payload' => $entry['raw'],
             ]);
@@ -187,6 +195,8 @@ class RedditSourceProvider implements SourceProvider
      *     published_at: CarbonImmutable|null,
      *     is_self: bool,
      *     linked_url: string|null,
+     *     text: string|null,
+     *     preview_image: string|null,
      *     raw: array<string, mixed>
      * }>
      */
