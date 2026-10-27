@@ -11,8 +11,10 @@ class RecordingProjectRunner implements ProjectRunner
     /**
      * Placeholder kept for tests that want a no-op runner. Production binds
      * ExecutingProjectRunner instead.
+     *
+     * @param  list<int>|null  $sourceIds
      */
-    public function run(Project $project, ?CarbonInterface $deadline = null): bool
+    public function run(Project $project, ?CarbonInterface $deadline = null, ?array $sourceIds = null): bool
     {
         Log::info('Project dispatched.', [
             'project_id' => $project->getKey(),

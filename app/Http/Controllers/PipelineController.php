@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdatePipelineRequest;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\Source;
 use App\Support\Pipeline\PipelineEditorPayload;
 use App\Support\Pipeline\PipelineGraphCompiler;
 use App\Support\Pipeline\PipelineRouteSynchronizer;
@@ -63,6 +64,7 @@ class PipelineController extends Controller
 
         $project->graph = $graph->toArray();
         $project->save();
+        $project->syncSourceSchedules();
         $project->refresh();
         $project->setRelation('organization', $organization);
 
@@ -74,6 +76,10 @@ class PipelineController extends Controller
                 'issues' => $compilation->issuesToArray(),
                 'routes' => $this->payload->routes($project, $compilation),
                 'project' => $this->payload->project($project),
+                'sources' => $project->sources()->oldest('id')->get()
+                    ->map(fn (Source $source): array => $this->payload->source($source))
+                    ->values()
+                    ->all(),
             ]);
         }
 

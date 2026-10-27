@@ -204,7 +204,7 @@ class CountingProjectRunner implements ProjectRunner
 {
     public int $runs = 0;
 
-    public function run(Project $project, ?CarbonInterface $deadline = null): bool
+    public function run(Project $project, ?CarbonInterface $deadline = null, ?array $sourceIds = null): bool
     {
         $this->runs++;
 

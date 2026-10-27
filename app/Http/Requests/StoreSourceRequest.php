@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Source;
 use App\Support\ResourceQuotas;
 use App\Support\SourceProviderRegistry;
+use App\Support\SourceScheduleFields;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -40,6 +41,7 @@ class StoreSourceRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', Rule::in($registry->types())],
             'config' => ['nullable', 'array'],
+            ...SourceScheduleFields::rules(),
             ...$this->configurationRules($this->type()),
         ];
     }
@@ -78,7 +80,36 @@ class StoreSourceRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return $this->configurationAttributes($this->type());
+        return [...$this->configurationAttributes($this->type()), ...SourceScheduleFields::attributes()];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return SourceScheduleFields::messages();
+    }
+
+    /**
+     * Whether a schedule was sent at all. Only visual broadcasts use it.
+     */
+    public function hasSchedule(): bool
+    {
+        return SourceScheduleFields::provided($this);
+    }
+
+    /**
+     * @return array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}|null
+     */
+    public function sourceSchedule(): ?array
+    {
+        return SourceScheduleFields::schedule($this);
+    }
+
+    protected function prepareForValidation(): void
+    {
+        SourceScheduleFields::prepare($this);
     }
 
     public function name(): string

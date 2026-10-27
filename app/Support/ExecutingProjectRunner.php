@@ -74,10 +74,13 @@ class ExecutingProjectRunner implements ProjectRunner
         private QuotaMeter $meter,
     ) {}
 
-    public function run(Project $project, ?CarbonInterface $deadline = null): bool
+    /**
+     * @param  list<int>|null  $sourceIds  Only run routes reading these sources; null runs all.
+     */
+    public function run(Project $project, ?CarbonInterface $deadline = null, ?array $sourceIds = null): bool
     {
         $this->dry = false;
-        $run = $this->execute($project, $deadline);
+        $run = $this->execute($project, $deadline, $sourceIds);
 
         return $run->status !== RunStatus::Incomplete;
     }
@@ -289,7 +292,10 @@ class ExecutingProjectRunner implements ProjectRunner
         );
     }
 
-    private function execute(Project $project, ?CarbonInterface $deadline): ProjectRun
+    /**
+     * @param  list<int>|null  $sourceIds
+     */
+    private function execute(Project $project, ?CarbonInterface $deadline, ?array $sourceIds = null): ProjectRun
     {
         $this->fetchedBySource = [];
 
@@ -304,6 +310,7 @@ class ExecutingProjectRunner implements ProjectRunner
 
         $broadcasts = $project->broadcasts()
             ->runnable()
+            ->when($sourceIds !== null, static fn (Builder $query) => $query->whereIn('source_id', $sourceIds ?? []))
             ->with(['source', 'destination'])
             ->orderBy('id')
             ->get();
