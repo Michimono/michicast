@@ -51,6 +51,29 @@ readonly class BroadcastFilterRule
     }
 
     /**
+     * Skip reason for an item this rule rejected. Says so when the rule could
+     * not be checked at all (no publish date, invalid pattern) instead of
+     * implying the item failed it on content.
+     */
+    public function describeFor(ContentItem $item): string
+    {
+        $timeRule = $this->type === BroadcastFilterRuleType::PublishedAfter
+            || $this->type === BroadcastFilterRuleType::PublishedBefore;
+
+        if ($timeRule && $item->published_at === null) {
+            return 'The source gave no publish date, so time filters can’t match it';
+        }
+
+        if ($this->type === BroadcastFilterRuleType::TitleMatches
+            && ($this->value ?? '') !== ''
+            && ! BoundedRegex::isValid((string) $this->value)) {
+            return sprintf('The pattern “%s” isn’t a valid regular expression, so nothing matches it', $this->value);
+        }
+
+        return $this->describe();
+    }
+
+    /**
      * Sentence naming this rule for a skip reason.
      */
     public function describe(): string

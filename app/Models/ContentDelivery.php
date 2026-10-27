@@ -68,8 +68,8 @@ class ContentDelivery extends Model
     /**
      * Whether another publish attempt is forbidden for this route.
      *
-     * Pending, delivered and skipped always block. Permanent failures block.
-     * Transient failures stay reclaimable for a later run.
+     * Pending and delivered always block. Permanent failures block.
+     * Transient failures and skipped rows stay reclaimable for a later run.
      */
     public function blocksRepublish(): bool
     {
@@ -78,6 +78,24 @@ class ContentDelivery extends Model
         }
 
         return $this->status->blocksRepublish();
+    }
+
+    /**
+     * Why this route will not be published again, worded for run history and
+     * previews, or null when it can be.
+     */
+    public function blockReason(): ?string
+    {
+        if (! $this->blocksRepublish()) {
+            return null;
+        }
+
+        return match ($this->status) {
+            DeliveryStatus::Delivered => 'Already sent to this destination.',
+            DeliveryStatus::Pending => 'Another run is already sending this to this destination.',
+            DeliveryStatus::Failed => 'This destination rejected it permanently, so it is not sent again.',
+            default => 'Already handled for this destination.',
+        };
     }
 
     /**

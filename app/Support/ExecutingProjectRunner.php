@@ -240,13 +240,15 @@ class ExecutingProjectRunner implements ProjectRunner
         $wouldSkip = 0;
 
         foreach ($fetched as $item) {
-            if ($this->previewDeliveryBlocksRepublish($item, $broadcast, $destinationId)) {
+            $blocked = $this->previewDeliveryBlockReason($item, $broadcast, $destinationId);
+
+            if ($blocked !== null) {
                 $items[] = new BroadcastPreviewItem(
                     title: $this->itemLabel($item),
                     body: $item->body,
                     canonicalUrl: $item->canonical_url,
                     outcome: 'skip',
-                    skipReason: 'Already delivered, pending, or skipped for this destination.',
+                    skipReason: $blocked,
                 );
                 $wouldSkip++;
 
@@ -430,20 +432,22 @@ class ExecutingProjectRunner implements ProjectRunner
             }
 
             if (in_array((int) $item->getKey(), $retriedItemIds, true)) {
-                $this->recordRunSkip($broadcastRun, $item, 'Retried earlier in this run.');
+                $this->recordRunSkip($broadcastRun, $item, 'Already sent by a retry earlier in this run.');
                 $broadcastRun->items_skipped++;
 
                 continue;
             }
 
-            if ($this->deliveryBlocksRepublish($item, $broadcast, (int) $destination->getKey())) {
+            $blocked = $this->deliveryBlockReason($item, $broadcast, (int) $destination->getKey());
+
+            if ($blocked !== null) {
                 $this->recordOutcome(
                     $broadcastRun,
                     $broadcast,
                     $item,
                     (int) $destination->getKey(),
                     'skip',
-                    'Already delivered, pending, or skipped for this destination.',
+                    $blocked,
                     createSkippedDelivery: false,
                 );
                 $broadcastRun->items_skipped++;
@@ -591,7 +595,8 @@ class ExecutingProjectRunner implements ProjectRunner
             $this->recordRunSkip(
                 $broadcastRun,
                 $item,
-                'Already delivered, pending, or skipped for this destination.',
+                $this->deliveryBlockReason($item, $broadcast, $definition->destinationId)
+                    ?? 'Another run is already sending this to this destination.',
             );
             $broadcastRun->items_skipped++;
 
@@ -786,9 +791,10 @@ class ExecutingProjectRunner implements ProjectRunner
     /**
      * Insert a pending delivery before calling the provider. A unique
      * constraint hit means another claim already owns this route: skip rather
-     * than risk a second publish. Transient failed rows may be reclaimed; the
-     * reclaim is a conditional update, so two claims racing for the same
-     * failed row cannot both win.
+     * than risk a second publish. Transient failed rows and skipped rows (an
+     * item a filter let through on a later run) may be reclaimed; the reclaim
+     * is a conditional update, so two claims racing for the same row cannot
+     * both win.
      */
     private function claimDelivery(
         BroadcastRun $broadcastRun,
@@ -818,10 +824,15 @@ class ExecutingProjectRunner implements ProjectRunner
 
             $reclaimed = ContentDelivery::query()
                 ->whereKey($existing->getKey())
-                ->where('status', DeliveryStatus::Failed->value)
                 ->where(function (Builder $query): void {
-                    $query->whereNull('failure')
-                        ->orWhere('failure', '!=', DeliveryFailure::Permanent->value);
+                    $query->where('status', DeliveryStatus::Skipped->value)
+                        ->orWhere(function (Builder $query): void {
+                            $query->where('status', DeliveryStatus::Failed->value)
+                                ->where(function (Builder $query): void {
+                                    $query->whereNull('failure')
+                                        ->orWhere('failure', '!=', DeliveryFailure::Permanent->value);
+                                });
+                        });
                 })
                 ->update([
                     'broadcast_run_id' => $broadcastRun->getKey(),
@@ -889,7 +900,23 @@ class ExecutingProjectRunner implements ProjectRunner
                 'finished_at' => now(),
             ]);
         } catch (UniqueConstraintViolationException) {
-            $this->recordRunSkip($broadcastRun, $item, $reason);
+            // Skipped before and still skipped: refresh the row so it shows this
+            // run and the current reason instead of adding a duplicate.
+            $refreshed = ContentDelivery::query()
+                ->where('content_item_id', $item->getKey())
+                ->where('broadcast_id', $broadcast->getKey())
+                ->where('destination_id', $destinationId)
+                ->where('status', DeliveryStatus::Skipped->value)
+                ->update([
+                    'broadcast_run_id' => $broadcastRun->getKey(),
+                    'error_detail' => $reason,
+                    'attempted_at' => now(),
+                    'finished_at' => now(),
+                ]);
+
+            if ($refreshed !== 1) {
+                $this->recordRunSkip($broadcastRun, $item, $reason);
+            }
         }
     }
 
@@ -970,7 +997,11 @@ class ExecutingProjectRunner implements ProjectRunner
         return $this->fetchedBySource[$sourceId] = $entries;
     }
 
-    private function deliveryBlocksRepublish(ContentItem $item, Broadcast $broadcast, int $destinationId): bool
+    /**
+     * Why an earlier delivery on this route stops a publish, or null when
+     * there is none or it does not block (skipped, transient failure).
+     */
+    private function deliveryBlockReason(ContentItem $item, Broadcast $broadcast, int $destinationId): ?string
     {
         $existing = ContentDelivery::query()
             ->where('content_item_id', $item->getKey())
@@ -978,14 +1009,14 @@ class ExecutingProjectRunner implements ProjectRunner
             ->where('destination_id', $destinationId)
             ->first();
 
-        return $existing !== null && $existing->blocksRepublish();
+        return $existing?->blockReason();
     }
 
     /**
      * Preview items are not persisted, so resolve any prior delivery through
      * the item's identity on the source.
      */
-    private function previewDeliveryBlocksRepublish(ContentItem $item, Broadcast $broadcast, int $destinationId): bool
+    private function previewDeliveryBlockReason(ContentItem $item, Broadcast $broadcast, int $destinationId): ?string
     {
         $persisted = ContentItem::query()
             ->where('source_id', $item->source_id)
@@ -993,10 +1024,10 @@ class ExecutingProjectRunner implements ProjectRunner
             ->first();
 
         if ($persisted === null) {
-            return false;
+            return null;
         }
 
-        return $this->deliveryBlocksRepublish($persisted, $broadcast, $destinationId);
+        return $this->deliveryBlockReason($persisted, $broadcast, $destinationId);
     }
 
     private function advanceLifecycle(ContentItem $item, ContentItemLifecycle $next): void

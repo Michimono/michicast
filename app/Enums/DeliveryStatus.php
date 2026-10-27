@@ -21,14 +21,16 @@ enum DeliveryStatus: string
 
     /**
      * Statuses that mean this route must not be published again on their own.
-     * Failed is not included: permanent versus transient is decided on the
-     * delivery row via ContentDelivery::blocksRepublish().
+     * Skipped does not block: a filtered-out item is checked again on later
+     * runs, so changing a filter can let it through (#224). Failed is not
+     * included: permanent versus transient is decided on the delivery row via
+     * ContentDelivery::blocksRepublish().
      */
     public function blocksRepublish(): bool
     {
         return match ($this) {
-            self::Pending, self::Delivered, self::Skipped => true,
-            self::Failed => false,
+            self::Pending, self::Delivered => true,
+            self::Skipped, self::Failed => false,
         };
     }
 }

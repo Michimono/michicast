@@ -26,7 +26,7 @@ class BroadcastFilterEvaluator
 
         foreach ($rules as $rule) {
             if (! $rule->matches($item, $now)) {
-                return FilterDecision::skip($rule->describe());
+                return FilterDecision::skip($rule->describeFor($item));
             }
         }
 
