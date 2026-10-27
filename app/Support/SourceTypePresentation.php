@@ -11,7 +11,7 @@ class SourceTypePresentation
 {
     private const KNOWN = [
         'rss' => ['name' => 'RSS / Atom', 'descriptor' => 'Feed URL', 'icon' => 'RSS'],
-        'reddit' => ['name' => 'Reddit', 'descriptor' => 'Public JSON', 'icon' => 'r/'],
+        'reddit' => ['name' => 'Reddit', 'descriptor' => 'Public feed', 'icon' => 'r/'],
         'twitter' => ['name' => 'Twitter / X', 'descriptor' => 'Public profile', 'icon' => '@'],
         'web_page' => ['name' => 'Web page', 'descriptor' => 'CSS selectors', 'icon' => '</>'],
     ];

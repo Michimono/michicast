@@ -163,7 +163,7 @@ class SourceFormTest extends TestCase
         $response = $this->actingAs($user)->get(route('sources.edit', [$organization, $source]))->assertOk();
         $xpath = $this->dom($response);
 
-        $response->assertSee('Reddit settings')->assertSee('Reddit (public JSON)')->assertSee('Not tested');
+        $response->assertSee('Reddit settings')->assertSee('Reddit (public feed)')->assertSee('Not tested');
         $this->assertSame('pokemon', $this->el($xpath, '//input[@name="config[subreddit]"]')->getAttribute('value'));
         $this->assertSame('week', $this->el($xpath, '//select[@name="config[time_period]"]/option[@selected]')->getAttribute('value'));
         $this->assertSame(1, $xpath->query('//form[@data-confirm][.//button[normalize-space(.)="Delete source"]]')->length);

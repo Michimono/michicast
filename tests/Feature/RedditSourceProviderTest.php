@@ -36,7 +36,7 @@ class RedditSourceProviderTest extends TestCase
 
         $this->assertTrue($registry->has('reddit'));
         $this->assertInstanceOf(RedditSourceProvider::class, $registry->get('reddit'));
-        $this->assertSame('Reddit (public JSON)', $registry->options()['reddit']);
+        $this->assertSame('Reddit (public feed)', $registry->options()['reddit']);
         $this->assertTrue($registry->capabilities('reddit')->supportsConnectionTest);
 
         $fields = $registry->configurationFields('reddit');
@@ -46,7 +46,7 @@ class RedditSourceProviderTest extends TestCase
             $fields,
         ));
         $this->assertSame(ConfigurationFieldType::Text, $fields[0]->type);
-        $this->assertStringContainsString('Free public JSON', (string) $fields[0]->hint);
+        $this->assertStringContainsString('Free public feed', (string) $fields[0]->hint);
         $this->assertStringContainsString('list of posts', (string) $fields[0]->hint);
         $this->assertStringContainsString('list/array of items', (string) $fields[3]->hint);
         $this->assertSame(ConfigurationFieldType::Select, $fields[1]->type);
@@ -90,9 +90,14 @@ class RedditSourceProviderTest extends TestCase
 
         $this->assertSame('def456', $items[1]->external_id);
         $this->assertSame('Official expansion announcement', $items[1]->title);
-        $this->assertSame('https://example.com/posts/expansion', $items[1]->body);
+        $this->assertSame('https://example.com/posts/expansion?a=1&b=2', $items[1]->body);
+        $this->assertSame('newsbot', $items[1]->author);
         $this->assertSame('link', $items[1]->metadata['post_kind']);
-        $this->assertSame('https://example.com/posts/expansion', $items[1]->metadata['linked_url']);
+        $this->assertSame('https://example.com/posts/expansion?a=1&b=2', $items[1]->metadata['linked_url']);
+        $this->assertSame(
+            'https://www.reddit.com/r/pokemon/comments/def456/official_expansion_announcement/',
+            $items[1]->canonical_url,
+        );
     }
 
     public function test_removed_posts_are_skipped(): void
@@ -108,11 +113,11 @@ class RedditSourceProviderTest extends TestCase
     }
 
     #[DataProvider('sortOrders')]
-    public function test_each_sort_order_requests_the_matching_public_json_path(string $sort, ?string $period, string $expectedUrl): void
+    public function test_each_sort_order_requests_the_matching_public_feed_path(string $sort, ?string $period, string $expectedUrl): void
     {
         Http::fake([
-            $expectedUrl.'*' => Http::response($this->fixture('sample-listing.json'), 200, [
-                'Content-Type' => 'application/json',
+            $expectedUrl.'*' => Http::response($this->fixture('sample-feed.xml'), 200, [
+                'Content-Type' => 'application/atom+xml; charset=UTF-8',
             ]),
         ]);
 
@@ -156,9 +161,9 @@ class RedditSourceProviderTest extends TestCase
     public static function sortOrders(): array
     {
         return [
-            'hot' => ['hot', null, 'https://www.reddit.com/r/pokemon/hot.json'],
-            'new' => ['new', null, 'https://www.reddit.com/r/pokemon/new.json'],
-            'top' => ['top', 'week', 'https://www.reddit.com/r/pokemon/top.json'],
+            'hot' => ['hot', null, 'https://www.reddit.com/r/pokemon/hot/.rss'],
+            'new' => ['new', null, 'https://www.reddit.com/r/pokemon/new/.rss'],
+            'top' => ['top', 'week', 'https://www.reddit.com/r/pokemon/top/.rss'],
         ];
     }
 
@@ -203,19 +208,21 @@ class RedditSourceProviderTest extends TestCase
         $this->assertTrue($this->provider()->testConnection($this->definition())->successful);
 
         Http::assertSent(function (Request $request) {
-            return str_starts_with($request->url(), 'https://www.reddit.com/r/pokemon/hot.json')
+            return str_starts_with($request->url(), 'https://www.reddit.com/r/pokemon/hot/.rss')
                 && $request->hasHeader(
                     'User-Agent',
                     'Michicast/1.0 (+https://github.com/Michimono/michicast; reddit-source)',
                 )
-                && $request->hasHeader('Accept', 'application/json');
+                && str_contains($request->header('Accept')[0] ?? '', 'application/atom+xml');
         });
     }
 
-    public function test_a_missing_or_private_subreddit_is_an_actionable_failure(): void
+    public function test_a_missing_subreddit_is_reported_as_not_found(): void
     {
         Http::fake([
-            'https://www.reddit.com/r/nope/hot.json*' => Http::response('Not Found', 404),
+            'https://www.reddit.com/r/nope/hot/.rss*' => Http::response('', 302, [
+                'Location' => 'https://www.reddit.com/subreddits/search.rss?q=nope',
+            ]),
         ]);
 
         $result = $this->provider()->testConnection($this->definition(config: [
@@ -223,16 +230,28 @@ class RedditSourceProviderTest extends TestCase
         ]));
 
         $this->assertFalse($result->successful);
-        $this->assertSame(
-            'Subreddit r/nope was not found or is private. Check the name or whether the community is public.',
-            $result->message,
-        );
+        $this->assertSame('Subreddit r/nope was not found. Check the name.', $result->message);
+        $this->assertCount(0, $this->recordedUrlsMatching('subreddits/search'));
     }
 
-    public function test_a_forbidden_subreddit_is_reported_as_missing_or_private(): void
+    public function test_a_404_is_reported_as_not_found(): void
     {
         Http::fake([
-            'https://www.reddit.com/r/privateclub/hot.json*' => Http::response('Forbidden', 403),
+            'https://www.reddit.com/r/nope/hot/.rss*' => Http::response('Not Found', 404),
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition(config: [
+            'subreddit' => 'nope',
+        ]));
+
+        $this->assertFalse($result->successful);
+        $this->assertSame('Subreddit r/nope was not found. Check the name.', $result->message);
+    }
+
+    public function test_a_forbidden_subreddit_is_reported_as_private_or_quarantined(): void
+    {
+        Http::fake([
+            'https://www.reddit.com/r/privateclub/hot/.rss*' => Http::response('Forbidden', 403),
         ]);
 
         $result = $this->provider()->testConnection($this->definition(config: [
@@ -241,15 +260,66 @@ class RedditSourceProviderTest extends TestCase
 
         $this->assertFalse($result->successful);
         $this->assertSame(
-            'Subreddit r/privateclub was not found or is private. Check the name or whether the community is public.',
+            'Reddit refused access to r/privateclub (HTTP 403). The community may be private or quarantined.',
             $result->message,
         );
+    }
+
+    public function test_a_network_security_block_does_not_blame_the_subreddit(): void
+    {
+        Http::fake([
+            'https://www.reddit.com/r/PTCGP/hot/.rss*' => Http::response(
+                '<html><body>You\'ve been blocked by network security.</body></html>',
+                403,
+            ),
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition(config: [
+            'subreddit' => 'PTCGP',
+        ]));
+
+        $this->assertFalse($result->successful);
+        $this->assertSame(
+            'Reddit blocked the request from this server (HTTP 403). This is on Reddit\'s side, not the subreddit name; try again later.',
+            $result->message,
+        );
+    }
+
+    public function test_image_and_gallery_posts_keep_their_outbound_link_and_self_text_is_plain(): void
+    {
+        $permalink = 'https://www.reddit.com/r/PTCGP/comments/1xh0138/implementing_a_story_mode/';
+        $imagePermalink = 'https://www.reddit.com/r/PTCGP/comments/1xh2ogm/i_got_this_card/';
+        $selfHtml = '<!-- SC_OFF --><div class="md"><p>Imagine battling gym leaders &amp; more!</p> <p>The possibilities are endless!</p> </div><!-- SC_ON --> &#32; submitted by &#32; <a href="https://www.reddit.com/user/Lassagna12"> /u/Lassagna12 </a> <br/> <span><a href="'.$permalink.'">[link]</a></span> &#32; <span><a href="'.$permalink.'">[comments]</a></span>';
+        $imageHtml = '<table> <tr><td> <a href="'.$imagePermalink.'"> <img src="https://preview.redd.it/092.jpeg?width=640" /> </a> </td><td> <!-- SC_OFF --><div class="md"><p>I still do not know how to play</p> </div><!-- SC_ON --> &#32; submitted by &#32; <a href="https://www.reddit.com/user/_Phantom404_"> /u/_Phantom404_ </a> <br/> <span><a href="https://i.redd.it/092.jpeg">[link]</a></span> &#32; <span><a href="'.$imagePermalink.'">[comments]</a></span> </td></tr></table>';
+        $feed = '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/"><title>PTCGP</title>'
+            .'<entry><author><name>/u/Lassagna12</name></author><content type="html">'.htmlspecialchars($selfHtml).'</content><id>t3_1xh0138</id><link href="'.$permalink.'" /><published>2026-10-27T18:09:15+00:00</published><title>Implementing a story mode?</title></entry>'
+            .'<entry><author><name>/u/_Phantom404_</name></author><content type="html">'.htmlspecialchars($imageHtml).'</content><id>t3_1xh2ogm</id><media:thumbnail url="https://preview.redd.it/092.jpeg?width=640" /><link href="'.$imagePermalink.'" /><published>2026-10-27T19:46:38+00:00</published><title>I got this card</title></entry>'
+            .'</feed>';
+
+        Http::fake([
+            'https://www.reddit.com/r/PTCGP/new/.rss*' => Http::response($feed, 200, ['Content-Type' => 'application/atom+xml']),
+        ]);
+
+        $items = $this->provider()->fetch($this->definition(config: ['subreddit' => 'PTCGP', 'sort' => 'new']));
+
+        $this->assertCount(2, $items);
+        $this->assertSame('1xh0138', $items[0]->external_id);
+        $this->assertSame('self', $items[0]->metadata['post_kind']);
+        $this->assertSame("Imagine battling gym leaders & more!\n\nThe possibilities are endless!", $items[0]->body);
+        $this->assertSame('Lassagna12', $items[0]->author);
+        $this->assertSame($permalink, $items[0]->canonical_url);
+
+        $this->assertSame('link', $items[1]->metadata['post_kind']);
+        $this->assertSame('https://i.redd.it/092.jpeg', $items[1]->body);
+        $this->assertSame('https://i.redd.it/092.jpeg', $items[1]->metadata['linked_url']);
+        $this->assertSame($imagePermalink, $items[1]->canonical_url);
+        $this->assertTrue($items[1]->published_at?->equalTo(CarbonImmutable::parse('2026-10-27T19:46:38+00:00')));
     }
 
     public function test_a_rate_limited_response_is_not_retried_and_reports_transient_retry_after(): void
     {
         Http::fake([
-            'https://www.reddit.com/r/pokemon/hot.json*' => Http::response(
+            'https://www.reddit.com/r/pokemon/hot/.rss*' => Http::response(
                 'Slow down',
                 429,
                 ['Retry-After' => '120'],
@@ -263,13 +333,13 @@ class RedditSourceProviderTest extends TestCase
             'Reddit rate-limited the request (HTTP 429). This is transient — wait 2 minutes and try again once.',
             $result->message,
         );
-        $this->assertCount(1, $this->recordedUrlsMatching('https://www.reddit.com/r/pokemon/hot.json'));
+        $this->assertCount(1, $this->recordedUrlsMatching('https://www.reddit.com/r/pokemon/hot/.rss'));
     }
 
     public function test_an_unreachable_listing_is_a_structured_connection_failure(): void
     {
         Http::fake([
-            'https://www.reddit.com/r/pokemon/hot.json*' => function () {
+            'https://www.reddit.com/r/pokemon/hot/.rss*' => function () {
                 throw new ConnectionException('Could not resolve host');
             },
         ]);
@@ -277,22 +347,22 @@ class RedditSourceProviderTest extends TestCase
         $result = $this->provider()->testConnection($this->definition());
 
         $this->assertFalse($result->successful);
-        $this->assertSame('The Reddit listing could not be reached.', $result->message);
+        $this->assertSame('The Reddit feed could not be reached.', $result->message);
     }
 
-    public function test_malformed_json_is_a_structured_failure(): void
+    public function test_a_malformed_feed_is_a_structured_failure(): void
     {
         Http::fake([
-            'https://www.reddit.com/r/pokemon/hot.json*' => Http::response($this->fixture('broken.json'), 200),
+            'https://www.reddit.com/r/pokemon/hot/.rss*' => Http::response($this->fixture('broken.xml'), 200),
         ]);
 
         $result = $this->provider()->testConnection($this->definition());
 
         $this->assertFalse($result->successful);
-        $this->assertSame('The Reddit listing response could not be parsed.', $result->message);
+        $this->assertSame('The Reddit feed response could not be parsed.', $result->message);
 
         $this->expectException(SourceFetchFailedException::class);
-        $this->expectExceptionMessage('The Reddit listing response could not be parsed.');
+        $this->expectExceptionMessage('The Reddit feed response could not be parsed.');
 
         $this->provider()->fetch($this->definition());
     }
@@ -300,8 +370,8 @@ class RedditSourceProviderTest extends TestCase
     public function test_an_unexpected_payload_shape_is_a_structured_failure(): void
     {
         Http::fake([
-            'https://www.reddit.com/r/pokemon/hot.json*' => Http::response(
-                $this->fixture('unexpected-shape.json'),
+            'https://www.reddit.com/r/pokemon/hot/.rss*' => Http::response(
+                $this->fixture('unexpected-shape.xml'),
                 200,
             ),
         ]);
@@ -309,7 +379,7 @@ class RedditSourceProviderTest extends TestCase
         $result = $this->provider()->testConnection($this->definition());
 
         $this->assertFalse($result->successful);
-        $this->assertSame('The Reddit listing response had an unexpected shape.', $result->message);
+        $this->assertSame('The Reddit feed response had an unexpected shape.', $result->message);
     }
 
     public function test_the_item_limit_keeps_only_the_first_entries(): void
@@ -336,7 +406,7 @@ class RedditSourceProviderTest extends TestCase
         $this->assertTrue($result->successful);
         Http::assertSent(fn (Request $request) => str_starts_with(
             $request->url(),
-            'https://www.reddit.com/r/pokemon/hot.json',
+            'https://www.reddit.com/r/pokemon/hot/.rss',
         ));
     }
 
@@ -363,10 +433,10 @@ class RedditSourceProviderTest extends TestCase
     public function test_an_empty_listing_succeeds_with_zero_posts(): void
     {
         Http::fake([
-            'https://www.reddit.com/r/quietsub/hot.json*' => Http::response(
-                $this->fixture('empty-listing.json'),
+            'https://www.reddit.com/r/quietsub/hot/.rss*' => Http::response(
+                $this->fixture('empty-feed.xml'),
                 200,
-                ['Content-Type' => 'application/json'],
+                ['Content-Type' => 'application/atom+xml; charset=UTF-8'],
             ),
         ]);
 
@@ -399,10 +469,10 @@ class RedditSourceProviderTest extends TestCase
     private function fakeListing(string $subreddit, string $sort): void
     {
         Http::fake([
-            'https://www.reddit.com/r/'.$subreddit.'/'.$sort.'.json*' => Http::response(
-                $this->fixture('sample-listing.json'),
+            'https://www.reddit.com/r/'.$subreddit.'/'.$sort.'/.rss*' => Http::response(
+                $this->fixture('sample-feed.xml'),
                 200,
-                ['Content-Type' => 'application/json'],
+                ['Content-Type' => 'application/atom+xml; charset=UTF-8'],
             ),
         ]);
     }
