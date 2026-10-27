@@ -9,6 +9,8 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectRun;
 use App\Models\User;
+use App\Support\SourceHealth;
+use App\Support\SourceProviderRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -16,7 +18,7 @@ use Laravel\Horizon\Horizon;
 
 class OverviewController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(SourceHealth $health, SourceProviderRegistry $sources): View
     {
         $runsByStatus = ProjectRun::query()
             ->where('started_at', '>=', now()->subDay())
@@ -37,6 +39,7 @@ class OverviewController extends Controller
             'activeBroadcastCount' => Project::query()->where('status', ProjectStatus::Active)->count(),
             'runCounts' => $runCounts,
             'failedJobCount' => $this->failedJobCount(),
+            'sourceHealth' => $health->all(array_map('strval', array_keys($sources->options()))),
         ]);
     }
 

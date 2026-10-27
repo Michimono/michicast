@@ -6,8 +6,10 @@ use App\Enums\ConfigurationFieldType;
 use App\Exceptions\SourceFetchFailedException;
 use App\Models\ContentItem;
 use App\Models\Project;
+use App\Models\User;
 use App\Support\Mapping\Schemas\TwitterSourceSchema;
 use App\Support\SourceDefinition;
+use App\Support\SourceHealth;
 use App\Support\SourceProviderRegistry;
 use App\Support\TwitterSourceProvider;
 use Carbon\CarbonImmutable;
@@ -306,6 +308,88 @@ class TwitterSourceProviderTest extends TestCase
             'No public posts were found for @nope. The account may not exist, may be protected, or X may be blocking unauthenticated reads.',
             $result->message,
         );
+    }
+
+    public function test_the_current_x_page_format_is_read_from_its_embedded_json(): void
+    {
+        $this->fakeProfile('PokemonTCGP', 'x-profile-2026-10.html');
+
+        $items = $this->provider()->fetch($this->definition(config: ['handle' => 'PokemonTCGP']));
+
+        $this->assertCount(4, $items);
+        // Newest first, so the older pinned post does not jump the queue.
+        $this->assertSame('2113389974385033612', $items[0]->external_id);
+        $this->assertSame('Pokémon TCG Pocket', $items[0]->author);
+        $this->assertSame('https://x.com/PokemonTCGP/status/2113389974385033612', $items[0]->canonical_url);
+        $this->assertTrue($items[0]->published_at?->equalTo(CarbonImmutable::createFromTimestampMs(1792706409000)));
+        $this->assertCount(3, $items[0]->media);
+        $this->assertSame('image', $items[0]->media[0]['type']);
+        $this->assertSame('2112529716330545392', $items[3]->external_id);
+        $this->assertSame('video', $items[3]->media[0]['type']);
+        $this->assertTrue($items[2]->metadata['is_retweet']);
+        $this->assertCount(0, $this->recordedUrlsMatching('syndication.twitter.com'));
+        $this->assertNull(app(SourceHealth::class)->current('twitter'));
+    }
+
+    public function test_an_unreadable_page_falls_back_to_the_embed_and_flags_admins(): void
+    {
+        Http::fake([
+            'https://x.com/PokemonTCGP' => Http::response($this->fixture('x-profile-unreadable.html'), 200),
+            'https://syndication.twitter.com/*' => Http::response($this->fixture('sample-profile.html'), 200),
+        ]);
+
+        $items = $this->provider()->fetch($this->definition(config: ['handle' => 'PokemonTCGP']));
+
+        $this->assertCount(3, $items);
+        $this->assertCount(1, $this->recordedUrlsMatching('syndication.twitter.com'));
+
+        $flag = app(SourceHealth::class)->current('twitter');
+        $this->assertNotNull($flag);
+        $this->assertStringContainsString('fallback embed', $flag['message']);
+        $this->assertSame(1038, $flag['context']['post_count']);
+    }
+
+    public function test_an_unreadable_page_is_a_failure_not_zero_posts(): void
+    {
+        Http::fake([
+            'https://x.com/PokemonTCGP' => Http::response($this->fixture('x-profile-unreadable.html'), 200),
+            'https://syndication.twitter.com/*' => Http::response('Rate limit exceeded', 429),
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition(config: ['handle' => 'PokemonTCGP']));
+
+        $this->assertFalse($result->successful);
+        $this->assertSame(
+            "@PokemonTCGP has public posts, but Michicast couldn't read them. X has probably changed its page format; platform admins have been notified.",
+            $result->message,
+        );
+        $this->assertStringContainsString('could not read any', (string) app(SourceHealth::class)->current('twitter')['message']);
+    }
+
+    public function test_a_normal_read_clears_an_earlier_flag(): void
+    {
+        app(SourceHealth::class)->flag('twitter', 'Broken earlier.');
+        $this->fakeProfile('PokemonTCGP', 'x-profile-2026-10.html');
+
+        $this->provider()->fetch($this->definition(config: ['handle' => 'PokemonTCGP']));
+
+        $this->assertNull(app(SourceHealth::class)->current('twitter'));
+    }
+
+    public function test_admins_see_flagged_sources_on_the_overview(): void
+    {
+        app(SourceHealth::class)->flag('twitter', 'X profile pages show posts but Michicast could not read any.', ['handle' => 'PokemonTCGP']);
+
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        config(['michicast.platform_admin_emails' => ['admin@example.com']]);
+
+        $this->actingAs($admin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->get(route('admin.overview'))
+            ->assertOk()
+            ->assertSee('Source health')
+            ->assertSee('X profile pages show posts but Michicast could not read any.')
+            ->assertSee('@PokemonTCGP');
     }
 
     /**
