@@ -38,9 +38,11 @@ final class DefaultMappings
     public function for(string $sourceType, string $destinationType): ?MappingDefinition
     {
         return match ($sourceType.'->'.$destinationType) {
-            'rss->telegram', 'fake->telegram', 'web_page->telegram', 'reddit->telegram' => $this->rssToTelegram($sourceType),
+            'rss->telegram', 'fake->telegram', 'web_page->telegram' => $this->rssToTelegram($sourceType),
+            'reddit->telegram' => $this->redditToTelegram(),
             'twitter->telegram' => $this->twitterToTelegram(),
-            'rss->recording', 'fake->recording', 'web_page->recording', 'reddit->recording' => $this->rssToRecording($sourceType),
+            'rss->recording', 'fake->recording', 'web_page->recording' => $this->rssToRecording($sourceType),
+            'reddit->recording' => $this->redditToRecording(),
             'twitter->recording' => $this->twitterToRecording(),
             default => null,
         };
@@ -55,7 +57,39 @@ final class DefaultMappings
             ]],
             ['set_field', [
                 'field' => 'media',
-                'value' => $this->mediaTemplate($sourceType),
+                'value' => '{{media}}',
+            ]],
+        ]);
+    }
+
+    private function redditToTelegram(): MappingDefinition
+    {
+        return $this->definition('reddit', 'telegram', [
+            ['set_field', [
+                'field' => 'text',
+                'value' => "{{title}}\n\n{{text}}\n\nRead more: {{link}}",
+            ]],
+            ['set_field', [
+                'field' => 'media',
+                'value' => '{{preview_image}}',
+            ]],
+        ]);
+    }
+
+    private function redditToRecording(): MappingDefinition
+    {
+        return $this->definition('reddit', 'recording', [
+            ['set_field', [
+                'field' => 'text',
+                'value' => "{{title}}\n\n{{text}}",
+            ]],
+            ['set_field', [
+                'field' => 'link',
+                'value' => '{{link}}',
+            ]],
+            ['set_field', [
+                'field' => 'media',
+                'value' => '{{preview_image}}',
             ]],
         ]);
     }
@@ -87,7 +121,7 @@ final class DefaultMappings
             ]],
             ['set_field', [
                 'field' => 'media',
-                'value' => $this->mediaTemplate($sourceType),
+                'value' => '{{media}}',
             ]],
         ]);
     }
@@ -108,12 +142,6 @@ final class DefaultMappings
                 'value' => '{{media}}',
             ]],
         ]);
-    }
-
-    private function mediaTemplate(string $sourceType): string
-    {
-        // Reddit exposes its picture as preview_image rather than the shared media list.
-        return $sourceType === 'reddit' ? '{{preview_image}}' : '{{media}}';
     }
 
     /**

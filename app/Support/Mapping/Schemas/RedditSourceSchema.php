@@ -15,20 +15,19 @@ final class RedditSourceSchema
             providerType: 'reddit',
             label: 'Reddit (public feed)',
             fields: [
-                new SchemaField('title', 'Title', FieldType::Text, 'Post title', false),
-                new SchemaField('body', 'Body', FieldType::Text, 'Post text; link and image posts add their linked URL', false),
-                new SchemaField('text', 'Text', FieldType::Text, 'Post text only; empty for bare image and link posts', false),
-                new SchemaField('linked_url', 'Linked URL', FieldType::Url, 'Where the post points: image, gallery or article; empty for text posts', false),
+                new SchemaField('title', 'Title', FieldType::Text, 'Post title as shown on Reddit', false),
+                new SchemaField('text', 'Text', FieldType::Text, 'What the poster wrote, as plain text. Empty for image, gallery or link posts without a caption', false),
+                new SchemaField('linked_url', 'Linked URL', FieldType::Url, 'Where the post points: the full-size image, the gallery page or the article. Empty for text posts', false),
                 new SchemaField(
                     name: 'preview_image',
                     label: 'Preview image',
                     type: FieldType::Array,
-                    description: 'The full-size image for image posts, otherwise Reddit\'s preview thumbnail',
+                    description: 'Picture to attach: the full-size image for image posts, otherwise Reddit\'s preview thumbnail. Empty when Reddit has no picture',
                     itemSchema: new SchemaField('item', 'Image', FieldType::Media),
                 ),
-                new SchemaField('link', 'Link', FieldType::Url, 'Canonical Reddit post URL', false),
-                new SchemaField('published_at', 'Published', FieldType::Datetime, 'Creation time', false),
-                new SchemaField('author', 'Author', FieldType::Text, 'Reddit username', false),
+                new SchemaField('link', 'Link', FieldType::Url, 'Link to the post and its comments on Reddit', false),
+                new SchemaField('published_at', 'Published', FieldType::Datetime, 'When the post was submitted', false),
+                new SchemaField('author', 'Author', FieldType::Text, 'Username of the poster, without u/', false),
             ],
         );
     }
@@ -40,7 +39,6 @@ final class RedditSourceSchema
     {
         return [
             'title' => 'I got this card',
-            'body' => "I still do not know how to play\n\nhttps://i.redd.it/sample.jpeg",
             'text' => 'I still do not know how to play',
             'linked_url' => 'https://i.redd.it/sample.jpeg',
             'preview_image' => [
