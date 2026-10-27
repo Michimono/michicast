@@ -310,7 +310,7 @@ class RedditSourceProviderTest extends TestCase
         $this->assertSame($permalink, $items[0]->canonical_url);
 
         $this->assertSame('link', $items[1]->metadata['post_kind']);
-        $this->assertSame('https://i.redd.it/092.jpeg', $items[1]->body);
+        $this->assertSame("I still do not know how to play\n\nhttps://i.redd.it/092.jpeg", $items[1]->body);
         $this->assertSame('https://i.redd.it/092.jpeg', $items[1]->metadata['linked_url']);
         $this->assertSame($imagePermalink, $items[1]->canonical_url);
         $this->assertTrue($items[1]->published_at?->equalTo(CarbonImmutable::parse('2026-10-27T19:46:38+00:00')));

@@ -16,7 +16,7 @@ final class RedditSourceSchema
             label: 'Reddit (public feed)',
             fields: [
                 new SchemaField('title', 'Title', FieldType::Text, 'Post title', false),
-                new SchemaField('body', 'Body', FieldType::Text, 'Self-post text, or the linked URL for link posts', false),
+                new SchemaField('body', 'Body', FieldType::Text, 'Post text; link and image posts add their linked URL', false),
                 new SchemaField('link', 'Link', FieldType::Url, 'Canonical Reddit post URL', false),
                 new SchemaField('published_at', 'Published', FieldType::Datetime, 'Creation time', false),
                 new SchemaField('author', 'Author', FieldType::Text, 'Reddit username', false),
