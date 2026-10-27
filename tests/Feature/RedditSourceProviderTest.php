@@ -6,6 +6,8 @@ use App\Enums\ConfigurationFieldType;
 use App\Exceptions\SourceFetchFailedException;
 use App\Models\ContentItem;
 use App\Models\Project;
+use App\Support\Mapping\ContentItemSourceData;
+use App\Support\Mapping\DefaultMappings;
 use App\Support\Mapping\Schemas\RedditSourceSchema;
 use App\Support\RedditSourceProvider;
 use App\Support\SourceDefinition;
@@ -58,7 +60,7 @@ class RedditSourceProviderTest extends TestCase
         $schema = RedditSourceSchema::make();
         $names = array_map(static fn ($field) => $field->name, $schema->fields);
 
-        $this->assertSame(['title', 'body', 'link', 'published_at', 'author'], $names);
+        $this->assertSame(['title', 'body', 'text', 'linked_url', 'preview_image', 'link', 'published_at', 'author'], $names);
         $this->assertSame($names, array_keys(RedditSourceSchema::sample()));
     }
 
@@ -86,6 +88,11 @@ class RedditSourceProviderTest extends TestCase
             'provider' => 'reddit',
             'post_kind' => 'self',
             'linked_url' => null,
+            'source_fields' => [
+                'text' => 'Share your decks and questions for this week.',
+                'linked_url' => null,
+                'preview_image' => [],
+            ],
         ], $items[0]->metadata);
 
         $this->assertSame('def456', $items[1]->external_id);
@@ -94,6 +101,11 @@ class RedditSourceProviderTest extends TestCase
         $this->assertSame('newsbot', $items[1]->author);
         $this->assertSame('link', $items[1]->metadata['post_kind']);
         $this->assertSame('https://example.com/posts/expansion?a=1&b=2', $items[1]->metadata['linked_url']);
+        $this->assertSame([
+            'text' => null,
+            'linked_url' => 'https://example.com/posts/expansion?a=1&b=2',
+            'preview_image' => [['type' => 'image', 'url' => 'https://preview.redd.it/def456.jpeg?width=640&crop=smart']],
+        ], $items[1]->metadata['source_fields']);
         $this->assertSame(
             'https://www.reddit.com/r/pokemon/comments/def456/official_expansion_announcement/',
             $items[1]->canonical_url,
@@ -310,10 +322,36 @@ class RedditSourceProviderTest extends TestCase
         $this->assertSame($permalink, $items[0]->canonical_url);
 
         $this->assertSame('link', $items[1]->metadata['post_kind']);
-        $this->assertSame('https://i.redd.it/092.jpeg', $items[1]->body);
+        $this->assertSame("I still do not know how to play\n\nhttps://i.redd.it/092.jpeg", $items[1]->body);
         $this->assertSame('https://i.redd.it/092.jpeg', $items[1]->metadata['linked_url']);
         $this->assertSame($imagePermalink, $items[1]->canonical_url);
         $this->assertTrue($items[1]->published_at?->equalTo(CarbonImmutable::parse('2026-10-27T19:46:38+00:00')));
+
+        $selfFields = ContentItemSourceData::from($items[0]);
+        $this->assertSame("Imagine battling gym leaders & more!\n\nThe possibilities are endless!", $selfFields['text']);
+        $this->assertNull($selfFields['linked_url']);
+        $this->assertSame([], $selfFields['preview_image']);
+
+        $imageFields = ContentItemSourceData::from($items[1]);
+        $this->assertSame('I still do not know how to play', $imageFields['text']);
+        $this->assertSame('https://i.redd.it/092.jpeg', $imageFields['linked_url']);
+        $this->assertSame([['type' => 'image', 'url' => 'https://i.redd.it/092.jpeg']], $imageFields['preview_image']);
+        $this->assertSame($imageFields['body'], $items[1]->body);
+    }
+
+    public function test_default_reddit_mappings_send_the_preview_image_as_media(): void
+    {
+        $defaults = new DefaultMappings;
+
+        foreach (['telegram', 'recording'] as $destination) {
+            $steps = $defaults->for('reddit', $destination)?->toArray()['steps'] ?? [];
+            $media = collect($steps)->firstWhere('config.field', 'media');
+
+            $this->assertSame('{{preview_image}}', $media['config']['value'] ?? null, $destination);
+        }
+
+        $rssMedia = collect($defaults->for('rss', 'telegram')?->toArray()['steps'] ?? [])->firstWhere('config.field', 'media');
+        $this->assertSame('{{media}}', $rssMedia['config']['value'] ?? null);
     }
 
     public function test_a_rate_limited_response_is_not_retried_and_reports_transient_retry_after(): void

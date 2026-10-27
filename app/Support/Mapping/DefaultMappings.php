@@ -55,7 +55,7 @@ final class DefaultMappings
             ]],
             ['set_field', [
                 'field' => 'media',
-                'value' => '{{media}}',
+                'value' => $this->mediaTemplate($sourceType),
             ]],
         ]);
     }
@@ -87,7 +87,7 @@ final class DefaultMappings
             ]],
             ['set_field', [
                 'field' => 'media',
-                'value' => '{{media}}',
+                'value' => $this->mediaTemplate($sourceType),
             ]],
         ]);
     }
@@ -108,6 +108,12 @@ final class DefaultMappings
                 'value' => '{{media}}',
             ]],
         ]);
+    }
+
+    private function mediaTemplate(string $sourceType): string
+    {
+        // Reddit exposes its picture as preview_image rather than the shared media list.
+        return $sourceType === 'reddit' ? '{{preview_image}}' : '{{media}}';
     }
 
     /**
