@@ -183,7 +183,7 @@ class FakeProjectRunner implements ProjectRunner
         private readonly ?Throwable $failure = null,
     ) {}
 
-    public function run(Project $project, ?CarbonInterface $deadline = null): bool
+    public function run(Project $project, ?CarbonInterface $deadline = null, ?array $sourceIds = null): bool
     {
         $this->ran[] = (int) $project->getKey();
 

@@ -32,15 +32,31 @@ class SourceController extends Controller
 
     public function update(UpdateSourceRequest $request, Organization $organization, Source $source): RedirectResponse|JsonResponse
     {
-        $source->update([
+        $source->fill([
             'name' => $request->name(),
             'config' => $request->configuration(),
         ]);
+
+        $project = $source->project;
+        $rescheduled = false;
+
+        // Visual broadcasts run each source on its own schedule.
+        if ($project->isVisual() && $request->hasSchedule()) {
+            $source->schedule = $request->sourceSchedule();
+            $rescheduled = $source->isDirty('schedule');
+        }
+
+        $source->save();
+
+        if ($rescheduled) {
+            $project->syncSourceSchedules([(int) $source->getKey()]);
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'The source has been updated.',
                 'source' => $this->payload->source($source->refresh()),
+                'project' => $project->isVisual() ? $this->payload->project($project) : null,
             ]);
         }
 

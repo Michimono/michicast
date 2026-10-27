@@ -10,6 +10,7 @@ use App\Exceptions\InvalidProjectTransitionException;
 use App\Support\NextRunCalculator;
 use App\Support\Pipeline\PipelineGraph;
 use App\Support\ResourceQuotas;
+use App\Support\SourceSchedules;
 use Carbon\CarbonInterface;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -316,8 +317,19 @@ class Project extends Model
         $this->save();
     }
 
+    /**
+     * Simple broadcasts run on their own schedule. Visual broadcasts run each
+     * source on its own (falling back to this one), so this reschedules every
+     * live source and takes the earliest.
+     */
     public function refreshNextRunAt(?CarbonInterface $from = null): void
     {
+        if ($this->isVisual()) {
+            $this->next_run_at = app(SourceSchedules::class)->refresh($this, $from ?? now(), true);
+
+            return;
+        }
+
         $next = (new NextRunCalculator)->next(
             $this->schedule,
             $this->effectiveTimezone(),
@@ -325,6 +337,31 @@ class Project extends Model
         );
 
         $this->next_run_at = $next === null ? null : Carbon::instance($next);
+    }
+
+    /**
+     * After a visual broadcast's routes or a source's schedule changed: give
+     * new live sources a next run, recompute the listed ones, and move the
+     * broadcast's next run to the earliest. A run that is already due or in
+     * flight is left alone; it recomputes when it finishes.
+     *
+     * @param  list<int>  $reschedule
+     */
+    public function syncSourceSchedules(array $reschedule = []): void
+    {
+        if (! $this->isVisual()) {
+            return;
+        }
+
+        $next = app(SourceSchedules::class)->refresh($this, now(), $reschedule);
+        $pending = $this->claimed_at !== null
+            || ($this->next_run_at !== null && $this->next_run_at->lte(now()));
+
+        if (! $pending) {
+            $this->next_run_at = $next;
+        }
+
+        $this->save();
     }
 
     /**

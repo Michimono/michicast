@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesSourceConfiguration;
 use App\Models\Source;
+use App\Support\SourceScheduleFields;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -30,6 +31,7 @@ class UpdateSourceRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'config' => ['nullable', 'array'],
+            ...SourceScheduleFields::rules(),
             ...$this->configurationRules($this->source()->type),
         ];
     }
@@ -39,7 +41,36 @@ class UpdateSourceRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return $this->configurationAttributes($this->source()->type);
+        return [...$this->configurationAttributes($this->source()->type), ...SourceScheduleFields::attributes()];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return SourceScheduleFields::messages();
+    }
+
+    /**
+     * Whether a schedule was sent at all. Only visual broadcasts use it.
+     */
+    public function hasSchedule(): bool
+    {
+        return SourceScheduleFields::provided($this);
+    }
+
+    /**
+     * @return array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}|null
+     */
+    public function sourceSchedule(): ?array
+    {
+        return SourceScheduleFields::schedule($this);
+    }
+
+    protected function prepareForValidation(): void
+    {
+        SourceScheduleFields::prepare($this);
     }
 
     public function name(): string

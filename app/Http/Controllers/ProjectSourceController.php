@@ -48,11 +48,18 @@ class ProjectSourceController extends Controller
                 ->with('error', 'This broadcast already has a source. Manage it from Overview.');
         }
 
-        $source = $project->sources()->create([
+        $source = $project->sources()->make([
             'name' => $request->name(),
             'type' => $request->type(),
             'config' => $request->configuration(),
         ]);
+
+        // Visual broadcasts run each source on its own schedule.
+        if ($project->isVisual() && $request->hasSchedule()) {
+            $source->schedule = $request->sourceSchedule();
+        }
+
+        $source->save();
 
         $project->ensureDefaultBroadcast();
 

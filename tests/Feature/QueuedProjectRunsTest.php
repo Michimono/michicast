@@ -71,7 +71,7 @@ class QueuedProjectRunsTest extends TestCase
 
         $this->app->instance(ProjectRunner::class, new class implements ProjectRunner
         {
-            public function run(Project $project, ?CarbonInterface $deadline = null): bool
+            public function run(Project $project, ?CarbonInterface $deadline = null, ?array $sourceIds = null): bool
             {
                 return true;
             }
@@ -138,7 +138,7 @@ class QueuedProjectRunsTest extends TestCase
 
         $this->app->instance(ProjectRunner::class, new class implements ProjectRunner
         {
-            public function run(Project $project, ?CarbonInterface $deadline = null): bool
+            public function run(Project $project, ?CarbonInterface $deadline = null, ?array $sourceIds = null): bool
             {
                 throw new RuntimeException('Provider rejected token 123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw');
             }

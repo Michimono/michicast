@@ -298,7 +298,7 @@ class DeliveryRetryTest extends TestCase
             /**
              * The first run sees a retry arrive mid-run; the second consumes it.
              */
-            public function run(Project $project, ?CarbonInterface $deadline = null): bool
+            public function run(Project $project, ?CarbonInterface $deadline = null, ?array $sourceIds = null): bool
             {
                 $this->runs++;
 

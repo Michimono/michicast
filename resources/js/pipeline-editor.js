@@ -583,7 +583,7 @@
             case 'source': {
                 const source = sourceById(node.config.source_id);
 
-                return source ? source.type_label + (source.archived ? ' · archived' : '') : 'No source selected';
+                return source ? source.type_label + (source.schedule_summary && !source.archived ? ' \u00b7 ' + source.schedule_summary : '') + (source.archived ? ' · archived' : '') : 'No source selected';
             }
             case 'destination': {
                 const destination = destinationById(node.config.destination_id);
@@ -1805,6 +1805,10 @@
             routes = Array.isArray(data.routes) ? data.routes : [];
             project = data.project || project;
 
+            if (Array.isArray(data.sources)) {
+                sources = data.sources;
+            }
+
             if (dirty) {
                 setSaveStatus('dirty', 'Unsaved changes');
             } else {
@@ -2902,6 +2906,7 @@
                 (lines.length > 0
                     ? '<dl class="flex flex-col gap-1.5">' + lines.map((line) => '<div class="min-w-0"><dt class="text-[0.6875rem] text-muted">' + esc(line.label) + '</dt><dd class="truncate font-mono text-xs text-ink" title="' + esc(line.value) + '">' + esc(line.value) + '</dd></div>').join('') + '</dl>'
                     : '') +
+                (isSource ? sourceScheduleLine(record) : '') +
                 recordTestLine(record) +
                 '<div class="flex flex-wrap items-center gap-2">' +
                 (canEdit ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-edit>Edit</button>' : '') +
@@ -3062,6 +3067,10 @@
             html += emptyNote('This ' + noun + ' type is no longer available. Its settings cannot be edited here.');
         }
 
+        if (kind === 'source' && type) {
+            html += sourceScheduleFields(record, draft, disabled);
+        }
+
         if (panel.notice) {
             html += panel.notice.ok ? '<p class="rounded-md border border-state-ok/30 bg-state-ok/5 px-3 py-2 text-xs text-state-ok" role="status">' + esc(panel.notice.text) + '</p>' : errorNote(panel.notice.text);
         }
@@ -3075,6 +3084,67 @@
             '</form>';
 
         return html;
+    }
+
+    /*
+     * A visual broadcast runs each source on its own schedule. A new source
+     * starts from the broadcast's default schedule; one that never had its
+     * own shows the default it follows until it is saved here.
+     */
+    function sourceScheduleFields(record, draft, disabled) {
+        const base = (draft && draft.schedule) || (record && record.schedule) || settingsData.schedule || { frequency: 'daily', time: '09:00' };
+        const frequency = base.frequency || 'daily';
+        const weekdays = Array.isArray(base.weekdays) ? base.weekdays.map(Number) : [];
+        const zone = settingsData.timezone || settingsData.organization_timezone || 'UTC';
+        const error = (key) => (panel.errors['schedule.' + key] ? '<p class="' + ERROR_CLASS + '" data-error-for="schedule.' + key + '">' + esc(panel.errors['schedule.' + key]) + '</p>' : '');
+        const off = disabled ? ' disabled' : '';
+        let html =
+            '<fieldset class="flex flex-col gap-2 rounded-md border border-line bg-paper p-3" data-source-schedule>' +
+            '<legend class="' + LABEL_CLASS + ' px-1">Schedule</legend>' +
+            '<select name="schedule.frequency" class="' + INPUT_CLASS + '" aria-label="How often this source is fetched"' + off + '>' +
+            optionList(Object.entries(settingsData.frequencies || {}).map(([value, label]) => ({ value, label })), frequency, null) +
+            '</select>' + error('frequency');
+
+        if (frequency === 'daily' || frequency === 'weekly') {
+            html +=
+                '<div class="flex flex-col gap-1"><label class="' + LABEL_CLASS + '" for="pf-schedule-time">Time</label>' +
+                '<input id="pf-schedule-time" type="time" name="schedule.time" class="' + INPUT_CLASS + ' font-mono" value="' + esc(base.time || '09:00') + '"' + off + '>' + error('time') + '</div>';
+        }
+
+        if (frequency === 'weekly') {
+            html +=
+                '<div class="flex flex-col gap-1"><p class="' + LABEL_CLASS + '">Days</p><div class="flex flex-wrap gap-1">' +
+                Object.entries(settingsData.weekdays || {}).map(([value, label]) =>
+                    '<label class="inline-flex cursor-pointer items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-ink has-[:checked]:border-accent has-[:checked]:bg-accent/5"><input type="checkbox" name="schedule.weekdays" value="' + esc(value) + '" class="accent-accent"' + (weekdays.includes(Number(value)) ? ' checked' : '') + off + '>' + esc(label.slice(0, 3)) + '</label>').join('') +
+                '</div>' + error('weekdays') + '</div>';
+        }
+
+        if (frequency === 'interval') {
+            html +=
+                '<div class="flex flex-col gap-1"><label class="' + LABEL_CLASS + '" for="pf-schedule-hours">Every</label><div class="flex items-center gap-2">' +
+                '<input id="pf-schedule-hours" type="number" min="1" max="168" name="schedule.hours" class="' + INPUT_CLASS + ' font-mono" value="' + esc(base.hours || 6) + '"' + off + '><span class="text-xs text-muted">hours</span></div>' + error('hours') + '</div>';
+        }
+
+        html += '<p class="' + HINT_CLASS + '">' + (record && record.follows_broadcast_schedule
+            ? 'Follows the broadcast\'s default schedule until you save one here. Times are in ' + esc(zone) + '.'
+            : 'Fetched on its own schedule, separate from the other sources. Times are in ' + esc(zone) + '.') + '</p>';
+
+        return html + '</fieldset>';
+    }
+
+    function sourceScheduleLine(record) {
+        if (!record.schedule_summary) {
+            return '';
+        }
+
+        return (
+            '<p class="flex flex-wrap items-baseline gap-x-1.5 text-xs">' +
+            '<span class="text-muted">Schedule</span>' +
+            '<span class="font-medium text-ink">' + esc(record.schedule_summary) + '</span>' +
+            (record.follows_broadcast_schedule ? '<span class="text-muted">(broadcast default)</span>' : '') +
+            (record.next_run_at && !record.archived ? '<span class="font-mono text-[0.6875rem] text-muted">next ' + esc(formatTime(record.next_run_at)) + '</span>' : '') +
+            '</p>'
+        );
     }
 
     function readRecordForm(form) {
@@ -3092,6 +3162,17 @@
                 body.name = input.value;
             } else if (name.startsWith('config.')) {
                 body.config[name.slice(7)] = input.value;
+            } else if (name.startsWith('schedule.')) {
+                body.schedule = body.schedule || { frequency: '', time: '', weekdays: [], hours: '' };
+                const key = name.slice(9);
+
+                if (key === 'weekdays') {
+                    if (input.checked) {
+                        body.schedule.weekdays.push(Number(input.value));
+                    }
+                } else {
+                    body.schedule[key] = input.value;
+                }
             } else if (name.startsWith('credentials.')) {
                 if (input.value !== '') {
                     body.credentials[name.slice(12)] = input.value;
@@ -3172,6 +3253,11 @@
                 }
 
                 summaryCache.delete(kind + ':' + saved.id);
+
+                if (data.project) {
+                    project = data.project;
+                    renderProjectState();
+                }
 
                 if (mode === 'create') {
                     commit(() => {
@@ -3968,7 +4054,8 @@
             '<div class="flex flex-col gap-1"><label class="' + LABEL_CLASS + '" for="ps-description">Description <span class="font-normal text-muted">(optional)</span></label>' +
             '<textarea id="ps-description" name="description" rows="2" maxlength="2000" class="' + INPUT_CLASS + '"' + (disabled ? ' disabled' : '') + '>' + esc(descriptionValue) + '</textarea>' + error('description') + '</div>';
 
-        html += '<fieldset class="flex flex-col gap-2"><legend class="' + LABEL_CLASS + ' mb-1">Schedule</legend>' +
+        html += '<fieldset class="flex flex-col gap-2"><legend class="' + LABEL_CLASS + ' mb-1">Default source schedule</legend>' +
+            '<p class="' + HINT_CLASS + '">Each source runs on its own schedule, set on its node. New sources start from this one, and sources that never got their own follow it.</p>' +
             '<select name="frequency" class="' + INPUT_CLASS + '" aria-label="Frequency"' + (disabled ? ' disabled' : '') + '>' +
             optionList(Object.entries(settingsData.frequencies || {}).map(([value, label]) => ({ value, label })), frequency, null) + '</select>' + error('frequency');
 
@@ -3993,7 +4080,7 @@
             '</select>' + error('timezone') + '</div></fieldset>';
 
         if (project.schedule_summary) {
-            html += '<p class="' + HINT_CLASS + '">Currently: ' + esc(project.schedule_summary) + (project.next_run_at ? ' · next ' + esc(formatTime(project.next_run_at)) : '') + '</p>';
+            html += '<p class="' + HINT_CLASS + '">Default: ' + esc(project.schedule_summary) + (project.next_run_at ? ' · next source run ' + esc(formatTime(project.next_run_at)) : '') + '</p>';
         }
 
         if (panel.notice) {
@@ -4583,6 +4670,17 @@
                 panel.formType = event.target.value;
                 panel.errors = {};
                 renderPanel();
+            }
+
+            if (event.target.getAttribute('name') === 'schedule.frequency') {
+                panel.draft = readRecordForm(recordForm);
+                panel.formDirty = true;
+                renderPanel();
+                const again = els.inspector.querySelector('[name="schedule.frequency"]');
+
+                if (again) {
+                    again.focus({ preventScroll: true });
+                }
             }
 
             return;

@@ -18,6 +18,8 @@ use Illuminate\Support\Carbon;
  * JSON config, validated by the rules that provider declares.
  *
  * @property array<string, mixed>|null $config
+ * @property array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}|null $schedule
+ * @property Carbon|null $next_run_at
  * @property int $consecutive_failures
  * @property Carbon|null $archived_at
  * @property Carbon|null $last_tested_at
@@ -67,6 +69,17 @@ class Source extends Model
 
         $this->archived_at = null;
         $this->save();
+    }
+
+    /**
+     * Visual broadcasts run each source on its own schedule; a source without
+     * one follows the broadcast's.
+     *
+     * @return array{frequency: string, time?: string, weekdays?: list<int>, hours?: int}|null
+     */
+    public function effectiveSchedule(): ?array
+    {
+        return $this->schedule ?? $this->project->schedule;
     }
 
     /**
@@ -129,6 +142,8 @@ class Source extends Model
     {
         return [
             'config' => 'array',
+            'schedule' => 'array',
+            'next_run_at' => 'datetime',
             'consecutive_failures' => 'integer',
             'last_test_successful' => 'boolean',
             'last_tested_at' => 'datetime',
