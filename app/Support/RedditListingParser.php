@@ -130,9 +130,9 @@ class RedditListingParser
             'external_id' => $externalId,
             'canonical_url' => $canonicalUrl,
             'title' => $title,
-            // Self posts expose the text body; link posts expose the outbound URL so
-            // transforms have something sensible either way.
-            'body' => $isSelf ? $selfText : $linkedUrl,
+            // Self posts expose their text; link, image and gallery posts expose their
+            // text (when they have any) followed by the outbound URL.
+            'body' => $isSelf ? $selfText : $this->linkBody($selfText, $linkedUrl),
             'author' => $author,
             'published_at' => $this->parseDate($published),
             'is_self' => $isSelf,
@@ -151,6 +151,15 @@ class RedditListingParser
                 'content_html' => $html,
             ],
         ];
+    }
+
+    private function linkBody(?string $text, ?string $linkedUrl): ?string
+    {
+        if ($text === null || $text === '[removed]' || $text === '[deleted]') {
+            return $linkedUrl;
+        }
+
+        return $linkedUrl === null ? $text : $text."\n\n".$linkedUrl;
     }
 
     private function author(SimpleXMLElement $atom): ?string
