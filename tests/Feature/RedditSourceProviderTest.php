@@ -60,7 +60,7 @@ class RedditSourceProviderTest extends TestCase
         $schema = RedditSourceSchema::make();
         $names = array_map(static fn ($field) => $field->name, $schema->fields);
 
-        $this->assertSame(['title', 'body', 'text', 'linked_url', 'preview_image', 'link', 'published_at', 'author'], $names);
+        $this->assertSame(['title', 'text', 'linked_url', 'preview_image', 'link', 'published_at', 'author'], $names);
         $this->assertSame($names, array_keys(RedditSourceSchema::sample()));
     }
 
@@ -348,6 +348,10 @@ class RedditSourceProviderTest extends TestCase
             $media = collect($steps)->firstWhere('config.field', 'media');
 
             $this->assertSame('{{preview_image}}', $media['config']['value'] ?? null, $destination);
+
+            $text = collect($steps)->firstWhere('config.field', 'text');
+            $this->assertStringContainsString('{{text}}', $text['config']['value'] ?? '', $destination);
+            $this->assertStringNotContainsString('{{body}}', $text['config']['value'] ?? '', $destination);
         }
 
         $rssMedia = collect($defaults->for('rss', 'telegram')?->toArray()['steps'] ?? [])->firstWhere('config.field', 'media');
