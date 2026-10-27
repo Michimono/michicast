@@ -234,6 +234,8 @@ say "Running migrations"
 docker compose exec -T app php artisan migrate --force
 say "Restarting Horizon on the new code"
 docker compose exec -T app php artisan horizon:terminate
+say "Restarting web so nginx picks up the new app container"
+docker compose restart web
 
 say "Checking https://$domain/up"
 for _ in 1 2 3 4 5 6; do
@@ -243,4 +245,4 @@ for _ in 1 2 3 4 5 6; do
     fi
     sleep 10
 done
-warn "https://$domain/up did not answer yet. On a first deploy, check DNS and the certificate: docker compose logs -f caddy"
+die "https://$domain/up did not answer. Check: docker compose ps -a; docker compose logs --tail=100 web app caddy"
