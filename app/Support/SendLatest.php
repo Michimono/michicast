@@ -8,7 +8,7 @@ use App\Models\ProjectRun;
 
 /**
  * Clears delivery state for the latest received source item and publishes
- * only that item now, bypassing backfill and prior-delivery blockers.
+ * only that item now, bypassing prior-delivery blockers.
  * Does not walk the rest of the feed or bulk-send history.
  */
 class SendLatest
@@ -32,7 +32,7 @@ class SendLatest
         /** @var ContentItem $item */
         $item = $prepared['item']->fresh() ?? $prepared['item'];
 
-        $projectRun = $this->runner->publishSingleItem($project, $item, bypassBackfill: true);
+        $projectRun = $this->runner->publishSingleItem($project, $item);
 
         return [
             'item' => $item->fresh() ?? $item,

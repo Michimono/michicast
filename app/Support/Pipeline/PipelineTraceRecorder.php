@@ -27,9 +27,9 @@ use Throwable;
  * route's dry report only says whether an item would publish. To show where
  * an item stopped, each filter node is evaluated again on its own against the
  * items the run fetched (in memory, nothing refetched), and the transform is
- * rendered through the same mapper the run used. Route-level guards — backfill
- * and already-delivered — are reported on the connection into the destination,
- * which is the node they protect.
+ * rendered through the same mapper the run used. The route-level
+ * already-delivered guard is reported on the connection into the destination,
+ * which is the node it protects.
  *
  * Samples are bounded and redacted before they are stored. Only the traces of
  * the newest few dry runs are kept per project.

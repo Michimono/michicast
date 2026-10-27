@@ -104,7 +104,7 @@ class IdempotentPublishingTest extends TestCase
         ]);
     }
 
-    public function test_a_new_broadcast_does_not_publish_the_source_back_catalogue(): void
+    public function test_a_time_filter_keeps_a_new_broadcast_from_publishing_the_back_catalogue(): void
     {
         $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
 
@@ -136,6 +136,8 @@ class IdempotentPublishingTest extends TestCase
             'project_id' => $project->getKey(),
             'source_id' => $source->getKey(),
             'destination_id' => $destination->getKey(),
+            // No built-in back-catalogue skip (#224): age limits are a filter rule.
+            'filter' => ['rules' => [['type' => 'published_after', 'hours' => 24]]],
             'created_at' => Carbon::parse('2026-03-15 10:00:00', 'UTC'),
             'updated_at' => Carbon::parse('2026-03-15 10:00:00', 'UTC'),
         ]);

@@ -42,7 +42,7 @@ use Throwable;
  * records a ProjectRun marked is_dry and a per-broadcast dry_report.
  *
  * publishSingleItem supports Send latest: one persisted item, no feed walk,
- * optional backfill bypass after the caller clears prior deliveries.
+ * after the caller clears prior deliveries.
  *
  * Retries queued from the delivery history run at the start of each broadcast
  * on a normal run: transform again with the current configuration, then the
@@ -95,14 +95,13 @@ class ExecutingProjectRunner implements ProjectRunner
 
     /**
      * Publish a single already-persisted content item on each matching runnable
-     * broadcast. Skips the source fetch and, when $bypassBackfill is true, the
-     * backfill guard. Prior delivery blockers must be cleared by the caller.
+     * broadcast. Skips the source fetch. Prior delivery blockers must be cleared
+     * by the caller.
      * Broadcast filters still apply.
      */
     public function publishSingleItem(
         Project $project,
         ContentItem $item,
-        bool $bypassBackfill = false,
     ): ProjectRun {
         $this->dry = false;
         $this->fetchedBySource = [];
@@ -126,7 +125,7 @@ class ExecutingProjectRunner implements ProjectRunner
                 continue;
             }
 
-            $this->publishSingleItemOnBroadcast($project, $projectRun, $broadcast, $item, $bypassBackfill);
+            $this->publishSingleItemOnBroadcast($project, $projectRun, $broadcast, $item);
         }
 
         $this->rollUpCounts($projectRun);
@@ -143,7 +142,6 @@ class ExecutingProjectRunner implements ProjectRunner
         ProjectRun $projectRun,
         Broadcast $broadcast,
         ContentItem $item,
-        bool $bypassBackfill,
     ): void {
         $broadcastRun = BroadcastRun::query()->create([
             'project_run_id' => $projectRun->getKey(),
@@ -157,25 +155,6 @@ class ExecutingProjectRunner implements ProjectRunner
         $provider = $this->destinations->get($destination->type);
         $sourceName = $broadcast->source->name;
         $broadcastRun->items_found = 1;
-
-        if (! $bypassBackfill && $this->isBackfill($item, $broadcast)) {
-            $this->recordOutcome(
-                $broadcastRun,
-                $broadcast,
-                $item,
-                (int) $destination->getKey(),
-                'skip',
-                'Item was published before this broadcast existed.',
-                createSkippedDelivery: true,
-            );
-            $this->advanceLifecycle($item, ContentItemLifecycle::Skipped);
-            $broadcastRun->items_skipped++;
-            $broadcastRun->status = RunStatus::Completed;
-            $broadcastRun->finished_at = now();
-            $broadcastRun->save();
-
-            return;
-        }
 
         $decision = $this->filters->evaluate($broadcast->filter, $item);
 
@@ -261,19 +240,6 @@ class ExecutingProjectRunner implements ProjectRunner
         $wouldSkip = 0;
 
         foreach ($fetched as $item) {
-            if ($this->isBackfill($item, $broadcast)) {
-                $items[] = new BroadcastPreviewItem(
-                    title: $this->itemLabel($item),
-                    body: $item->body,
-                    canonicalUrl: $item->canonical_url,
-                    outcome: 'skip',
-                    skipReason: 'Item was published before this broadcast existed.',
-                );
-                $wouldSkip++;
-
-                continue;
-            }
-
             if ($this->previewDeliveryBlocksRepublish($item, $broadcast, $destinationId)) {
                 $items[] = new BroadcastPreviewItem(
                     title: $this->itemLabel($item),
@@ -465,22 +431,6 @@ class ExecutingProjectRunner implements ProjectRunner
 
             if (in_array((int) $item->getKey(), $retriedItemIds, true)) {
                 $this->recordRunSkip($broadcastRun, $item, 'Retried earlier in this run.');
-                $broadcastRun->items_skipped++;
-
-                continue;
-            }
-
-            if ($this->isBackfill($item, $broadcast)) {
-                $this->recordOutcome(
-                    $broadcastRun,
-                    $broadcast,
-                    $item,
-                    (int) $destination->getKey(),
-                    'skip',
-                    'Item was published before this broadcast existed.',
-                    createSkippedDelivery: true,
-                );
-                $this->advanceLifecycle($item, ContentItemLifecycle::Skipped);
                 $broadcastRun->items_skipped++;
 
                 continue;
@@ -972,22 +922,6 @@ class ExecutingProjectRunner implements ProjectRunner
             'skip_reason' => $skipReason,
         ], fn (mixed $value): bool => $value !== null);
         $broadcastRun->dry_report = $report;
-    }
-
-    /**
-     * Prefer publishing nothing over flooding a new broadcast with the
-     * source's archive. Uses published_at when the item has one, otherwise
-     * discovered_at.
-     */
-    private function isBackfill(ContentItem $item, Broadcast $broadcast): bool
-    {
-        if ($broadcast->created_at === null) {
-            return false;
-        }
-
-        $itemTime = $item->published_at ?? $item->discovered_at;
-
-        return $itemTime->lt($broadcast->created_at);
     }
 
     /**
