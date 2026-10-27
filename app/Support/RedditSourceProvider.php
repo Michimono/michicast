@@ -13,9 +13,13 @@ use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
- * Reads posts from a subreddit through Reddit's free public JSON endpoints
- * (https://www.reddit.com/r/{sub}/{sort}.json). No OAuth, no paid API, and no
+ * Reads posts from a subreddit through Reddit's free public Atom feed
+ * (https://www.reddit.com/r/{sub}/{sort}/.rss). No OAuth, no paid API, and no
  * credentials — best-effort anonymous fetch that returns a list of posts.
+ *
+ * Reddit blocks anonymous requests to the listing JSON (HTTP 403, "blocked by
+ * network security"), while the feed for the same listing stays public. The
+ * feed has no score, comment count or flair.
  *
  * Removed or deleted posts are skipped (see RedditListingParser). Rate limits
  * are treated as transient: the request is not immediately retried, Retry-After
@@ -55,7 +59,7 @@ class RedditSourceProvider implements SourceProvider
 
     public function label(): string
     {
-        return 'Reddit (public JSON)';
+        return 'Reddit (public feed)';
     }
 
     /**
@@ -83,7 +87,7 @@ class RedditSourceProvider implements SourceProvider
                 required: true,
                 label: 'Subreddit',
                 type: ConfigurationFieldType::Text,
-                hint: 'Name without r/ (for example pokemon). Free public JSON fetch — no OAuth, API keys, or paid Reddit API. Each fetch returns a list of posts (one item per post), not a single post. Reddit rate-limits anonymous clients.',
+                hint: 'Name without r/ (for example pokemon). Free public feed — no OAuth, API keys, or paid Reddit API. Each fetch returns a list of posts (one item per post), not a single post. Reddit rate-limits anonymous clients.',
             ),
             new ConfigurationField(
                 name: 'sort',
@@ -203,13 +207,15 @@ class RedditSourceProvider implements SourceProvider
                 ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
                 ->retry(
                     self::RETRY_TIMES,
-                    fn (int $attempt, Throwable $exception): int => $this->retryDelayMilliseconds($attempt, $exception),
-                    fn (Throwable $exception): bool => $this->shouldRetry($exception),
+                    fn (int $attempt, ?Throwable $exception): int => $this->retryDelayMilliseconds($attempt, $exception),
+                    // Redirects reach this callback without an exception; they are never retried.
+                    fn (?Throwable $exception): bool => $exception !== null && $this->shouldRetry($exception),
                     throw: false,
                 )
+                ->withoutRedirecting()
                 ->withUserAgent(self::USER_AGENT)
                 ->withHeaders([
-                    'Accept' => 'application/json',
+                    'Accept' => 'application/atom+xml, application/xml;q=0.9, text/xml;q=0.8',
                 ])
                 ->get($url, $this->queryParameters($sort, $limit, $source));
         } catch (ConnectionException $exception) {
@@ -218,14 +224,24 @@ class RedditSourceProvider implements SourceProvider
                 previous: $exception,
             );
         } catch (RequestException $exception) {
-            throw new SourceFetchFailedException('The Reddit listing could not be reached.', previous: $exception);
+            throw new SourceFetchFailedException('The Reddit feed could not be reached.', previous: $exception);
         } catch (Throwable $exception) {
-            throw new SourceFetchFailedException('The Reddit listing could not be reached.', previous: $exception);
+            throw new SourceFetchFailedException('The Reddit feed could not be reached.', previous: $exception);
         }
 
-        if ($response->status() === 404 || $response->status() === 403) {
+        if ($response->status() === 404 || $this->redirectsToSubredditSearch($response)) {
             throw new SourceFetchFailedException(
-                "Subreddit r/{$subreddit} was not found or is private. Check the name or whether the community is public.",
+                "Subreddit r/{$subreddit} was not found. Check the name.",
+            );
+        }
+
+        if ($response->status() === 403) {
+            throw new SourceFetchFailedException($this->forbiddenMessage($subreddit, $response));
+        }
+
+        if ($response->redirect()) {
+            throw new SourceFetchFailedException(
+                "Reddit redirected the feed for r/{$subreddit} instead of returning it (HTTP {$response->status()}). The community may require signing in.",
             );
         }
 
@@ -241,7 +257,7 @@ class RedditSourceProvider implements SourceProvider
     private function listingUrl(string $subreddit, string $sort): string
     {
         return sprintf(
-            'https://www.reddit.com/r/%s/%s.json',
+            'https://www.reddit.com/r/%s/%s/.rss',
             rawurlencode($subreddit),
             rawurlencode($sort),
         );
@@ -317,19 +333,41 @@ class RedditSourceProvider implements SourceProvider
         return self::DEFAULT_ITEM_LIMIT;
     }
 
+    /**
+     * Reddit answers a feed for a subreddit that does not exist with a redirect
+     * to its subreddit search.
+     */
+    private function redirectsToSubredditSearch(Response $response): bool
+    {
+        if (! $response->redirect()) {
+            return false;
+        }
+
+        return str_contains(strtolower((string) $response->header('Location')), '/subreddits/search');
+    }
+
+    private function forbiddenMessage(string $subreddit, Response $response): string
+    {
+        if (str_contains(strtolower($response->body()), 'blocked by network security')) {
+            return 'Reddit blocked the request from this server (HTTP 403). This is on Reddit\'s side, not the subreddit name; try again later.';
+        }
+
+        return "Reddit refused access to r/{$subreddit} (HTTP 403). The community may be private or quarantined.";
+    }
+
     private function connectionFailureMessage(ConnectionException $exception): string
     {
         $detail = strtolower($exception->getMessage());
 
         if (str_contains($detail, 'ssl') || str_contains($detail, 'certificate')) {
-            return 'The Reddit listing could not be reached because of an SSL certificate problem on this machine.';
+            return 'The Reddit feed could not be reached because of an SSL certificate problem on this machine.';
         }
 
         if (str_contains($detail, 'timed out') || str_contains($detail, 'timeout')) {
-            return 'The Reddit listing timed out before it could be reached.';
+            return 'The Reddit feed timed out before it could be reached.';
         }
 
-        return 'The Reddit listing could not be reached.';
+        return 'The Reddit feed could not be reached.';
     }
 
     private function shouldRetry(Throwable $exception): bool
@@ -348,7 +386,7 @@ class RedditSourceProvider implements SourceProvider
         return $status === 408 || $status === 425 || $status >= 500;
     }
 
-    private function retryDelayMilliseconds(int $attempt, Throwable $exception): int
+    private function retryDelayMilliseconds(int $attempt, ?Throwable $exception): int
     {
         if ($exception instanceof RequestException) {
             $retryAfter = $this->retryAfterMilliseconds($exception->response);

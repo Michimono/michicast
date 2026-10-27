@@ -13,7 +13,7 @@ final class RedditSourceSchema
         return new ContentSchema(
             version: 1,
             providerType: 'reddit',
-            label: 'Reddit (public JSON)',
+            label: 'Reddit (public feed)',
             fields: [
                 new SchemaField('title', 'Title', FieldType::Text, 'Post title', false),
                 new SchemaField('body', 'Body', FieldType::Text, 'Self-post text, or the linked URL for link posts', false),
