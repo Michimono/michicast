@@ -2475,6 +2475,7 @@
 
         const active = document.activeElement;
         const activeField = els.inspector.contains(active) ? active.getAttribute('data-field') || active.getAttribute('name') : null;
+        const caret = activeField ? readCaret(active) : null;
         const body = els.inspector.querySelector('[data-panel-body]');
         const scrollTop = body ? body.scrollTop : 0;
         let html = '';
@@ -2535,8 +2536,50 @@
 
             if (again) {
                 again.focus({ preventScroll: true });
+                restoreCaret(again, caret);
             }
         }
+    }
+
+    /*
+     * Re-rendering replaces the inspector's inputs, and focusing the new element
+     * puts the caret at the start. Remember where it was so typing can continue
+     * (e.g. when an autosave re-renders the panel mid-sentence).
+     */
+    function readCaret(element) {
+        try {
+            if (typeof element.selectionStart !== 'number') {
+                return null;
+            }
+
+            return {
+                start: element.selectionStart,
+                end: element.selectionEnd,
+                direction: element.selectionDirection || 'none',
+                scrollTop: element.scrollTop,
+                scrollLeft: element.scrollLeft,
+            };
+        } catch {
+            // Inputs like number or email throw when their selection is read.
+            return null;
+        }
+    }
+
+    function restoreCaret(element, caret) {
+        if (!caret || typeof element.setSelectionRange !== 'function') {
+            return;
+        }
+
+        const length = element.value.length;
+
+        try {
+            element.setSelectionRange(Math.min(caret.start, length), Math.min(caret.end, length), caret.direction);
+        } catch {
+            return;
+        }
+
+        element.scrollTop = caret.scrollTop;
+        element.scrollLeft = caret.scrollLeft;
     }
 
     /* ------------------------------------------------------------------ */
