@@ -1,4 +1,25 @@
 <x-layout title="Admin overview">
+    @if ($sourceHealth !== [])
+        <x-card heading="Source health" kicker="Needs attention">
+            <p class="text-sm text-muted">
+                Spotted during normal fetches. A flag clears itself after the next normal read.
+            </p>
+
+            <ul class="flex flex-col gap-3">
+                @foreach ($sourceHealth as $flag)
+                    <li class="flex flex-col gap-1 rounded-md border border-accent/40 bg-accent/5 p-4">
+                        <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">{{ $flag['provider'] }}</p>
+                        <p class="text-sm">{{ $flag['message'] }}</p>
+                        <p class="text-xs text-muted">
+                            Seen {{ $flag['count'] }} {{ \Illuminate\Support\Str::plural('time', $flag['count']) }},
+                            last {{ \Carbon\CarbonImmutable::parse($flag['last_seen_at'])->diffForHumans() }}{{ is_string($flag['context']['handle'] ?? null) ? ', latest on @'.$flag['context']['handle'] : '' }}.
+                        </p>
+                    </li>
+                @endforeach
+            </ul>
+        </x-card>
+    @endif
+
     <x-card heading="Overview" kicker="Admin" eared>
         <p class="text-sm text-muted">
             Platform-wide counts. Moderation and deeper tooling land in later issues.

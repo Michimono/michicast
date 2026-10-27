@@ -33,6 +33,7 @@ class TwitterSourceProvider implements SourceProvider
     public function __construct(
         private TwitterTimelineParser $parser = new TwitterTimelineParser,
         private TwitterSyndicationClient $http = new TwitterSyndicationClient,
+        private SourceHealth $health = new SourceHealth,
     ) {}
 
     public function type(): string
@@ -209,6 +210,12 @@ class TwitterSourceProvider implements SourceProvider
 
         $entries = $parsed['entries'];
 
+        if ($entries === [] && $parsed['posts_expected']) {
+            $entries = $this->readUnreadableProfile($handle, $parsed['post_count']);
+        } elseif ($entries !== []) {
+            $this->health->clear($this->type());
+        }
+
         if (! $this->includeRetweets($source)) {
             $entries = array_values(array_filter(
                 $entries,
@@ -217,6 +224,80 @@ class TwitterSourceProvider implements SourceProvider
         }
 
         return array_slice($entries, 0, $this->itemLimit($source));
+    }
+
+    /**
+     * The profile page shows the account has posts but none could be read:
+     * X most likely changed its page format. Try the legacy embed once, and
+     * flag the anomaly for platform admins either way. Never a silent 0.
+     *
+     * @return list<array{
+     *     external_id: string,
+     *     canonical_url: string,
+     *     title: string,
+     *     body: string,
+     *     author: string|null,
+     *     published_at: CarbonImmutable|null,
+     *     media: list<array<string, mixed>>,
+     *     is_retweet: bool,
+     *     raw: array<string, mixed>
+     * }>
+     */
+    private function readUnreadableProfile(string $handle, ?int $postCount): array
+    {
+        $context = ['handle' => $handle, 'post_count' => $postCount];
+        $entries = $this->fallbackEmbedEntries($handle);
+
+        if ($entries !== []) {
+            $this->health->flag(
+                $this->type(),
+                'X profile pages are no longer readable; posts are coming from the fallback embed, which X rate-limits tightly.',
+                $context + ['fallback' => 'syndication'],
+            );
+
+            return $entries;
+        }
+
+        $this->health->flag(
+            $this->type(),
+            'X profile pages show posts but Michicast could not read any. X has probably changed its page format.',
+            $context,
+        );
+
+        throw new SourceFetchFailedException(
+            "@{$handle} has public posts, but Michicast couldn't read them. X has probably changed its page format; platform admins have been notified.",
+        );
+    }
+
+    /**
+     * @return list<array{
+     *     external_id: string,
+     *     canonical_url: string,
+     *     title: string,
+     *     body: string,
+     *     author: string|null,
+     *     published_at: CarbonImmutable|null,
+     *     media: list<array<string, mixed>>,
+     *     is_retweet: bool,
+     *     raw: array<string, mixed>
+     * }>
+     */
+    private function fallbackEmbedEntries(string $handle): array
+    {
+        try {
+            $response = $this->http->pendingProfileRequest()
+                ->timeout(self::TIMEOUT_SECONDS)
+                ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
+                ->get($this->http->timelineUrl($handle));
+
+            if (! $response->successful()) {
+                return [];
+            }
+
+            return $this->parser->parse($response->body())['entries'];
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     private function normalizedHandle(SourceDefinition $source): ?string

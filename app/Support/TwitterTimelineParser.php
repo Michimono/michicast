@@ -13,10 +13,26 @@ use Throwable;
  */
 class TwitterTimelineParser
 {
+    public function __construct(
+        private TwitterEmbeddedJsonParser $embedded = new TwitterEmbeddedJsonParser,
+    ) {}
+
     /**
+     * Parse order, most robust first:
+     *  1. legacy syndication embed (__NEXT_DATA__),
+     *  2. any JSON embedded in the x.com page, walked for post-shaped objects,
+     *  3. the older x.com JS-object-literal regexes.
+     *
+     * `posts_expected` is true when the page shows the profile has posts (a
+     * post count above zero, or post text markers) but none could be read, the
+     * sign that X changed its format again.
+     *
      * @return array{
      *     handle: string|null,
      *     profile_found: bool,
+     *     post_count: int|null,
+     *     posts_expected: bool,
+     *     format: string,
      *     entries: list<array{
      *         external_id: string,
      *         canonical_url: string,
@@ -33,10 +49,89 @@ class TwitterTimelineParser
     public function parse(string $html): array
     {
         if (str_contains($html, '__NEXT_DATA__')) {
-            return $this->parseSyndicationEmbed($html);
+            $embed = $this->parseSyndicationEmbed($html);
+
+            return $embed + [
+                'post_count' => null,
+                'posts_expected' => false,
+                'format' => 'syndication',
+            ];
         }
 
-        return $this->parseProfilePage($html);
+        $embedded = $this->embedded->parse($html);
+        $handle = $this->profileHandleFromHtml($html);
+        $profileUser = $this->profileUser($embedded['users'], $handle);
+        $postCount = $profileUser['post_count'] ?? null;
+        $handle ??= $profileUser['screen_name'] ?? null;
+
+        if ($embedded['entries'] !== []) {
+            /** @var list<array{external_id: string, canonical_url: string, title: string, body: string, author: string|null, published_at: CarbonImmutable|null, media: list<array<string, mixed>>, is_retweet: bool, raw: array<string, mixed>}> $entries */
+            $entries = $embedded['entries'];
+
+            return [
+                'handle' => $handle,
+                'profile_found' => true,
+                'post_count' => $postCount,
+                'posts_expected' => false,
+                'format' => 'embedded-json',
+                'entries' => $entries,
+            ];
+        }
+
+        try {
+            $legacy = $this->parseProfilePage($html);
+        } catch (SourceFetchFailedException $exception) {
+            if ($profileUser === null) {
+                throw $exception;
+            }
+
+            $legacy = ['handle' => $handle, 'profile_found' => true, 'entries' => []];
+        }
+
+        $postsExpected = $legacy['entries'] === [] && (
+            ($postCount !== null && $postCount > 0)
+            || $this->hasPostMarkers($html)
+        );
+
+        return [
+            'handle' => $legacy['handle'] ?? $handle,
+            'profile_found' => $legacy['profile_found'] || $profileUser !== null,
+            'post_count' => $postCount,
+            'posts_expected' => $postsExpected,
+            'format' => 'legacy',
+            'entries' => $legacy['entries'],
+        ];
+    }
+
+    /**
+     * @param  list<array{screen_name: string, name: string|null, post_count: int|null}>  $users
+     * @return array{screen_name: string, name: string|null, post_count: int|null}|null
+     */
+    private function profileUser(array $users, ?string $handle): ?array
+    {
+        if ($handle !== null) {
+            foreach ($users as $user) {
+                if (strcasecmp($user['screen_name'], $handle) === 0) {
+                    return $user;
+                }
+            }
+        }
+
+        foreach ($users as $user) {
+            if ($user['post_count'] !== null) {
+                return $user;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Post fields in any serialization (JSON, escaped JSON, JS literal).
+     */
+    private function hasPostMarkers(string $html): bool
+    {
+        return str_contains($html, 'full_text') || str_contains($html, 'tweet_results');
     }
 
     /**
@@ -221,7 +316,11 @@ class TwitterTimelineParser
             return $match[1];
         }
 
-        if (preg_match('/og:url" content="https:\/\/x\.com\/([A-Za-z0-9_]{1,15})"/', $html, $match)) {
+        if (preg_match('/og:url" content="https:\/\/(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})"/', $html, $match)) {
+            return $match[1];
+        }
+
+        if (preg_match('/<title>[^<]*\(@([A-Za-z0-9_]{1,15})\)[^<]*<\/title>/', $html, $match)) {
             return $match[1];
         }
 
