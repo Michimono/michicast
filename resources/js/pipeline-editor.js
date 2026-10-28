@@ -3575,7 +3575,8 @@
         let html = '<section class="flex flex-col gap-3">';
 
         html += '<div class="flex flex-col gap-1"><p class="' + LABEL_CLASS + '">Fields this path sends</p>' +
-            '<p class="' + HINT_CLASS + '">Set each field from the fields that reach this mapping. A value can combine several of them, with any words around them. Later steps can use the fields you set here.</p></div>';
+            '<p class="' + HINT_CLASS + '">Set each field from the fields that reach this mapping. A value can combine several of them, with any words around them. Later steps can use the fields you set here.</p>' +
+            '<p class="' + HINT_CLASS + '">Use <span class="font-mono">{{linked_url || link}}</span> to fall back to the next field when one is empty. In a value with several lines, a line whose fields are all empty is left out, along with the extra blank lines around it.</p></div>';
 
         if (destFields.length === 0) {
             html += emptyNote('Connect a destination after this mapping. Its fields are the ones you can set.');
