@@ -3624,7 +3624,8 @@
         let html = '<section class="flex flex-col gap-3">';
 
         html += '<div class="flex flex-col gap-1"><p class="' + LABEL_CLASS + '">Fields this path sends</p>' +
-            '<p class="' + HINT_CLASS + '">Set each field from the fields that reach this mapping. A value can combine several of them, with any words around them. Later steps can use the fields you set here.</p></div>';
+            '<p class="' + HINT_CLASS + '">Set each field from the fields that reach this mapping. A value can combine several of them, with any words around them. Later steps can use the fields you set here.</p>' +
+            '<p class="' + HINT_CLASS + '">Values use <a class="' + LINK_CLASS + '" href="https://shopify.github.io/liquid/basics/introduction/" target="_blank" rel="noopener">Liquid</a>. Fall back with <span class="font-mono">{{ linked_url | default: link }}</span>, show a part only when a field has a value with <span class="font-mono">{% if text %}…{% endif %}</span>, and use <span class="font-mono">{%-</span> to trim the line break before a tag. Empty fields count as not set.</p></div>';
 
         if (destFields.length === 0) {
             html += emptyNote('Connect a destination after this mapping. Its fields are the ones you can set.');

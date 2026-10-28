@@ -58,15 +58,10 @@ final class SetField implements MappingOperation
             $errors[] = new MappingError('', 'config', 'Choose a field.');
         }
 
-        foreach ($this->resolver->referencedPaths($value) as $path) {
-            $known = $this->schemaField($sourceSchema, $path) !== null
-                || $this->schemaField($destinationSchema, $path) !== null
-                || $path === $field;
+        $syntax = $this->resolver->syntaxError($value);
 
-            // Intermediate variables are allowed; only flag obviously invalid tokens
-            // that look like nested paths outside any known schema when destination
-            // validation runs. Soft-check: empty path already filtered by regex.
-            unset($known);
+        if ($syntax !== null) {
+            $errors[] = new MappingError($field, 'syntax', 'The value is not valid Liquid: '.$syntax);
         }
 
         return $errors;
