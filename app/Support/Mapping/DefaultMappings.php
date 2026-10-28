@@ -67,7 +67,7 @@ final class DefaultMappings
         return $this->definition('reddit', 'telegram', [
             ['set_field', [
                 'field' => 'text',
-                'value' => "{{title}}\n\n{{text}}\n\nRead more: {{link}}",
+                'value' => "{{title}}{% if text %}\n\n{{text}}{% endif %}\n\nRead more: {{link}}",
             ]],
             ['set_field', [
                 'field' => 'media',
@@ -81,7 +81,7 @@ final class DefaultMappings
         return $this->definition('reddit', 'recording', [
             ['set_field', [
                 'field' => 'text',
-                'value' => "{{title}}\n\n{{text}}",
+                'value' => "{{title}}{% if text %}\n\n{{text}}{% endif %}",
             ]],
             ['set_field', [
                 'field' => 'link',
