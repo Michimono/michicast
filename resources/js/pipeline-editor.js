@@ -2476,6 +2476,8 @@
         const active = document.activeElement;
         const activeField = els.inspector.contains(active) ? active.getAttribute('data-field') || active.getAttribute('name') : null;
         const caret = activeField ? readCaret(active) : null;
+        const target = panelTarget();
+        const sizes = !els.inspector.hidden && els.inspector.dataset.panelTarget === target ? readTextareaSizes() : null;
         const body = els.inspector.querySelector('[data-panel-body]');
         const scrollTop = body ? body.scrollTop : 0;
         let html = '';
@@ -2513,6 +2515,8 @@
         els.inspector.hidden = false;
         els.inspector.innerHTML = html;
         els.inspector.dataset.panelKind = panel.kind;
+        els.inspector.dataset.panelTarget = target;
+        restoreTextareaSizes(sizes);
 
         const newBody = els.inspector.querySelector('[data-panel-body]');
 
@@ -2539,6 +2543,51 @@
                 restoreCaret(again, caret);
             }
         }
+    }
+
+    /*
+     * Identifies what the inspector is showing, so sizes the user dragged a
+     * textarea to are only carried over when the same panel is re-rendered.
+     */
+    function panelTarget() {
+        return [panel.kind, panel.nodeId || '', panel.edgeId || ''].join(':');
+    }
+
+    function textareaKey(element) {
+        return element.id || element.getAttribute('data-field') || element.getAttribute('name') || null;
+    }
+
+    /*
+     * A manual resize sets an inline height/width on the textarea; re-rendering
+     * the inspector would drop it and snap the box back to its rows size.
+     */
+    function readTextareaSizes() {
+        const sizes = new Map();
+
+        els.inspector.querySelectorAll('textarea').forEach((element) => {
+            const key = textareaKey(element);
+
+            if (key && (element.style.height || element.style.width)) {
+                sizes.set(key, { height: element.style.height, width: element.style.width });
+            }
+        });
+
+        return sizes;
+    }
+
+    function restoreTextareaSizes(sizes) {
+        if (!sizes || sizes.size === 0) {
+            return;
+        }
+
+        els.inspector.querySelectorAll('textarea').forEach((element) => {
+            const size = sizes.get(textareaKey(element));
+
+            if (size) {
+                element.style.height = size.height;
+                element.style.width = size.width;
+            }
+        });
     }
 
     /*
