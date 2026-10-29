@@ -3003,6 +3003,9 @@
                 '<div class="flex flex-wrap items-center gap-2">' +
                 (canEdit ? '<button type="button" class="' + PRIMARY_BUTTON_CLASS + '" data-record-edit>Edit</button>' : '') +
                 (record.supports_connection_test && canEdit ? '<button type="button" class="' + GHOST_BUTTON_CLASS + '" data-record-test' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'test' ? SPINNER : '') + 'Test</button>' : '') +
+                (isSource && record.run_url && !record.archived && permissions.mark_due && project.can_mark_due
+                    ? '<button type="button" class="' + GHOST_BUTTON_CLASS + '" data-record-run title="Run now: fetch this source and deliver on its live routes"' + (panel.busy ? ' disabled' : '') + '>' + (panel.busy === 'run' ? SPINNER : '') + 'Run now</button>'
+                    : '') +
                 '<a class="' + LINK_CLASS + ' ml-auto" href="' + esc(record.edit_url) + '">Full settings</a>' +
                 '</div>' +
                 (users > 1 ? '<p class="' + HINT_CLASS + '">Used by ' + users + ' nodes. Editing changes all of them.</p>' : '') +
@@ -3421,6 +3424,65 @@
             if (isCurrent(serial)) {
                 panel.busy = false;
                 panel.notice = { ok: false, text: 'The connection test could not run. Check your connection.' };
+                renderPanel();
+            }
+        }
+    }
+
+    async function runRecord(record) {
+        if (!record || !record.run_url || panel.busy) {
+            return;
+        }
+
+        if (!window.confirm('Run this source now? Its live routes will fetch and deliver for real.')) {
+            return;
+        }
+
+        const serial = panel.serial;
+        panel.busy = 'run';
+        panel.notice = null;
+        renderPanel();
+
+        try {
+            const { ok, status, data } = await request(record.run_url, { method: 'POST', body: {} });
+
+            if (data && data.project) {
+                project = data.project;
+            }
+
+            if (data && data.source) {
+                const index = sources.findIndex((entry) => entry.id === data.source.id);
+
+                if (index !== -1) {
+                    sources.splice(index, 1, data.source);
+                }
+            }
+
+            runsCache = null;
+            summaryCache.delete('source:' + record.id);
+            renderProjectState();
+
+            if (!isCurrent(serial)) {
+                return;
+            }
+
+            panel.busy = false;
+
+            if (status === 429) {
+                panel.notice = { ok: false, text: 'Too many runs in a row. Try again in a minute.' };
+            } else if (status === 403) {
+                panel.notice = { ok: false, text: 'You cannot run this broadcast.' };
+            } else if (!ok) {
+                panel.notice = { ok: false, text: firstError(data, 'The run could not start.') };
+            } else {
+                panel.notice = { ok: true, text: data.message || 'Done.' };
+            }
+
+            renderPanel();
+        } catch {
+            if (isCurrent(serial)) {
+                panel.busy = false;
+                panel.notice = { ok: false, text: 'The run could not start. Check your connection.' };
                 renderPanel();
             }
         }
@@ -4566,6 +4628,12 @@
         if (target.closest('[data-record-test]')) {
             const form = target.closest('[data-record-form]');
             testRecord(recordFor(node), node.type, form);
+
+            return;
+        }
+
+        if (target.closest('[data-record-run]')) {
+            runRecord(recordFor(node));
 
             return;
         }
