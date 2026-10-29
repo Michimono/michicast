@@ -14,6 +14,8 @@ use Throwable;
  * A visual broadcast only reads the sources that are due, then advances just
  * those; its next run is the earliest of its sources' next runs. A run with
  * no source due (Run now, a retry) reads every route, as it always did.
+ * A run for given sources (Run now on a source) reads only those and leaves
+ * their schedules alone.
  */
 class RunClaimedProject
 {
@@ -22,7 +24,10 @@ class RunClaimedProject
         private SourceSchedules $schedules,
     ) {}
 
-    public function handle(Project $project, CarbonInterface $claimedAt, ?CarbonInterface $deadline = null): void
+    /**
+     * @param  list<int>|null  $sourceIds
+     */
+    public function handle(Project $project, CarbonInterface $claimedAt, ?CarbonInterface $deadline = null, ?array $sourceIds = null): void
     {
         $project->refresh();
         $project->loadMissing('organization');
@@ -39,8 +44,8 @@ class RunClaimedProject
 
         $completed = true;
         $failed = false;
-        $dueSourceIds = $project->isVisual() ? $this->schedules->dueSourceIds($project, $claimedAt) : [];
-        $onlySources = $dueSourceIds === [] ? null : $dueSourceIds;
+        $dueSourceIds = $sourceIds === null && $project->isVisual() ? $this->schedules->dueSourceIds($project, $claimedAt) : [];
+        $onlySources = $sourceIds ?? ($dueSourceIds === [] ? null : $dueSourceIds);
 
         try {
             $completed = $this->runner->run($project, $deadline, $onlySources);
@@ -55,7 +60,7 @@ class RunClaimedProject
             $project->next_run_at = now();
         } else {
             if ($project->isVisual()) {
-                $project->next_run_at = $this->schedules->refresh($project, now(), $onlySources ?? true);
+                $project->next_run_at = $this->schedules->refresh($project, now(), $sourceIds !== null ? false : ($onlySources ?? true));
             } else {
                 $project->refreshNextRunAt();
             }

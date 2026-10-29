@@ -64,6 +64,7 @@ use App\Http\Controllers\ProjectSourcePreviewController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SourceConnectionTestController;
 use App\Http\Controllers\SourceController;
+use App\Http\Controllers\SourceRunController;
 use App\Http\Controllers\SourceSummaryController;
 use App\Http\Controllers\TwoFactorAuthenticationController;
 use App\Http\Controllers\TwoFactorChallengeController;
@@ -294,6 +295,11 @@ Route::middleware('auth')->group(function (): void {
             Route::match(['POST', 'PATCH'], 'sources/{source}/connection-tests', [SourceConnectionTestController::class, 'store'])
                 ->name('source-connection-tests.store')
                 ->middleware('throttle:source-connection-test');
+
+            // Run now for one source: fetch it and deliver on its live routes (#241).
+            Route::post('sources/{source}/runs', [SourceRunController::class, 'store'])
+                ->name('source-runs.store')
+                ->middleware('throttle:broadcast-dry-run');
 
             Route::resource('broadcasts.destinations', ProjectDestinationController::class)
                 ->only(['create', 'store'])

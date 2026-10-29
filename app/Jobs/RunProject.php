@@ -30,9 +30,13 @@ class RunProject implements ShouldBeUnique, ShouldQueue
      */
     public int $uniqueFor = 120;
 
+    /**
+     * @param  list<int>|null  $sourceIds  Only run these sources (Run now on a source, #241); null runs what is due.
+     */
     public function __construct(
         public int $projectId,
         public string $claimedAt,
+        public ?array $sourceIds = null,
     ) {
         $this->onQueue('default');
     }
@@ -50,6 +54,6 @@ class RunProject implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $runner->handle($project, CarbonImmutable::parse($this->claimedAt));
+        $runner->handle($project, CarbonImmutable::parse($this->claimedAt), null, $this->sourceIds);
     }
 }

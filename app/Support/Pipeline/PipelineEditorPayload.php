@@ -190,6 +190,7 @@ class PipelineEditorPayload
             'edit_url' => route('sources.edit', $source),
             'update_url' => route('sources.update', $source),
             'test_url' => route('source-connection-tests.store', $source),
+            'run_url' => route('source-runs.store', $source),
             'summary_url' => route('source-summaries.show', $source),
         ];
     }
