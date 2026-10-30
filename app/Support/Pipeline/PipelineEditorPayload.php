@@ -137,7 +137,10 @@ class PipelineEditorPayload
 
         foreach ($compilation->routes as $route) {
             $row = $rows->first(
-                fn (Broadcast $broadcast): bool => (int) $broadcast->source_id === $route->sourceId
+                fn (Broadcast $broadcast): bool => $broadcast->route_key === $route->pathKey(),
+            ) ?? $rows->first(
+                fn (Broadcast $broadcast): bool => $broadcast->route_key === null
+                    && (int) $broadcast->source_id === $route->sourceId
                     && (int) $broadcast->destination_id === $route->destinationId,
             );
 

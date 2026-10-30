@@ -64,6 +64,14 @@ class ExecutingProjectRunner implements ProjectRunner
 
     private bool $dry = false;
 
+    /**
+     * Items let through earlier in this run, per route group, so a dry run
+     * (which records no deliveries) still sends an item once per group.
+     *
+     * @var array<string, array<int|string, true>>
+     */
+    private array $passedByGroup = [];
+
     public function __construct(
         private SourceProviderRegistry $sources,
         private DestinationProviderRegistry $destinations,
@@ -108,6 +116,7 @@ class ExecutingProjectRunner implements ProjectRunner
     ): ProjectRun {
         $this->dry = false;
         $this->fetchedBySource = [];
+        $this->passedByGroup = [];
 
         $projectRun = ProjectRun::query()->create([
             'project_id' => $project->getKey(),
@@ -120,7 +129,7 @@ class ExecutingProjectRunner implements ProjectRunner
             ->runnable()
             ->where('source_id', $item->source_id)
             ->with(['source', 'destination'])
-            ->orderBy('id')
+            ->orderBy('route_order')->orderBy('id')
             ->get();
 
         foreach ($broadcasts as $broadcast) {
@@ -181,6 +190,27 @@ class ExecutingProjectRunner implements ProjectRunner
             return;
         }
 
+        $sibling = $this->siblingBlockReason($item, $broadcast, (int) $destination->getKey());
+
+        if ($sibling !== null) {
+            $this->recordOutcome(
+                $broadcastRun,
+                $broadcast,
+                $item,
+                (int) $destination->getKey(),
+                'skip',
+                $sibling,
+                createSkippedDelivery: false,
+            );
+            $broadcastRun->items_skipped++;
+            $broadcastRun->status = RunStatus::Completed;
+            $broadcastRun->finished_at = now();
+            $broadcastRun->save();
+
+            return;
+        }
+
+        $this->markPassedInGroup($item, $broadcast);
         $this->advanceLifecycle($item, ContentItemLifecycle::Eligible);
 
         $message = $this->mapper->prepare($broadcast, $item, $sourceName);
@@ -298,6 +328,7 @@ class ExecutingProjectRunner implements ProjectRunner
     private function execute(Project $project, ?CarbonInterface $deadline, ?array $sourceIds = null): ProjectRun
     {
         $this->fetchedBySource = [];
+        $this->passedByGroup = [];
 
         $projectRun = ProjectRun::query()->create([
             'project_id' => $project->getKey(),
@@ -312,7 +343,7 @@ class ExecutingProjectRunner implements ProjectRunner
             ->runnable()
             ->when($sourceIds !== null, static fn (Builder $query) => $query->whereIn('source_id', $sourceIds ?? []))
             ->with(['source', 'destination'])
-            ->orderBy('id')
+            ->orderBy('route_order')->orderBy('id')
             ->get();
 
         foreach ($broadcasts as $broadcast) {
@@ -481,6 +512,24 @@ class ExecutingProjectRunner implements ProjectRunner
                 continue;
             }
 
+            $sibling = $this->siblingBlockReason($item, $broadcast, (int) $destination->getKey());
+
+            if ($sibling !== null) {
+                $this->recordOutcome(
+                    $broadcastRun,
+                    $broadcast,
+                    $item,
+                    (int) $destination->getKey(),
+                    'skip',
+                    $sibling,
+                    createSkippedDelivery: false,
+                );
+                $broadcastRun->items_skipped++;
+
+                continue;
+            }
+
+            $this->markPassedInGroup($item, $broadcast);
             $this->advanceLifecycle($item, ContentItemLifecycle::Eligible);
 
             $message = $this->mapper->prepare($broadcast, $item, $sourceName);
@@ -1017,6 +1066,56 @@ class ExecutingProjectRunner implements ProjectRunner
             ->first();
 
         return $existing?->blockReason();
+    }
+
+    /**
+     * Why another path of the same route group (same source node and
+     * destination node on the canvas) already covers this item: it let the
+     * item through earlier in this run, or has a delivered or in-flight
+     * delivery for it. Null when the broadcast has no group or no sibling
+     * has sent it, so separate source nodes still deliver independently.
+     */
+    private function siblingBlockReason(ContentItem $item, Broadcast $broadcast, int $destinationId): ?string
+    {
+        $group = $broadcast->route_group;
+
+        if ($group === null) {
+            return null;
+        }
+
+        $reason = 'Already sent through another path from this source.';
+
+        if (isset($this->passedByGroup[$group][$this->itemIdentity($item)])) {
+            return $reason;
+        }
+
+        if (! $item->exists) {
+            return null;
+        }
+
+        $sent = ContentDelivery::query()
+            ->where('content_item_id', $item->getKey())
+            ->where('destination_id', $destinationId)
+            ->where('broadcast_id', '!=', $broadcast->getKey())
+            ->whereIn('status', [DeliveryStatus::Delivered, DeliveryStatus::Pending])
+            ->whereHas('broadcast', function (Builder $query) use ($broadcast, $group): void {
+                $query->where('project_id', $broadcast->project_id)->where('route_group', $group);
+            })
+            ->exists();
+
+        return $sent ? $reason : null;
+    }
+
+    private function markPassedInGroup(ContentItem $item, Broadcast $broadcast): void
+    {
+        if ($broadcast->route_group !== null) {
+            $this->passedByGroup[$broadcast->route_group][$this->itemIdentity($item)] = true;
+        }
+    }
+
+    private function itemIdentity(ContentItem $item): string
+    {
+        return $item->source_id.':'.$item->identity_key;
     }
 
     /**

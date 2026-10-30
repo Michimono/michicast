@@ -165,7 +165,7 @@ class PipelineTraceRecorder
             $broadcast = $broadcastRun->broadcast;
 
             if ($broadcast instanceof Broadcast) {
-                $runsByPair[$broadcast->source_id.':'.$broadcast->destination_id] = $broadcastRun;
+                $runsByPair[$broadcast->route_key ?? $broadcast->source_id.':'.$broadcast->destination_id] = $broadcastRun;
             }
         }
 
@@ -185,7 +185,7 @@ class PipelineTraceRecorder
         };
 
         foreach ($compilation->routes as $route) {
-            $broadcastRun = $runsByPair[$route->key()] ?? null;
+            $broadcastRun = $runsByPair[$route->pathKey()] ?? $runsByPair[$route->key()] ?? null;
             $path = $route->nodeIds;
 
             if (! $broadcastRun instanceof BroadcastRun) {
