@@ -20,12 +20,12 @@ use Illuminate\Support\Collection;
  * with a rule list) and the single transform on the path becomes the route's
  * template, kept for a transform that still stores one. Field rules on a
  * transform and Set field steps on a mapping are written in path order, so
- * a transform can change a field before or after the mapping. One source
- * record reaches a destination through one broadcast
- * row, so the item is delivered once. Extra nodes for that same pair stay
- * on the route (their connections stay live) and are reported as a warning.
- * Two different paths out of the same node are an error: their filters
- * would disagree, so neither compiles. Nodes whose settings are incomplete keep every
+ * a transform can change a field before or after the mapping. Every path is
+ * its own route. Parallel paths from one source node to one destination
+ * node share a route group, ordered top to bottom on the canvas: an item is
+ * sent once, by the first path that lets it through. Two source nodes for
+ * the same records are separate and can both send an item. Both cases are
+ * warnings, never errors. Nodes whose settings are incomplete keep every
  * path through them from compiling, so a half-built filter never lets
  * everything through.
  */
@@ -124,43 +124,45 @@ class PipelineGraphCompiler
         }
 
         $routes = [];
-        $byRecordPair = [];
+        /** @var array<string, true> $recordPairs */
+        $recordPairs = [];
 
         foreach ($pathsByPair as $paths) {
-            $first = $paths[0];
-            $sourceNode = $nodesById[$first[0]];
-            $destinationNode = $nodesById[$first[array_key_last($first)]];
+            $paths = $this->inCanvasOrder($paths, $nodesById);
+            $sourceNode = $nodesById[$paths[0][0]];
+            $destinationNode = $nodesById[$paths[0][array_key_last($paths[0])]];
 
             if (count($paths) > 1) {
-                $issues[] = PipelineIssue::error(
+                $issues[] = PipelineIssue::warning(
                     sprintf(
-                        '%s reaches this destination through %d paths. Keep one so each item is delivered once.',
+                        '%s reaches %s through %d paths. An item that passes more than one is sent once, by the highest matching path on the canvas.',
                         $this->sourceName($sourceNode, $sources),
+                        $this->destinationName($destinationNode, $destinations),
                         count($paths),
                     ),
                     $destinationNode->id,
                 );
-
-                continue;
             }
 
-            $route = $this->routeFor($first, $nodesById, $sources, $destinations);
-            $recordPair = $route->key();
+            foreach ($paths as $order => $path) {
+                $route = $this->routeFor($path, $nodesById, $sources, $destinations, $order);
+                $routes[] = $route;
+            }
 
-            if (isset($byRecordPair[$recordPair])) {
+            $recordPair = $routes[array_key_last($routes)]->key();
+
+            if (isset($recordPairs[$recordPair])) {
                 $issues[] = PipelineIssue::warning(
                     sprintf(
-                        '%s already reaches %s through another node. Both connections stay live, and each item is delivered once.',
+                        '%s also reaches %s from another source node. Each source node delivers on its own, so an item can be sent twice.',
                         $this->sourceName($sourceNode, $sources),
                         $this->destinationName($destinationNode, $destinations),
                     ),
                     $sourceNode->id,
                 );
-            } else {
-                $byRecordPair[$recordPair] = true;
             }
 
-            $routes[] = $route;
+            $recordPairs[$recordPair] = true;
         }
 
         foreach ($graph->nodes as $node) {
@@ -178,7 +180,7 @@ class PipelineGraphCompiler
      * @param  Collection<int, Source>  $sources
      * @param  Collection<int, Destination>  $destinations
      */
-    private function routeFor(array $path, array $nodesById, Collection $sources, Collection $destinations): CompiledRoute
+    private function routeFor(array $path, array $nodesById, Collection $sources, Collection $destinations, int $order = 0): CompiledRoute
     {
         $sourceNode = $nodesById[$path[0]];
         $destinationNode = $nodesById[$path[array_key_last($path)]];
@@ -252,7 +254,37 @@ class PipelineGraphCompiler
             filter: $rules === [] ? null : ['rules' => $rules],
             transform: null,
             mapping: $mapping,
+            order: $order,
         );
+    }
+
+    /**
+     * Sort parallel paths top to bottom (then left to right) by the nodes
+     * after the source, so the highest path on the canvas runs first.
+     *
+     * @param  list<list<string>>  $paths
+     * @param  array<string, PipelineNode>  $nodesById
+     * @return list<list<string>>
+     */
+    private function inCanvasOrder(array $paths, array $nodesById): array
+    {
+        usort($paths, function (array $a, array $b) use ($nodesById): int {
+            $count = min(count($a), count($b));
+
+            for ($i = 1; $i < $count; $i++) {
+                $left = $nodesById[$a[$i]];
+                $right = $nodesById[$b[$i]];
+                $compare = [$left->y, $left->x] <=> [$right->y, $right->x];
+
+                if ($compare !== 0) {
+                    return $compare;
+                }
+            }
+
+            return count($a) <=> count($b);
+        });
+
+        return $paths;
     }
 
     /**

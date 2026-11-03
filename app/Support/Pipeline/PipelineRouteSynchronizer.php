@@ -12,10 +12,14 @@ use Illuminate\Support\Facades\DB;
  * Writes compiled routes into the project's broadcasts rows, which is what
  * the dispatcher, the delivery history and the duplicate guard key on.
  *
- * Routes are matched to rows by source and destination record, so redrawing
- * the graph around the same pair keeps the row — and with it the delivery
- * history and any auto-pause. Rows no longer in the
- * graph are archived, never deleted; a row that comes back is restored.
+ * Every canvas path owns one row; paths from the same source node to the
+ * same destination node share a route group so the runner sends an item
+ * once per group. Rows are matched by the path's key
+ * first; a path whose key is new (a node was added or removed along it)
+ * takes over an unclaimed row for the same source and destination, so
+ * redrawing the graph keeps the delivery history and any auto-pause. Rows no
+ * longer in the graph are archived, never deleted; a row that comes back is
+ * restored.
  */
 class PipelineRouteSynchronizer
 {
@@ -28,28 +32,61 @@ class PipelineRouteSynchronizer
     public function sync(Project $project, array $routes): array
     {
         return DB::transaction(function () use ($project, $routes): array {
-            $existing = $project->broadcasts()->get();
-            $kept = [];
-            $live = [];
+            $existing = $project->broadcasts()->orderBy('id')->get();
+            $pathKeys = [];
 
             foreach ($routes as $route) {
+                $pathKeys[$route->pathKey()] = true;
+            }
+
+            /** @var array<int, Broadcast> $claimed  Route index => row. */
+            $claimed = [];
+            /** @var array<int, true> $kept  Row id => true. */
+            $kept = [];
+
+            // Exact path matches first, so a reshuffle never steals a row
+            // that still belongs to an unchanged path.
+            foreach ($routes as $index => $route) {
                 $match = $existing->first(
-                    fn (Broadcast $broadcast): bool => (int) $broadcast->source_id === $route->sourceId
-                        && (int) $broadcast->destination_id === $route->destinationId,
+                    fn (Broadcast $broadcast): bool => $broadcast->route_key === $route->pathKey()
+                        && ! isset($kept[(int) $broadcast->getKey()]),
                 );
 
                 if ($match instanceof Broadcast) {
-                    // A second canvas path for the same source and destination
-                    // shares this row. The first path owns the filter, transform,
-                    // and mapping; rewriting them would drop that sending.
-                    if (isset($kept[(int) $match->getKey()])) {
-                        $live[] = $match;
+                    $claimed[$index] = $match;
+                    $kept[(int) $match->getKey()] = true;
+                }
+            }
 
-                        continue;
-                    }
+            // Then any unclaimed row for the same pair whose path is gone
+            // (or that predates path keys).
+            foreach ($routes as $index => $route) {
+                if (isset($claimed[$index])) {
+                    continue;
+                }
 
+                $match = $existing->first(
+                    fn (Broadcast $broadcast): bool => (int) $broadcast->source_id === $route->sourceId
+                        && (int) $broadcast->destination_id === $route->destinationId
+                        && ! isset($kept[(int) $broadcast->getKey()])
+                        && ($broadcast->route_key === null || ! isset($pathKeys[$broadcast->route_key])),
+                );
+
+                if ($match instanceof Broadcast) {
+                    $claimed[$index] = $match;
+                    $kept[(int) $match->getKey()] = true;
+                }
+            }
+
+            $live = [];
+
+            foreach ($routes as $index => $route) {
+                $match = $claimed[$index] ?? null;
+
+                if ($match instanceof Broadcast) {
                     $match->fill([
                         'name' => $route->name,
+                        ...$route->rowKeys(),
                         'filter' => $route->filter,
                         'transform' => $route->transform,
                         'mapping' => $route->mapping,
@@ -60,7 +97,6 @@ class PipelineRouteSynchronizer
                         $match->restore();
                     }
 
-                    $kept[(int) $match->getKey()] = true;
                     $live[] = $match;
 
                     continue;
@@ -72,6 +108,7 @@ class PipelineRouteSynchronizer
                     'name' => $route->name,
                     'source_id' => $route->sourceId,
                     'destination_id' => $route->destinationId,
+                    ...$route->rowKeys(),
                     'filter' => $route->filter,
                     'transform' => $route->transform,
                     'mapping' => $route->mapping,
@@ -80,7 +117,6 @@ class PipelineRouteSynchronizer
 
                 $kept[(int) $created->getKey()] = true;
                 $live[] = $created;
-                $existing->push($created);
             }
 
             foreach ($existing as $broadcast) {

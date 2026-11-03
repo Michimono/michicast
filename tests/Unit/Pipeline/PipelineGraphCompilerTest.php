@@ -185,24 +185,37 @@ class PipelineGraphCompilerTest extends TestCase
         ], $compilation->routes[0]->filter['rules']);
     }
 
-    public function test_two_paths_between_the_same_pair_are_refused(): void
+    public function test_parallel_paths_between_the_same_pair_each_become_a_route(): void
     {
         $compilation = $this->compile([
             'nodes' => [
                 $this->node('s', 'source', ['source_id' => 1]),
-                $this->node('f', 'filter', ['rules' => [['type' => 'contains', 'field' => 'title', 'value' => 'cats']]]),
+                $this->node('f1', 'filter', ['rules' => [['type' => 'title_matches', 'field' => 'title', 'value' => '\[RFC\]']]]),
+                $this->node('f2', 'filter', ['rules' => [['type' => 'title_matches', 'field' => 'title', 'value' => '\[VOTE\]']]]),
                 $this->node('d', 'destination', ['destination_id' => 10]),
             ],
-            'edges' => [$this->edge('s', 'd'), $this->edge('s', 'f'), $this->edge('f', 'd')],
+            'edges' => [$this->edge('s', 'f1'), $this->edge('s', 'f2'), $this->edge('f1', 'd'), $this->edge('f2', 'd')],
         ]);
 
-        $this->assertSame([], $compilation->routes);
-        $this->assertTrue($compilation->hasErrors());
+        $this->assertFalse($compilation->hasErrors());
+        $this->assertCount(2, $compilation->routes);
+        $this->assertSame(['1:10', '1:10'], array_map(static fn (CompiledRoute $route): string => $route->key(), $compilation->routes));
+        $this->assertNotSame($compilation->routes[0]->pathKey(), $compilation->routes[1]->pathKey());
+
+        $values = array_map(static fn (CompiledRoute $route): string => $route->filter['rules'][0]['value'] ?? '', $compilation->routes);
+        sort($values);
+        $this->assertSame(['\[RFC\]', '\[VOTE\]'], $values);
+
+        $this->assertCount(1, $compilation->issues);
+        $this->assertSame('warning', $compilation->issues[0]->level);
         $this->assertSame('d', $compilation->issues[0]->nodeId);
         $this->assertStringContainsString('2 paths', $compilation->issues[0]->message);
+        $this->assertStringContainsString('sent once', $compilation->issues[0]->message);
+        $this->assertSame($compilation->routes[0]->groupKey(), $compilation->routes[1]->groupKey());
+        $this->assertSame([0, 1], array_map(static fn (CompiledRoute $route): int => $route->order, $compilation->routes));
     }
 
-    public function test_two_nodes_for_the_same_records_are_refused(): void
+    public function test_two_nodes_for_the_same_records_each_become_a_route(): void
     {
         $compilation = $this->compile([
             'nodes' => [
@@ -219,9 +232,12 @@ class PipelineGraphCompilerTest extends TestCase
         $this->assertSame(['s2', 'd'], $compilation->routes[1]->nodeIds);
         $this->assertFalse($compilation->hasErrors());
         $this->assertSame('warning', $compilation->issues[0]->level);
+        $this->assertCount(1, $compilation->issues);
         $this->assertSame('s2', $compilation->issues[0]->nodeId);
-        $this->assertStringContainsString('already reaches', $compilation->issues[0]->message);
-        $this->assertStringContainsString('delivered once', $compilation->issues[0]->message);
+        $this->assertStringContainsString('another source node', $compilation->issues[0]->message);
+        $this->assertStringContainsString('sent twice', $compilation->issues[0]->message);
+        $this->assertNotSame($compilation->routes[0]->pathKey(), $compilation->routes[1]->pathKey());
+        $this->assertNotSame($compilation->routes[0]->groupKey(), $compilation->routes[1]->groupKey());
     }
 
     public function test_a_broken_node_blocks_its_paths_and_is_reported(): void

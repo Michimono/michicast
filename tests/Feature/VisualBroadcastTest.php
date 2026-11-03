@@ -264,7 +264,7 @@ class VisualBroadcastTest extends TestCase
         $this->assertSame(0, Broadcast::query()->where('project_id', $project->getKey())->count());
     }
 
-    public function test_two_nodes_for_the_same_source_stay_live_and_deliver_once(): void
+    public function test_two_nodes_for_the_same_source_each_deliver(): void
     {
         $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
 
@@ -290,8 +290,9 @@ class VisualBroadcastTest extends TestCase
         $response->assertJsonPath('routes.1.node_ids', ['s2', 'd']);
         $response->assertJsonPath('issues.0.level', 'warning');
         $response->assertJsonPath('issues.0.node_id', 's2');
+        $this->assertNotSame($response->json('routes.0.broadcast_id'), $response->json('routes.1.broadcast_id'));
 
-        $this->assertSame(1, Broadcast::query()->where('project_id', $project->getKey())->count());
+        $this->assertSame(2, Broadcast::query()->where('project_id', $project->getKey())->count());
 
         Broadcast::query()->where('project_id', $project->getKey())->update([
             'created_at' => Carbon::parse('2026-03-01 00:00:00', 'UTC'),
@@ -301,10 +302,129 @@ class VisualBroadcastTest extends TestCase
         $this->assertTrue($this->app->make(ExecutingProjectRunner::class)->run($project->refresh()));
 
         $this->assertSame(
-            2,
+            4,
             ContentDelivery::query()->where('status', DeliveryStatus::Delivered)->count(),
-            'Both feed items are sent once, including through the repeated source node.',
+            'Each source node is its own path, so both feed items are sent once per node.',
         );
+    }
+
+    public function test_parallel_filters_from_one_source_node_send_an_item_once(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-15 10:00:00', 'UTC'));
+
+        [$user, $organization, $project] = $this->visualProject(active: true);
+        [$feed] = $this->twoSources($project);
+        [$news] = $this->twoDestinations($project);
+
+        $graph = [
+            'nodes' => [
+                ['id' => 's', 'type' => 'source', 'x' => 0, 'y' => 0, 'config' => ['source_id' => $feed->getKey()]],
+                ['id' => 'pokemon', 'type' => 'filter', 'x' => 300, 'y' => 0, 'config' => [
+                    'rules' => [['type' => 'contains', 'field' => 'title', 'value' => 'pokemon']],
+                ]],
+                ['id' => 'any', 'type' => 'filter', 'x' => 300, 'y' => 200, 'config' => [
+                    'rules' => [['type' => 'contains', 'field' => 'body', 'value' => '.']],
+                ]],
+                ['id' => 'unrelated', 'type' => 'filter', 'x' => 300, 'y' => 400, 'config' => [
+                    'rules' => [['type' => 'contains', 'field' => 'title', 'value' => 'nothing matches this']],
+                ]],
+                ['id' => 'd', 'type' => 'destination', 'x' => 600, 'y' => 100, 'config' => ['destination_id' => $news->getKey()]],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'from' => 's', 'to' => 'pokemon'],
+                ['id' => 'e2', 'from' => 's', 'to' => 'any'],
+                ['id' => 'e3', 'from' => 's', 'to' => 'unrelated'],
+                ['id' => 'e4', 'from' => 'pokemon', 'to' => 'd'],
+                ['id' => 'e5', 'from' => 'any', 'to' => 'd'],
+                ['id' => 'e6', 'from' => 'unrelated', 'to' => 'd'],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->patchJson(route('pipelines.update', [$organization, $project]), ['graph' => $graph]);
+
+        $response->assertOk()->assertJsonCount(3, 'routes');
+        $this->assertSame([], array_values(array_filter(
+            $response->json('issues'),
+            static fn (array $issue): bool => $issue['level'] === 'error',
+        )));
+        $this->assertSame(3, Broadcast::query()->where('project_id', $project->getKey())->notArchived()->count());
+
+        $ids = Broadcast::query()->where('project_id', $project->getKey())->orderBy('id')->pluck('id')->all();
+
+        // Saving the same graph again keeps every path on its own row.
+        $this->actingAs($user)->patchJson(route('pipelines.update', [$organization, $project]), ['graph' => $graph])->assertOk();
+        $this->assertSame($ids, Broadcast::query()->where('project_id', $project->getKey())->notArchived()->orderBy('id')->pluck('id')->all());
+
+        Broadcast::query()->where('project_id', $project->getKey())->update(['created_at' => Carbon::parse('2026-03-01 00:00:00', 'UTC')]);
+
+        $this->recordingDestination();
+        $this->assertTrue($this->app->make(ExecutingProjectRunner::class)->run($project->refresh()));
+
+        $delivered = ContentDelivery::query()
+            ->where('status', DeliveryStatus::Delivered)
+            ->with('contentItem')
+            ->get()
+            ->map(static fn (ContentDelivery $delivery): string => (string) $delivery->contentItem?->external_id)
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame(
+            ['keep-1', 'skip-1'],
+            $delivered,
+            'An item passing two parallel paths from one source node is sent once; the third path matches nothing.',
+        );
+
+        $keep = ContentDelivery::query()
+            ->where('status', DeliveryStatus::Delivered)
+            ->whereHas('contentItem', static fn ($query) => $query->where('external_id', 'keep-1'))
+            ->with('broadcast')
+            ->sole();
+        $this->assertSame(
+            'pokemon',
+            $keep->broadcast?->filter['rules'][0]['value'] ?? null,
+            'The highest matching path on the canvas is the one that sends it.',
+        );
+
+        // A second run sends nothing new through either path.
+        $this->travelTo(Carbon::parse('2026-03-15 11:00:00', 'UTC'));
+        $this->assertTrue($this->app->make(ExecutingProjectRunner::class)->run($project->refresh()));
+        $this->assertSame(2, ContentDelivery::query()->where('status', DeliveryStatus::Delivered)->count());
+    }
+
+    public function test_a_legacy_row_is_claimed_by_its_path_and_keeps_its_history(): void
+    {
+        [$user, $organization, $project] = $this->visualProject();
+        [$feed] = $this->twoSources($project);
+        [$news] = $this->twoDestinations($project);
+
+        $legacy = $project->broadcasts()->create([
+            'name' => 'Main feed → News channel',
+            'source_id' => $feed->getKey(),
+            'destination_id' => $news->getKey(),
+        ]);
+        $this->assertNull($legacy->route_key);
+
+        $this->actingAs($user)->patchJson(route('pipelines.update', [$organization, $project]), ['graph' => [
+            'nodes' => [
+                ['id' => 's', 'type' => 'source', 'x' => 0, 'y' => 0, 'config' => ['source_id' => $feed->getKey()]],
+                ['id' => 'f', 'type' => 'filter', 'x' => 300, 'y' => 0, 'config' => [
+                    'rules' => [['type' => 'contains', 'field' => 'title', 'value' => 'pokemon']],
+                ]],
+                ['id' => 'd', 'type' => 'destination', 'x' => 600, 'y' => 0, 'config' => ['destination_id' => $news->getKey()]],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'from' => 's', 'to' => 'd'],
+                ['id' => 'e2', 'from' => 's', 'to' => 'f'],
+                ['id' => 'e3', 'from' => 'f', 'to' => 'd'],
+            ],
+        ]])->assertOk()->assertJsonCount(2, 'routes');
+
+        $rows = Broadcast::query()->where('project_id', $project->getKey())->notArchived()->get();
+        $this->assertCount(2, $rows);
+        $this->assertTrue($rows->contains(fn (Broadcast $row): bool => $row->is($legacy)));
+        $this->assertNotNull($legacy->refresh()->route_key);
+        $this->assertCount(2, $rows->pluck('route_key')->unique());
     }
 
     public function test_each_mapping_node_sends_its_own_fields(): void

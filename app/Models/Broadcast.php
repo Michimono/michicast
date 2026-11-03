@@ -18,6 +18,9 @@ use Illuminate\Support\Carbon;
  * a list of closed rules evaluated with AND; transform JSON holds a template
  * and optional formatting rules. Mapping JSON is an ordered list of steps.
  *
+ * @property string|null $route_key
+ * @property string|null $route_group
+ * @property int $route_order
  * @property array{rules?: list<array<string, mixed>>}|null $filter
  * @property array{template?: string, rules?: list<array<string, mixed>>}|null $transform
  * @property array{version?: int, steps?: list<array<string, mixed>>}|null $mapping
@@ -26,7 +29,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $failure_pause_reason
  * @property Carbon|null $archived_at
  */
-#[Fillable(['name', 'source_id', 'destination_id', 'filter', 'transform', 'mapping'])]
+#[Fillable(['name', 'source_id', 'destination_id', 'route_key', 'route_group', 'route_order', 'filter', 'transform', 'mapping'])]
 class Broadcast extends Model
 {
     /** @use HasFactory<BroadcastFactory> */
