@@ -1,5 +1,21 @@
 # Michicast
 
+Michicast collects content from sources such as RSS feeds and Reddit, filters and formats it, and delivers matching posts to destinations such as Telegram.
+
+Its visual pipeline editor lets you connect sources, filters, mappings and destinations to build automated broadcasts.
+
+## Who it's for
+
+Michicast is for community managers, channel owners and individuals who want to share relevant news and updates automatically without manually copying posts between services.
+
+## Built with
+
+- PHP 8.4+ and Laravel
+- MySQL 8+ or MariaDB 10.6+
+- Redis and Laravel Horizon for queued background work
+- Node.js and Vite for frontend assets
+- Docker Compose for deployment
+
 ## Local setup
 
 Requires PHP 8.4+, Composer, Node and MySQL 8+ (or MariaDB 10.6+). The application and the test suite both run on MySQL, so development matches production; there is no SQLite fallback.
