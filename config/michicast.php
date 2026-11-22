@@ -37,6 +37,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Documentation
+    |--------------------------------------------------------------------------
+    |
+    | Where the product's public documentation starts. The landing page links
+    | to it once DOCUMENTATION_URL is set, and shows no documentation link
+    | while it is empty.
+    |
+    */
+
+    'documentation_url' => env('DOCUMENTATION_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Platform Admins
     |--------------------------------------------------------------------------
     |

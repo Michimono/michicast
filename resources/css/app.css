@@ -55,6 +55,17 @@
     --color-node-destination: #be3a7a;
 
     --radius-card: 0.75rem;
+
+    /*
+     * Elevation for the public site. Tinted with ink rather than black, so a
+     * raised surface casts a shadow that belongs to the palette.
+     */
+    --shadow-float:
+        0 1px 2px color-mix(in srgb, var(--color-ink) 8%, transparent),
+        0 16px 32px -16px color-mix(in srgb, var(--color-ink) 32%, transparent);
+    --shadow-canvas:
+        0 1px 2px color-mix(in srgb, var(--color-ink) 6%, transparent),
+        0 48px 80px -40px color-mix(in srgb, var(--color-ink) 40%, transparent);
 }
 
 :root {
@@ -144,6 +155,20 @@
 @utility house-mark-cat {
     -webkit-mask-image: url('../../public/images/brand/logo-day-full.svg');
     mask-image: url('../../public/images/brand/logo-day-full.svg');
+}
+
+/*
+ * The pipeline editor's dotted grid as a still backdrop. The public site
+ * borrows it so the page reads as the canvas the product is built around.
+ * Same dot recipe as .pipeline-canvas below; that one also pans and zooms.
+ */
+@utility canvas-dots {
+    background-image: radial-gradient(
+        circle,
+        color-mix(in srgb, var(--color-line-strong) 70%, transparent) 1px,
+        transparent 1.25px
+    );
+    background-size: 24px 24px;
 }
 
 /*

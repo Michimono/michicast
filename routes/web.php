@@ -39,6 +39,7 @@ use App\Http\Controllers\DueProjectController;
 use App\Http\Controllers\EnabledBroadcastController;
 use App\Http\Controllers\FontStylesheetController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ImmediateProjectRunController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\MemberController;
@@ -79,7 +80,7 @@ use App\Models\Project;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'home')->name('home');
+Route::get('/', HomeController::class)->name('home');
 
 Route::get('/up', HealthController::class)->name('health');
 
