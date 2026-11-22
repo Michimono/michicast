@@ -49,7 +49,10 @@ class BrandIdentityTest extends TestCase
 
     public function test_empty_states_show_the_sitting_cat_with_a_playful_line(): void
     {
-        $response = $this->get(route('home'));
+        $user = User::factory()->create();
+        $organization = Organization::factory()->ownedBy($user)->create();
+
+        $response = $this->actingAs($user)->get(route('broadcasts.index', $organization));
 
         $response->assertOk();
         $response->assertSee('Nothing to chase yet');

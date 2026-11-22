@@ -37,6 +37,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Source Repository
+    |--------------------------------------------------------------------------
+    |
+    | Where the project's source code lives. The landing page links to it.
+    | Set REPOSITORY_URL to an empty value to hide the link, for example on
+    | a private fork.
+    |
+    */
+
+    'repository_url' => env('REPOSITORY_URL', 'https://github.com/Michimono/michicast'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Platform Admins
     |--------------------------------------------------------------------------
     |
