@@ -21,37 +21,37 @@ class HomeController extends Controller
         DestinationProviderRegistry $destinations,
         RegistrationSettings $registration,
     ): View {
-        $repositoryUrl = trim((string) config('michicast.repository_url'));
-
         return view('home', [
             'sources' => $this->sourceNames($sources),
             'destinations' => $this->destinationNames($destinations),
             'registrationOpen' => $registration->acceptsRegistrations(),
-            'repositoryUrl' => $repositoryUrl === '' ? null : $repositoryUrl,
+            'documentationUrl' => $this->link('michicast.documentation_url'),
+            'contactEmail' => $this->link('michicast.support_email'),
         ]);
     }
 
     /**
-     * The short names of the source types a user can pick.
+     * The short names of the source types a user can pick, keyed by type.
      *
-     * @return list<string>
+     * @return array<string, string>
      */
     private function sourceNames(SourceProviderRegistry $sources): array
     {
         $names = [];
 
         foreach ($sources->options() as $type => $label) {
-            $names[] = SourceTypePresentation::for($type, $label)['name'];
+            $names[$type] = SourceTypePresentation::for($type, $label)['name'];
         }
 
         return $names;
     }
 
     /**
-     * The short names of the live destination types. Testing-only types are
-     * left out even where they are offered: they deliver nowhere.
+     * The short names of the live destination types, keyed by type.
+     * Testing-only types are left out even where they are offered: they
+     * deliver nowhere.
      *
-     * @return list<string>
+     * @return array<string, string>
      */
     private function destinationNames(DestinationProviderRegistry $destinations): array
     {
@@ -63,9 +63,19 @@ class HomeController extends Controller
                 continue;
             }
 
-            $names[] = DestinationTypePresentation::for($type, $label)['name'];
+            $names[$type] = DestinationTypePresentation::for($type, $label)['name'];
         }
 
         return $names;
+    }
+
+    /**
+     * An address from config, or null when it is left empty.
+     */
+    private function link(string $key): ?string
+    {
+        $url = trim((string) config($key));
+
+        return $url === '' ? null : $url;
     }
 }

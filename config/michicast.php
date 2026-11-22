@@ -37,16 +37,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Source Repository
+    | Documentation
     |--------------------------------------------------------------------------
     |
-    | Where the project's source code lives. The landing page links to it.
-    | Set REPOSITORY_URL to an empty value to hide the link, for example on
-    | a private fork.
+    | Where the product's public documentation starts. The landing page links
+    | to it once DOCUMENTATION_URL is set, and shows no documentation link
+    | while it is empty.
     |
     */
 
-    'repository_url' => env('REPOSITORY_URL', 'https://github.com/Michimono/michicast'),
+    'documentation_url' => env('DOCUMENTATION_URL'),
 
     /*
     |--------------------------------------------------------------------------

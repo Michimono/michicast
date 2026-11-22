@@ -12,8 +12,12 @@ export default defineConfig({
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],
                 }),
+                // The italic is the public site's headline accent. Only the
+                // upright face is preloaded, so app screens do not pay for it.
                 bunny('Instrument Serif', {
                     weights: [400],
+                    styles: ['normal', 'italic'],
+                    preload: [{ weight: 400, style: 'normal' }],
                 }),
                 bunny('IBM Plex Mono', {
                     weights: [400, 500],

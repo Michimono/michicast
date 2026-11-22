@@ -1,4 +1,4 @@
-@props(['title' => null, 'description' => null, 'footer' => true, 'centered' => false])
+@props(['title' => null, 'footer' => true, 'centered' => false])
 
 @inject('currentOrganization', App\Support\CurrentOrganization::class)
 @inject('currentProject', App\Support\CurrentProject::class)
@@ -18,10 +18,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title>{{ $title ? $title.' - '.config('app.name') : config('app.name') }}</title>
-
-        @if ($description)
-            <meta name="description" content="{{ $description }}">
-        @endif
 
         <link rel="icon" href="/images/brand/logo-day-mark.svg" type="image/svg+xml">
 
