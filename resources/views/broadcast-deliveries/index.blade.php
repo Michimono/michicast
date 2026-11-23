@@ -53,13 +53,18 @@
                             <span class="text-sm text-ink">
                                 {{ $delivery->contentItem?->title ?: ($delivery->contentItem?->canonical_url ?: 'Item #'.$delivery->content_item_id) }}
                             </span>
-                            <span @class([
-                                'font-mono text-xs',
-                                'text-state-ok' => $delivery->status === App\Enums\DeliveryStatus::Delivered,
-                                'text-state-fail' => $delivery->status === App\Enums\DeliveryStatus::Failed,
-                                'text-state-skip' => $delivery->status === App\Enums\DeliveryStatus::Skipped,
-                                'text-muted' => $delivery->status === App\Enums\DeliveryStatus::Pending,
-                            ])>{{ $delivery->status->label() }}@if ($delivery->status === App\Enums\DeliveryStatus::Failed && $delivery->failure) ({{ strtolower($delivery->failure->label()) }})@endif</span>
+                            <span class="flex flex-wrap items-baseline justify-end gap-2">
+                                <span @class([
+                                    'font-mono text-xs',
+                                    'text-state-ok' => $delivery->status === App\Enums\DeliveryStatus::Delivered,
+                                    'text-state-fail' => $delivery->status === App\Enums\DeliveryStatus::Failed,
+                                    'text-state-skip' => $delivery->status === App\Enums\DeliveryStatus::Skipped,
+                                    'text-muted' => $delivery->status === App\Enums\DeliveryStatus::Pending,
+                                ])>{{ $delivery->status->label() }}@if ($delivery->status === App\Enums\DeliveryStatus::Failed && $delivery->failure) ({{ strtolower($delivery->failure->label()) }})@endif</span>
+                                @if ($delivery->isWaitingToSend())
+                                    <span class="font-mono text-xs text-muted">Scheduled for <x-timestamp :value="$delivery->scheduled_for" format="H:i" /></span>
+                                @endif
+                            </span>
                         </div>
 
                         <p class="font-mono text-xs text-muted">

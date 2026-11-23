@@ -40,6 +40,7 @@ class StoreDestinationRequest extends FormRequest
             'credentials' => ['nullable', 'array'],
             ...$this->configurationRules($this->type()),
             ...$this->credentialRules($this->type()),
+            ...$this->pacingRules(),
         ];
     }
 
@@ -77,7 +78,10 @@ class StoreDestinationRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return $this->settingAttributes($this->type());
+        return [
+            ...$this->settingAttributes($this->type()),
+            ...$this->pacingAttributeNames(),
+        ];
     }
 
     public function name(): string

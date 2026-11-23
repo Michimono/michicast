@@ -38,6 +38,7 @@ class DestinationController extends Controller
             'name' => $request->name(),
             'config' => $request->configuration(),
             'credentials' => $request->credentials(),
+            ...$request->pacing(),
         ]);
 
         if ($request->expectsJson()) {

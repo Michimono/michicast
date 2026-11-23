@@ -146,6 +146,67 @@ trait ValidatesDestinationSettings
         return $credentials;
     }
 
+    /**
+     * Optional send pace. Both rate fields are required together; a blank
+     * pair means send immediately. Absent keys are left untouched so a save
+     * from the pipeline canvas does not clear a pace set on this form.
+     *
+     * @return array<string, mixed>
+     */
+    protected function pacingRules(): array
+    {
+        return [
+            'rate_limit_count' => ['nullable', 'integer', 'min:1', 'max:1000', 'required_with:rate_limit_minutes'],
+            'rate_limit_minutes' => ['nullable', 'integer', 'min:1', 'max:10080', 'required_with:rate_limit_count'],
+            'max_queue_size' => ['nullable', 'integer', 'min:1', 'max:100000'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'rate_limit_count.required_with' => 'Enter how many messages as well as the minutes, or leave both empty.',
+            'rate_limit_minutes.required_with' => 'Enter the minutes as well as how many messages, or leave both empty.',
+            'rate_limit_count.min' => 'Messages must be at least 1.',
+            'rate_limit_minutes.min' => 'Minutes must be at least 1.',
+            'max_queue_size.min' => 'Max waiting must be at least 1.',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function pacingAttributeNames(): array
+    {
+        return [
+            'rate_limit_count' => 'messages',
+            'rate_limit_minutes' => 'minutes',
+            'max_queue_size' => 'max waiting',
+        ];
+    }
+
+    /**
+     * @return array<string, int|null>
+     */
+    public function pacing(): array
+    {
+        $pacing = [];
+
+        foreach (['rate_limit_count', 'rate_limit_minutes', 'max_queue_size'] as $field) {
+            if (! $this->exists($field)) {
+                continue;
+            }
+
+            $value = $this->input($field);
+            $pacing[$field] = $value === null || $value === '' ? null : (int) $value;
+        }
+
+        return $pacing;
+    }
+
     private function registry(): DestinationProviderRegistry
     {
         return $this->container->make(DestinationProviderRegistry::class);
