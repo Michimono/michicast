@@ -77,6 +77,12 @@
                             <x-credential-fields :fields="$credentialFields" :masks="$credentialMasks" preserving size="lg" grid />
                         </div>
 
+                        <x-destination-pacing
+                            :count="$destination->rate_limit_count"
+                            :minutes="$destination->rate_limit_minutes"
+                            :queue="$destination->max_queue_size"
+                        />
+
                         <div class="flex flex-col-reverse gap-3 border-t border-line pt-6 sm:flex-row sm:justify-end">
                             @can('testConnection', $destination)
                                 @if ($supportsConnectionTest)

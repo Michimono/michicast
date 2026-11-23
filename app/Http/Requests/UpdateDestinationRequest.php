@@ -32,6 +32,7 @@ class UpdateDestinationRequest extends FormRequest
             'credentials' => ['nullable', 'array'],
             ...$this->configurationRules($type),
             ...$this->optionalCredentialRules($type),
+            ...$this->pacingRules(),
         ];
     }
 
@@ -40,7 +41,10 @@ class UpdateDestinationRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return $this->settingAttributes($this->destination()->type);
+        return [
+            ...$this->settingAttributes($this->destination()->type),
+            ...$this->pacingAttributeNames(),
+        ];
     }
 
     public function name(): string

@@ -33,6 +33,7 @@ use Illuminate\Support\Carbon;
  * @property DeliveryFailure|null $failure
  * @property Carbon|null $retry_requested_at
  * @property Carbon $attempted_at
+ * @property Carbon|null $scheduled_for
  * @property Carbon|null $finished_at
  * @property string|null $published_message
  * @property array<string, mixed>|null $published_payload
@@ -51,6 +52,7 @@ use Illuminate\Support\Carbon;
     'retry_after_seconds',
     'retry_requested_at',
     'attempted_at',
+    'scheduled_for',
     'finished_at',
 ])]
 class ContentDelivery extends Model
@@ -92,7 +94,9 @@ class ContentDelivery extends Model
 
         return match ($this->status) {
             DeliveryStatus::Delivered => 'Already sent to this destination.',
-            DeliveryStatus::Pending => 'Another run is already sending this to this destination.',
+            DeliveryStatus::Pending => $this->scheduled_for !== null
+                ? 'Waiting to send to this destination.'
+                : 'Another run is already sending this to this destination.',
             DeliveryStatus::Failed => 'This destination rejected it permanently, so it is not sent again.',
             default => 'Already handled for this destination.',
         };
@@ -121,6 +125,14 @@ class ContentDelivery extends Model
     public function isRetryQueued(): bool
     {
         return $this->retry_requested_at !== null;
+    }
+
+    /**
+     * Whether this route is waiting for its scheduled send time.
+     */
+    public function isWaitingToSend(): bool
+    {
+        return $this->status === DeliveryStatus::Pending && $this->scheduled_for !== null;
     }
 
     /**
@@ -207,6 +219,7 @@ class ContentDelivery extends Model
             'published_payload' => 'array',
             'retry_requested_at' => 'datetime',
             'attempted_at' => 'datetime',
+            'scheduled_for' => 'datetime',
             'finished_at' => 'datetime',
         ];
     }

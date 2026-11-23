@@ -20,12 +20,15 @@ use Illuminate\Support\Carbon;
  *
  * @property array<string, mixed>|null $config
  * @property array<string, mixed>|null $credentials
+ * @property int|null $rate_limit_count
+ * @property int|null $rate_limit_minutes
+ * @property int|null $max_queue_size
  * @property int $consecutive_failures
  * @property Carbon|null $archived_at
  * @property Carbon|null $last_tested_at
  * @property bool|null $last_test_successful
  */
-#[Fillable(['name', 'type', 'config', 'credentials'])]
+#[Fillable(['name', 'type', 'config', 'credentials', 'rate_limit_count', 'rate_limit_minutes', 'max_queue_size'])]
 #[Hidden(['credentials'])]
 class Destination extends Model
 {
@@ -134,6 +137,9 @@ class Destination extends Model
         return [
             'config' => 'array',
             'credentials' => 'encrypted:array',
+            'rate_limit_count' => 'integer',
+            'rate_limit_minutes' => 'integer',
+            'max_queue_size' => 'integer',
             'consecutive_failures' => 'integer',
             'last_test_successful' => 'boolean',
             'last_tested_at' => 'datetime',

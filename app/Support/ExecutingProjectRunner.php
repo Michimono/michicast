@@ -23,6 +23,7 @@ use App\Support\Mapping\ContentMapper;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -49,6 +50,11 @@ use Throwable;
  * same claim-before-send publish, which reclaims the existing transient
  * failure row instead of inserting a second one. Every publish outcome is
  * appended as a ContentDeliveryAttempt so earlier failures stay visible.
+ *
+ * A destination with a send pace does not publish inside the run. The claim
+ * stays pending with a scheduled time, and a delayed job (or the minute
+ * scheduler, when the queue cannot delay) sends it later. Quota is consumed
+ * at that send, not when the delivery is queued.
  */
 class ExecutingProjectRunner implements ProjectRunner
 {
@@ -80,6 +86,8 @@ class ExecutingProjectRunner implements ProjectRunner
         private Clock $clock,
         private SecretRedactor $secrets,
         private QuotaMeter $meter,
+        private DestinationPacing $pacing,
+        private ScheduledDeliveryQueue $scheduledDeliveries,
     ) {}
 
     /**
@@ -659,131 +667,23 @@ class ExecutingProjectRunner implements ProjectRunner
             return;
         }
 
-        $maxAttempts = max(1, (int) config('michicast.retry.max_attempts'));
-        $defaultBackoff = max(0, (int) config('michicast.retry.backoff_seconds'));
-
-        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-            if ($this->pastDeadline($deadline)) {
-                $this->markDeliveryFailed(
-                    $delivery,
-                    $item,
-                    $broadcastRun,
-                    $project,
-                    $broadcast,
-                    $destination,
-                    DeliveryFailure::Transient,
-                    'The dispatch time budget ran out before the delivery could finish.',
-                    null,
-                    $isRetry,
-                );
-
-                return;
-            }
-
-            // Retries count as separate delivery attempts; dry runs never reach publish().
-            // On denial stop cleanly: no provider call, no failure counter, no hanging pending row.
-            $project->loadMissing('organization');
-            $organization = $project->organization;
-            $decision = $this->meter->consume($organization, QuotaMetric::Deliveries);
-
-            if (! $decision->allowed) {
-                $this->abandonDeliveryForQuota($delivery, $item, $decision);
-
-                throw new QuotaExceededException($decision, QuotaMetric::Deliveries);
-            }
-
-            try {
-                $result = $provider->publish($definition, $message);
-            } catch (Throwable $e) {
-                report($e);
-                $result = DeliveryResult::transientFailure((string) $this->secrets->redact($e->getMessage()));
-            }
-
-            if ($result->successful) {
-                $delivery->status = DeliveryStatus::Delivered;
-                $delivery->external_reference = $result->externalReference;
-                $delivery->published_message = $result->publishedMessage;
-                $delivery->published_payload = $result->publishedPayload === null ? null : [
-                    'content_item' => [
-                        'id' => $item->getKey(),
-                        'source_id' => $item->source_id,
-                        'external_id' => $item->external_id,
-                        'canonical_url' => $item->canonical_url,
-                    ],
-                    'broadcast_id' => $broadcast->getKey(),
-                    'attempt' => $attempt,
-                    ...$result->publishedPayload,
-                ];
-                $delivery->failure = null;
-                $delivery->error_detail = null;
-                $delivery->retry_after_seconds = null;
-                $delivery->finished_at = now();
-                $delivery->save();
-                $this->recordAttempt($delivery, $isRetry);
-                $this->advanceLifecycle($item, ContentItemLifecycle::Delivered);
-                $broadcastRun->items_delivered++;
-                $destination->recordSuccess();
-                $broadcast->recordSuccess();
-                $project->recordSuccess();
-
-                return;
-            }
-
-            if (! $result->isRetryable()) {
-                $this->markDeliveryFailed(
-                    $delivery,
-                    $item,
-                    $broadcastRun,
-                    $project,
-                    $broadcast,
-                    $destination,
-                    $result->failure ?? DeliveryFailure::Permanent,
-                    (string) $result->failureReason,
-                    $result->retryAfterSeconds,
-                    $isRetry,
-                );
-
-                return;
-            }
-
-            if ($attempt >= $maxAttempts) {
-                $this->markDeliveryFailed(
-                    $delivery,
-                    $item,
-                    $broadcastRun,
-                    $project,
-                    $broadcast,
-                    $destination,
-                    DeliveryFailure::Transient,
-                    (string) $result->failureReason,
-                    $result->retryAfterSeconds,
-                    $isRetry,
-                );
-
-                return;
-            }
-
-            $wait = $result->retryAfterSeconds ?? $defaultBackoff;
-
-            if (! $this->canWait($wait, $deadline)) {
-                $this->markDeliveryFailed(
-                    $delivery,
-                    $item,
-                    $broadcastRun,
-                    $project,
-                    $broadcast,
-                    $destination,
-                    DeliveryFailure::Transient,
-                    (string) $result->failureReason,
-                    $result->retryAfterSeconds,
-                    $isRetry,
-                );
-
-                return;
-            }
-
-            $this->clock->sleep($wait);
+        if ($this->scheduleIfPaced($project, $broadcastRun, $broadcast, $destination, $item, $delivery, $isRetry)) {
+            return;
         }
+
+        $this->publishClaimed(
+            $project,
+            $broadcastRun,
+            $broadcast,
+            $destination,
+            $item,
+            $provider,
+            $definition,
+            $message,
+            $deadline,
+            $delivery,
+            $isRetry,
+        );
     }
 
     private function markDeliveryFailed(
@@ -797,17 +697,24 @@ class ExecutingProjectRunner implements ProjectRunner
         string $reason,
         ?int $retryAfterSeconds,
         bool $isRetry,
+        bool $countsAsOutage = true,
     ): void {
         $reason = (string) $this->secrets->redact($reason);
         $delivery->status = DeliveryStatus::Failed;
         $delivery->failure = $failure;
         $delivery->error_detail = $reason;
         $delivery->retry_after_seconds = $retryAfterSeconds;
+        $delivery->scheduled_for = null;
         $delivery->finished_at = now();
         $delivery->save();
         $this->recordAttempt($delivery, $isRetry);
         $this->advanceLifecycle($item, ContentItemLifecycle::Failed);
-        $broadcastRun->items_failed++;
+        $this->rememberRunCount($broadcastRun, 'items_failed');
+
+        if (! $countsAsOutage) {
+            return;
+        }
+
         $destination->recordFailure();
         $project->recordFailure();
         $broadcast->recordFailure($reason);
@@ -899,6 +806,7 @@ class ExecutingProjectRunner implements ProjectRunner
                     'retry_after_seconds' => null,
                     'retry_requested_at' => null,
                     'attempted_at' => now(),
+                    'scheduled_for' => null,
                     'finished_at' => null,
                 ]);
 
@@ -1252,5 +1160,383 @@ class ExecutingProjectRunner implements ProjectRunner
         }
 
         return $organization;
+    }
+
+    /**
+     * Queue a claimed delivery when this destination paces its sends.
+     * Returns false when the delivery should be published now.
+     */
+    private function scheduleIfPaced(
+        Project $project,
+        BroadcastRun $broadcastRun,
+        Broadcast $broadcast,
+        Destination $destination,
+        ContentItem $item,
+        ContentDelivery $delivery,
+        bool $isRetry,
+    ): bool {
+        if (! $this->pacing->isActive($destination)) {
+            return false;
+        }
+
+        $pace = $this->pacing->reserve($destination, $delivery);
+
+        if ($pace->refused) {
+            $this->markDeliveryFailed(
+                $delivery,
+                $item,
+                $broadcastRun,
+                $project,
+                $broadcast,
+                $destination,
+                DeliveryFailure::Transient,
+                DestinationPacing::QUEUE_FULL_REASON,
+                null,
+                $isRetry,
+                countsAsOutage: false,
+            );
+
+            return true;
+        }
+
+        if ($pace->queued) {
+            $this->scheduledDeliveries->push($delivery);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Send every paced delivery whose time has arrived, oldest first.
+     */
+    public function deliverDue(): void
+    {
+        $ids = ContentDelivery::query()
+            ->where('status', DeliveryStatus::Pending->value)
+            ->whereNotNull('scheduled_for')
+            ->where('scheduled_for', '<=', now())
+            ->orderBy('scheduled_for')
+            ->orderBy('id')
+            ->pluck('id');
+
+        foreach ($ids as $id) {
+            $this->deliverScheduled((int) $id);
+        }
+    }
+
+    /**
+     * Send one paced delivery if it is still pending and due. A lost delayed
+     * job is recovered by deliverDue(); an early job waits.
+     */
+    public function deliverScheduled(int $deliveryId): void
+    {
+        try {
+            $this->sendIfDue($deliveryId);
+        } catch (QuotaExceededException) {
+            // The claim was released. A later run can try the item again.
+        }
+    }
+
+    private function sendIfDue(int $deliveryId): void
+    {
+        /** @var array{send: bool, delivery: ContentDelivery}|null $decision */
+        $decision = DB::transaction(function () use ($deliveryId): ?array {
+            $delivery = ContentDelivery::query()->whereKey($deliveryId)->lockForUpdate()->first();
+
+            if (! $delivery instanceof ContentDelivery
+                || $delivery->status !== DeliveryStatus::Pending
+                || $delivery->scheduled_for === null
+                || $delivery->scheduled_for->isFuture()) {
+                return null;
+            }
+
+            $destination = Destination::query()->whereKey($delivery->destination_id)->lockForUpdate()->first();
+
+            if (! $destination instanceof Destination) {
+                return null;
+            }
+
+            if ($this->pacing->windowIsFull($destination, $delivery, now())) {
+                $slot = $this->pacing->nextSlot($destination, $delivery, now());
+
+                if (! $slot->greaterThan(now())) {
+                    $slot = now()->addSecond();
+                }
+
+                $delivery->scheduled_for = $slot;
+                $delivery->save();
+
+                return ['send' => false, 'delivery' => $delivery];
+            }
+
+            $delivery->scheduled_for = null;
+            $delivery->attempted_at = now();
+            $delivery->save();
+
+            return ['send' => true, 'delivery' => $delivery];
+        });
+
+        if ($decision === null) {
+            return;
+        }
+
+        if (! $decision['send']) {
+            $this->scheduledDeliveries->push($decision['delivery']);
+
+            return;
+        }
+
+        $this->publishLoaded($decision['delivery']);
+    }
+
+    /**
+     * Publish a delivery that was already claimed and is clear to send.
+     */
+    private function publishLoaded(ContentDelivery $delivery): void
+    {
+        $delivery->loadMissing([
+            'contentItem',
+            'broadcast.destination',
+            'broadcast.source',
+            'broadcast.project.organization',
+            'broadcastRun',
+        ]);
+
+        $item = $delivery->contentItem;
+        $broadcast = $delivery->broadcast;
+        $broadcastRun = $delivery->broadcastRun;
+        $destination = $broadcast?->destination;
+        $project = $broadcast?->project;
+
+        if (! $item instanceof ContentItem
+            || ! $broadcast instanceof Broadcast
+            || ! $broadcastRun instanceof BroadcastRun
+            || ! $destination instanceof Destination
+            || ! $project instanceof Project) {
+            $delivery->status = DeliveryStatus::Failed;
+            $delivery->failure = DeliveryFailure::Transient;
+            $delivery->error_detail = 'This delivery could not be sent.';
+            $delivery->scheduled_for = null;
+            $delivery->finished_at = now();
+            $delivery->save();
+
+            return;
+        }
+
+        if (! $destination->isRunnable() || ! $broadcast->isRunnable()) {
+            $this->markDeliveryFailed(
+                $delivery,
+                $item,
+                $broadcastRun,
+                $project,
+                $broadcast,
+                $destination,
+                DeliveryFailure::Transient,
+                'This destination is no longer accepting messages.',
+                null,
+                $delivery->attempts()->exists(),
+                countsAsOutage: false,
+            );
+
+            return;
+        }
+
+        $broadcast->loadMissing('source');
+        $source = $broadcast->source;
+        $message = $this->mapper->prepare($broadcast, $item, $source instanceof Source ? $source->name : '');
+        $deadline = now()->addSeconds(max(1, (int) config('michicast.dispatch.time_budget')));
+
+        $this->publishClaimed(
+            $project,
+            $broadcastRun,
+            $broadcast,
+            $destination,
+            $item,
+            $this->destinations->get($destination->type),
+            $destination->toDefinition(),
+            $message,
+            $deadline,
+            $delivery,
+            $delivery->attempts()->exists(),
+        );
+    }
+
+    /**
+     * The attempt loop of publish(), for a delivery that is already claimed.
+     */
+    private function publishClaimed(
+        Project $project,
+        BroadcastRun $broadcastRun,
+        Broadcast $broadcast,
+        Destination $destination,
+        ContentItem $item,
+        DestinationProvider $provider,
+        DestinationDefinition $definition,
+        PreparedMessage $message,
+        ?CarbonInterface $deadline,
+        ContentDelivery $delivery,
+        bool $isRetry,
+    ): void {
+        $maxAttempts = max(1, (int) config('michicast.retry.max_attempts'));
+        $defaultBackoff = max(0, (int) config('michicast.retry.backoff_seconds'));
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            if ($this->pastDeadline($deadline)) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    DeliveryFailure::Transient,
+                    'The dispatch time budget ran out before the delivery could finish.',
+                    null,
+                    $isRetry,
+                );
+
+                return;
+            }
+
+            $project->loadMissing('organization');
+            $organization = $project->organization;
+            $decision = $this->meter->consume($organization, QuotaMetric::Deliveries);
+
+            if (! $decision->allowed) {
+                $this->abandonDeliveryForQuota($delivery, $item, $decision);
+
+                throw new QuotaExceededException($decision, QuotaMetric::Deliveries);
+            }
+
+            try {
+                $result = $provider->publish($definition, $message);
+            } catch (Throwable $e) {
+                report($e);
+                $result = DeliveryResult::transientFailure((string) $this->secrets->redact($e->getMessage()));
+            }
+
+            if ($result->successful) {
+                $delivery->status = DeliveryStatus::Delivered;
+                $delivery->external_reference = $result->externalReference;
+                $delivery->published_message = $result->publishedMessage;
+                $delivery->published_payload = $result->publishedPayload === null ? null : [
+                    'content_item' => [
+                        'id' => $item->getKey(),
+                        'source_id' => $item->source_id,
+                        'external_id' => $item->external_id,
+                        'canonical_url' => $item->canonical_url,
+                    ],
+                    'broadcast_id' => $broadcast->getKey(),
+                    'attempt' => $attempt,
+                    ...$result->publishedPayload,
+                ];
+                $delivery->failure = null;
+                $delivery->error_detail = null;
+                $delivery->retry_after_seconds = null;
+                $delivery->scheduled_for = null;
+                $delivery->finished_at = now();
+                $delivery->save();
+                $this->recordAttempt($delivery, $isRetry);
+                $this->advanceLifecycle($item, ContentItemLifecycle::Delivered);
+                $this->rememberRunCount($broadcastRun, 'items_delivered');
+                $destination->recordSuccess();
+                $broadcast->recordSuccess();
+                $project->recordSuccess();
+
+                return;
+            }
+
+            if (! $result->isRetryable()) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    $result->failure ?? DeliveryFailure::Permanent,
+                    (string) $result->failureReason,
+                    $result->retryAfterSeconds,
+                    $isRetry,
+                );
+
+                return;
+            }
+
+            if ($attempt >= $maxAttempts) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    DeliveryFailure::Transient,
+                    (string) $result->failureReason,
+                    $result->retryAfterSeconds,
+                    $isRetry,
+                );
+
+                return;
+            }
+
+            $wait = $result->retryAfterSeconds ?? $defaultBackoff;
+
+            if (! $this->canWait($wait, $deadline)) {
+                $this->markDeliveryFailed(
+                    $delivery,
+                    $item,
+                    $broadcastRun,
+                    $project,
+                    $broadcast,
+                    $destination,
+                    DeliveryFailure::Transient,
+                    (string) $result->failureReason,
+                    $result->retryAfterSeconds,
+                    $isRetry,
+                );
+
+                return;
+            }
+
+            $this->clock->sleep($wait);
+        }
+    }
+
+    /**
+     * Count a delivery on its broadcast run. Once that run has finished, fold
+     * the same column up to the project run so a later send stays visible.
+     *
+     * @param  'items_delivered'|'items_failed'  $count
+     */
+    private function rememberRunCount(BroadcastRun $broadcastRun, string $count): void
+    {
+        if ($count === 'items_delivered') {
+            $broadcastRun->items_delivered++;
+        } else {
+            $broadcastRun->items_failed++;
+        }
+
+        $broadcastRun->save();
+
+        if ($broadcastRun->finished_at === null) {
+            return;
+        }
+
+        $projectRun = $broadcastRun->projectRun;
+
+        if ($projectRun === null) {
+            return;
+        }
+
+        if ($count === 'items_delivered') {
+            $projectRun->items_delivered = (int) $projectRun->broadcastRuns()->sum('items_delivered');
+        } else {
+            $projectRun->items_failed = (int) $projectRun->broadcastRuns()->sum('items_failed');
+        }
+
+        $projectRun->save();
     }
 }

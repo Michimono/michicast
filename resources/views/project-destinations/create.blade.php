@@ -126,6 +126,8 @@
                             </div>
                         </fieldset>
                     @endforeach
+
+                    <x-destination-pacing />
                 </div>
 
                 <div class="flex flex-col gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">

@@ -66,6 +66,7 @@ class ProjectDestinationController extends Controller
             'type' => $request->type(),
             'config' => $request->configuration(),
             'credentials' => $request->credentials(),
+            ...$request->pacing(),
         ]);
 
         $project->ensureDefaultBroadcast();
