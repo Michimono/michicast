@@ -10,6 +10,8 @@ enum BroadcastFilterRuleType: string
     case PublishedAfter = 'published_after';
     case PublishedBefore = 'published_before';
     case AuthorEquals = 'author_equals';
+    case IsSet = 'is_set';
+    case IsNotSet = 'is_not_set';
 
     public function label(): string
     {
@@ -20,13 +22,27 @@ enum BroadcastFilterRuleType: string
             self::PublishedAfter => 'Published within the last',
             self::PublishedBefore => 'Published more than',
             self::AuthorEquals => 'Author equals',
+            self::IsSet => 'Is set',
+            self::IsNotSet => 'Is not set',
         };
     }
 
     public function needsField(): bool
     {
         return match ($this) {
-            self::Contains, self::DoesNotContain => true,
+            self::Contains, self::DoesNotContain, self::IsSet, self::IsNotSet => true,
+            default => false,
+        };
+    }
+
+    /**
+     * Presence rules name a field and nothing else. The field may be any
+     * one that reaches the filter, not only the shared title and body.
+     */
+    public function checksPresence(): bool
+    {
+        return match ($this) {
+            self::IsSet, self::IsNotSet => true,
             default => false,
         };
     }
@@ -34,7 +50,7 @@ enum BroadcastFilterRuleType: string
     public function needsValue(): bool
     {
         return match ($this) {
-            self::PublishedAfter, self::PublishedBefore => false,
+            self::PublishedAfter, self::PublishedBefore, self::IsSet, self::IsNotSet => false,
             default => true,
         };
     }

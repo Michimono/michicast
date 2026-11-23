@@ -307,6 +307,51 @@ class PipelineGraphCompilerTest extends TestCase
         $this->assertSame('Not on a complete path from a source to a destination.', $warnings['f']);
     }
 
+    public function test_a_presence_rule_keeps_any_named_field_and_drops_a_value(): void
+    {
+        $compilation = $this->compile([
+            'nodes' => [
+                $this->node('s', 'source', ['source_id' => 1]),
+                $this->node('f', 'filter', ['rules' => [[
+                    'type' => 'is_set',
+                    'field' => 'linked_url',
+                    'value' => 'ignored',
+                ]]]),
+                $this->node('d', 'destination', ['destination_id' => 10]),
+            ],
+            'edges' => [
+                $this->edge('s', 'f'),
+                $this->edge('f', 'd'),
+            ],
+        ]);
+
+        $this->assertFalse($compilation->hasErrors());
+        $this->assertSame(
+            ['rules' => [['type' => 'is_set', 'field' => 'linked_url']]],
+            $this->routeByKey($compilation, '1:10')->filter,
+        );
+    }
+
+    public function test_a_presence_rule_without_a_field_name_is_rejected(): void
+    {
+        $compilation = $this->compile([
+            'nodes' => [
+                $this->node('blank', 'filter', ['rules' => [['type' => 'is_set']]]),
+                $this->node('spaced', 'filter', ['rules' => [['type' => 'is_not_set', 'field' => 'linked url']]]),
+            ],
+            'edges' => [],
+        ]);
+
+        $messages = [];
+
+        foreach ($compilation->issues as $issue) {
+            $messages[$issue->nodeId] = $issue->message;
+        }
+
+        $this->assertSame('Rule 1: choose the field to check.', $messages['blank']);
+        $this->assertSame('Rule 1: choose the field to check.', $messages['spaced']);
+    }
+
     public function test_invalid_rules_are_reported_with_their_position(): void
     {
         $compilation = $this->compile([

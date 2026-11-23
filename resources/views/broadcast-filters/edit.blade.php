@@ -1,7 +1,7 @@
 <x-layout :title="'Filters · '.$broadcast->name">
     <x-card heading="Filters" :kicker="$broadcast->name" eared class="max-w-lg">
         <p class="text-sm text-ink">
-            Every rule must match for an item to publish. Leave the list empty to pass everything.
+            Every rule must match for an item to publish. Is set keeps an item when that field has text, or a list that isn’t empty. Leave the list empty to pass everything.
         </p>
 
         <form

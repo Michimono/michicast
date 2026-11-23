@@ -64,6 +64,10 @@
         { value: 'title_matches', label: 'Matches pattern', param: 'value' },
         { value: 'author_equals', label: 'Equals', param: 'value' },
     ];
+    const presenceFilterOps = [
+        { value: 'is_set', label: 'Is set', param: null },
+        { value: 'is_not_set', label: 'Is not set', param: null },
+    ];
     const timeFilterOps = [
         { value: 'published_after', label: 'Within the last', param: 'hours' },
         { value: 'published_before', label: 'More than', param: 'hours' },
@@ -410,7 +414,9 @@
             return transformOps;
         }
 
-        return fieldName === 'published_at' ? timeFilterOps : textFilterOps;
+        const specific = fieldName === 'published_at' ? timeFilterOps : textFilterOps;
+
+        return specific.concat(presenceFilterOps);
     }
 
     function downstreamNodes(nodeId, type) {
@@ -561,18 +567,22 @@
         }
     }
 
-    function filterRuleSummary(rule) {
-        const ops = rule.field === 'published_at' ? timeFilterOps : textFilterOps;
-        const def = ops.find((type) => type.value === rule.type) || textFilterOps.find((type) => type.value === rule.type);
+    function filterRuleSummary(node, rule) {
+        const ops = operationsFor(node, rule.field);
+        const def = ops.find((type) => type.value === rule.type);
+        const known = ruleFields(node).find((field) => field.value === rule.field);
+        const field = known ? known.label : (rule.field === 'published_at' ? 'Published' : (rule.field || 'Title'));
 
         if (!def) {
             return 'Rule';
         }
 
-        const field = rule.field === 'published_at' ? 'Published' : (rule.field || 'Title');
-
         if (def.param === 'hours') {
             return field + ' · ' + def.label.toLowerCase() + ' ' + (rule.hours || '…') + ' h';
+        }
+
+        if (!def.param) {
+            return field + ' · ' + def.label.toLowerCase();
         }
 
         return field + ' · ' + def.label.toLowerCase() + ' “' + (rule.value || '…') + '”';
@@ -597,7 +607,7 @@
                     return 'No rules yet';
                 }
 
-                return rules.length === 1 ? filterRuleSummary(rules[0]) : rules.length + ' rules, all must match';
+                return rules.length === 1 ? filterRuleSummary(node, rules[0]) : rules.length + ' rules, all must match';
             }
             case 'transform': {
                 const rules = Array.isArray(node.config.rules) ? node.config.rules : [];
@@ -2855,7 +2865,7 @@
     }
 
     function filterRulesEditor(node) {
-        return ruleListEditor(node, 'Every rule must match. Published time is the one field that takes hours instead of text.', 'Connect a source before this filter. Its fields are what a rule can check.');
+        return ruleListEditor(node, 'Every rule must match. Is set and is not set need no text: a field counts when it has text, or a list that isn’t empty. Published time can also take a number of hours.', 'Connect a source before this filter. Its fields are what a rule can check.');
     }
 
     function transformEditor(node) {

@@ -381,7 +381,11 @@ class PipelineGraphCompiler
 
         $field = isset($rule['field']) && is_string($rule['field']) ? $rule['field'] : '';
 
-        if ($type->needsField() && ! in_array($field, self::TEXT_FIELDS, true)) {
+        if ($type->checksPresence()) {
+            if (! preg_match('/\A[A-Za-z_][A-Za-z0-9_]*\z/', $field)) {
+                return 'choose the field to check.';
+            }
+        } elseif ($type->needsField() && ! in_array($field, self::TEXT_FIELDS, true)) {
             return 'choose the field to check.';
         }
 

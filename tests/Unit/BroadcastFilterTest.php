@@ -177,6 +177,78 @@ class BroadcastFilterTest extends TestCase
         $this->assertSame('Author is not “Wrong”', $fail->skipReason);
     }
 
+    public function test_is_set_keeps_a_field_only_when_it_has_a_value(): void
+    {
+        $filled = $this->item(['title' => 'Pocket drop', 'body' => '   ']);
+        $empty = $this->item(['title' => null, 'body' => 'Weekly']);
+
+        $this->assertTrue($this->evaluator->evaluate([
+            'rules' => [['type' => 'is_set', 'field' => 'title']],
+        ], $filled)->passed);
+
+        $decision = $this->evaluator->evaluate([
+            'rules' => [['type' => 'is_set', 'field' => 'title']],
+        ], $empty);
+
+        $this->assertFalse($decision->passed);
+        $this->assertSame('Title is empty', $decision->skipReason);
+
+        $this->assertFalse($this->evaluator->evaluate([
+            'rules' => [['type' => 'is_set', 'field' => 'body']],
+        ], $filled)->passed);
+
+        $blank = $this->evaluator->evaluate([
+            'rules' => [['type' => 'is_not_set', 'field' => 'body']],
+        ], $filled);
+
+        $this->assertTrue($blank->passed);
+        $this->assertSame('Body is set', $this->evaluator->evaluate([
+            'rules' => [['type' => 'is_not_set', 'field' => 'body']],
+        ], $empty)->skipReason);
+    }
+
+    public function test_presence_rules_read_provider_fields_the_way_a_mapping_does(): void
+    {
+        $item = $this->item([
+            'metadata' => [
+                'source_fields' => [
+                    'text' => 'A caption',
+                    'linked_url' => 'https://example.test/story',
+                    'preview_image' => [],
+                ],
+            ],
+        ]);
+
+        $this->assertTrue($this->evaluator->evaluate([
+            'rules' => [['type' => 'is_set', 'field' => 'linked_url']],
+        ], $item)->passed);
+
+        $missingImage = $this->evaluator->evaluate([
+            'rules' => [['type' => 'is_set', 'field' => 'preview_image']],
+        ], $item);
+
+        $this->assertFalse($missingImage->passed);
+        $this->assertSame('Preview image is empty', $missingImage->skipReason);
+
+        $withImage = $this->item([
+            'metadata' => [
+                'source_fields' => [
+                    'preview_image' => [['type' => 'image', 'url' => 'https://example.test/a.jpg']],
+                ],
+            ],
+        ]);
+
+        $present = $this->evaluator->evaluate([
+            'rules' => [['type' => 'is_not_set', 'field' => 'preview_image']],
+        ], $withImage);
+
+        $this->assertFalse($present->passed);
+        $this->assertSame('Preview image is set', $present->skipReason);
+        $this->assertTrue($this->evaluator->evaluate([
+            'rules' => [['type' => 'is_set', 'field' => 'text']],
+        ], $item)->passed);
+    }
+
     public function test_an_invalid_pattern_is_rejected_by_the_bounded_regex_helper(): void
     {
         $this->assertFalse(BoundedRegex::isValid('('));

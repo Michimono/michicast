@@ -81,8 +81,10 @@ document.addEventListener('click', (event) => {
  * removals do not confuse validation.
  */
 (function () {
-    const fieldTypes = new Set(['contains', 'does_not_contain']);
+    const fieldTypes = new Set(['contains', 'does_not_contain', 'is_set', 'is_not_set']);
     const hoursTypes = new Set(['published_after', 'published_before']);
+    const valueTypes = new Set(['contains', 'does_not_contain', 'title_matches', 'author_equals']);
+    const presenceTypes = new Set(['is_set', 'is_not_set']);
 
     function syncRuleFields(rule) {
         const type = rule.querySelector('[data-filter-type]')?.value ?? '';
@@ -92,10 +94,11 @@ document.addEventListener('click', (event) => {
 
         if (fieldWrap !== null) {
             fieldWrap.hidden = !fieldTypes.has(type);
+            fieldWrap.classList.toggle('sm:col-span-2', presenceTypes.has(type));
         }
 
         if (valueWrap !== null) {
-            valueWrap.hidden = hoursTypes.has(type);
+            valueWrap.hidden = !valueTypes.has(type);
         }
 
         if (hoursWrap !== null) {
