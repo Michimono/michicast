@@ -68,6 +68,60 @@ class BroadcastFilterFormTest extends TestCase
         $this->assertNull($broadcast->refresh()->filter);
     }
 
+    public function test_an_editor_can_save_a_presence_rule_without_a_value(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $broadcast = $this->broadcastIn($organization);
+
+        $this->actingAs($user)
+            ->get(route('broadcast-filters.edit', [$organization, $broadcast]))
+            ->assertOk()
+            ->assertSee('Is set')
+            ->assertSee('Is not set')
+            ->assertSee('Is set keeps an item when that field has text');
+
+        $this->actingAs($user)
+            ->patch(route('broadcast-filters.update', [$organization, $broadcast]), [
+                'rules' => [
+                    ['type' => 'is_set', 'field' => 'title'],
+                    ['type' => 'is_not_set', 'field' => 'body', 'value' => 'ignored'],
+                ],
+            ])
+            ->assertRedirect(route('broadcast-filters.edit', [$organization, $broadcast]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame([
+            'rules' => [
+                ['type' => 'is_set', 'field' => 'title'],
+                ['type' => 'is_not_set', 'field' => 'body'],
+            ],
+        ], $broadcast->refresh()->filter);
+    }
+
+    public function test_a_presence_rule_needs_a_title_or_body_on_the_simple_form(): void
+    {
+        [$user, $organization] = $this->memberHolding(Role::Editor);
+        $broadcast = $this->broadcastIn($organization);
+
+        $this->actingAs($user)
+            ->patch(route('broadcast-filters.update', [$organization, $broadcast]), [
+                'rules' => [
+                    ['type' => 'is_set'],
+                ],
+            ])
+            ->assertSessionHasErrors('rules.0.field');
+
+        $this->actingAs($user)
+            ->patch(route('broadcast-filters.update', [$organization, $broadcast]), [
+                'rules' => [
+                    ['type' => 'is_set', 'field' => 'linked_url'],
+                ],
+            ])
+            ->assertSessionHasErrors('rules.0.field');
+
+        $this->assertNull($broadcast->refresh()->filter);
+    }
+
     public function test_clearing_all_rules_stores_a_null_filter(): void
     {
         [$user, $organization] = $this->memberHolding(Role::Editor);

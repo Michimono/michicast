@@ -4,6 +4,7 @@ namespace App\Support\BroadcastFilters;
 
 use App\Enums\BroadcastFilterRuleType;
 use App\Models\ContentItem;
+use App\Support\Mapping\ContentItemSourceData;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Str;
 
@@ -47,6 +48,8 @@ readonly class BroadcastFilterRule
             BroadcastFilterRuleType::PublishedAfter => $this->publishedWithinHours($item, $now),
             BroadcastFilterRuleType::PublishedBefore => $this->publishedOlderThanHours($item, $now),
             BroadcastFilterRuleType::AuthorEquals => $this->authorEquals($item),
+            BroadcastFilterRuleType::IsSet => $this->isPresent($item),
+            BroadcastFilterRuleType::IsNotSet => ! $this->isPresent($item),
         };
     }
 
@@ -107,6 +110,8 @@ readonly class BroadcastFilterRule
                 $this->field === null ? 'Author' : $this->fieldLabel(),
                 $this->value ?? '',
             ),
+            BroadcastFilterRuleType::IsSet => sprintf('%s is empty', $this->fieldLabel()),
+            BroadcastFilterRuleType::IsNotSet => sprintf('%s is set', $this->fieldLabel()),
         };
     }
 
@@ -168,6 +173,26 @@ readonly class BroadcastFilterRule
         return Str::lower($actual) === Str::lower($expected);
     }
 
+    /**
+     * A field is present when it is not null, not blank text and not an
+     * empty list. The value is read the same way a mapping reads it.
+     */
+    private function isPresent(ContentItem $item): bool
+    {
+        $data = ContentItemSourceData::from($item);
+        $value = $data[$this->field ?? 'title'] ?? null;
+
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        if (is_array($value)) {
+            return $value !== [];
+        }
+
+        return $value !== null;
+    }
+
     private function textOf(ContentItem $item): string
     {
         return match ($this->field) {
@@ -185,7 +210,18 @@ readonly class BroadcastFilterRule
             'author' => 'Author',
             'link' => 'Link',
             'published_at' => 'Published',
-            default => 'Title',
+            'text' => 'Text',
+            'linked_url' => 'Linked URL',
+            'preview_image' => 'Preview image',
+            'categories' => 'Categories',
+            'media' => 'Media',
+            null, '', 'title' => 'Title',
+            default => $this->humanField((string) $this->field),
         };
+    }
+
+    private function humanField(string $field): string
+    {
+        return Str::ucfirst(str_replace(' url', ' URL', str_replace('_', ' ', $field)));
     }
 }
