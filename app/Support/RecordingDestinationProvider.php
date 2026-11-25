@@ -87,7 +87,10 @@ class RecordingDestinationProvider implements DestinationProvider
     {
         return new DestinationProviderCapabilities(
             supportsConnectionTest: true,
-            supportsMedia: false,
+            media: DestinationMediaSupport::of(
+                [MediaList::TYPE_IMAGE, MediaList::TYPE_VIDEO],
+                MediaList::MAX_ENTRIES,
+            ),
         );
     }
 

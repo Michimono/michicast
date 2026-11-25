@@ -40,12 +40,14 @@ class DestinationSummaryController extends Controller
 
         $known = $this->providers->has($destination->type);
         $capabilities = $known ? $this->providers->capabilities($destination->type) : null;
+        $media = $this->providers->mediaSupport($destination->type);
 
         return response()->json([
             'destination' => $this->payload->destination($destination),
             'fields' => $this->payload->schemaFields('destination', $destination->type),
             'capabilities' => [
-                'supports_media' => $capabilities !== null && $capabilities->supportsMedia,
+                'supports_media' => $media->acceptsAny(),
+                'media' => $media->toArray(),
                 'max_text_length' => $capabilities?->maxTextLength,
                 'supports_connection_test' => $capabilities !== null && $capabilities->supportsConnectionTest,
             ],

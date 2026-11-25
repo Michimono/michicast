@@ -12,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 class WebPageSourceProviderTest extends TestCase
@@ -94,6 +95,82 @@ class WebPageSourceProviderTest extends TestCase
         $this->assertSame('https://example.com/news/riverside-park', $items[0]->canonical_url);
         $this->assertSame('https://example.com/section/library-reopens', $items[1]->canonical_url);
         $this->assertSame('https://example.com/news/tram-line', $items[2]->canonical_url);
+    }
+
+    public function test_the_image_selector_fills_each_items_media_in_page_order(): void
+    {
+        Http::fake([
+            'https://example.com/news*' => Http::response($this->fixture('media.html'), 200),
+        ]);
+
+        $items = $this->provider()->fetch($this->definition(config: [
+            'page_url' => 'https://example.com/news/',
+            'item_selector' => 'article.news-item',
+            'title_selector' => 'h2.title a',
+            'link_selector' => 'a.read-more',
+            'image_selector' => '.cover',
+        ]));
+
+        // Relative addresses resolve against the page; the avatar is not matched.
+        $this->assertSame([
+            ['alt' => 'The riverside park', 'height' => 630, 'mime_type' => null, 'type' => 'image', 'url' => 'https://example.com/images/riverside-park.jpg', 'width' => 1200],
+            ['alt' => null, 'height' => null, 'mime_type' => null, 'type' => 'image', 'url' => 'https://cdn.example.com/park-gate.png', 'width' => null],
+        ], $items[0]->media);
+        $this->assertSame(
+            ['https://example.com/images/riverside-park.jpg', 'https://cdn.example.com/park-gate.png'],
+            $items[0]->raw_payload['images'],
+        );
+
+        // A matched wrapper gives the picture inside it, read from the
+        // lazy-loading attribute; inline data and script addresses are skipped.
+        $this->assertSame([
+            ['alt' => 'The west wing', 'height' => null, 'mime_type' => null, 'type' => 'image', 'url' => 'https://example.com/news/images/library.webp', 'width' => null],
+        ], $items[1]->media);
+
+        $this->assertNull($items[2]->media);
+    }
+
+    public function test_a_source_without_an_image_selector_has_no_media(): void
+    {
+        Http::fake([
+            'https://example.com/news*' => Http::response($this->fixture('media.html'), 200),
+        ]);
+
+        $items = $this->provider()->fetch($this->definition());
+
+        $this->assertNull($items[0]->media);
+    }
+
+    public function test_an_invalid_image_selector_is_an_actionable_failure(): void
+    {
+        Http::fake([
+            'https://example.com/news*' => Http::response($this->fixture('media.html'), 200),
+        ]);
+
+        $result = $this->provider()->testConnection($this->definition(config: [
+            'page_url' => 'https://example.com/news/',
+            'item_selector' => 'article.news-item',
+            'title_selector' => 'h2.title a',
+            'link_selector' => 'a.read-more',
+            'image_selector' => 'img[',
+        ]));
+
+        $this->assertFalse($result->successful);
+        $this->assertSame('The CSS selector [img[] is not valid.', $result->message);
+    }
+
+    public function test_the_image_selector_is_an_optional_setting(): void
+    {
+        $registry = $this->app->make(SourceProviderRegistry::class);
+        $rules = ['image_selector' => $registry->configurationRules('web_page')['image_selector']];
+
+        $this->assertTrue(Validator::make([], $rules)->passes());
+        $this->assertTrue(Validator::make(['image_selector' => 'figure img'], $rules)->passes());
+        $this->assertTrue(Validator::make(['image_selector' => str_repeat('a', 513)], $rules)->fails());
+        $this->assertContains(
+            'image_selector',
+            array_map(static fn ($field) => $field->name, $registry->configurationFields('web_page')),
+        );
     }
 
     public function test_a_selector_matching_nothing_is_an_actionable_failure(): void

@@ -1379,6 +1379,8 @@ class ExecutingProjectRunner implements ProjectRunner
         ContentDelivery $delivery,
         bool $isRetry,
     ): void {
+        // The destination only ever sees the media it declared it can attach.
+        $message = $message->fittedTo($provider->capabilities()->media);
         $maxAttempts = max(1, (int) config('michicast.retry.max_attempts'));
         $defaultBackoff = max(0, (int) config('michicast.retry.backoff_seconds'));
 

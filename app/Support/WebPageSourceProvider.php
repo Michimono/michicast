@@ -65,6 +65,7 @@ class WebPageSourceProvider implements SourceProvider
             'link_selector' => ['required', 'string', 'max:512'],
             'body_selector' => ['nullable', 'string', 'max:512'],
             'published_at_selector' => ['nullable', 'string', 'max:512'],
+            'image_selector' => ['nullable', 'string', 'max:512'],
             'item_limit' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_ITEM_LIMIT],
         ];
     }
@@ -124,6 +125,14 @@ class WebPageSourceProvider implements SourceProvider
                 hint: 'Optional CSS selector for a date inside each item (text or datetime attribute). When missing or unparseable, the fetch time in UTC is used.',
             ),
             new ConfigurationField(
+                name: 'image_selector',
+                placeholder: 'img',
+                optional: true,
+                label: 'Image selector',
+                type: ConfigurationFieldType::Text,
+                hint: 'Optional CSS selector for the pictures inside each item, for example img or figure. They become the item\'s media, in page order, up to '.MediaList::MAX_ENTRIES.'. Relative addresses are resolved against the page URL.',
+            ),
+            new ConfigurationField(
                 name: 'item_limit',
                 placeholder: (string) self::DEFAULT_ITEM_LIMIT,
                 optional: true,
@@ -174,6 +183,7 @@ class WebPageSourceProvider implements SourceProvider
                 'body' => $entry['body'],
                 'author' => null,
                 'published_at' => $entry['published_at'],
+                'media' => $entry['media'],
                 'metadata' => ['provider' => $this->type()],
                 'raw_payload' => $entry['raw'],
             ]);
@@ -189,6 +199,7 @@ class WebPageSourceProvider implements SourceProvider
      *     title: string|null,
      *     body: string|null,
      *     published_at: CarbonImmutable,
+     *     media: list<array<string, mixed>>,
      *     raw: array<string, mixed>
      * }>
      */
@@ -206,6 +217,7 @@ class WebPageSourceProvider implements SourceProvider
         $linkSelector = $this->requiredSelector($source, 'link_selector', 'link');
         $bodySelector = $this->optionalSelector($source, 'body_selector');
         $publishedSelector = $this->optionalSelector($source, 'published_at_selector');
+        $imageSelector = $this->optionalSelector($source, 'image_selector');
         $fetchedAt ??= CarbonImmutable::now('UTC');
 
         $html = $this->downloadHtml($pageUrl);
@@ -229,6 +241,7 @@ class WebPageSourceProvider implements SourceProvider
                 $linkSelector,
                 $bodySelector,
                 $publishedSelector,
+                $imageSelector,
                 $fetchedAt,
             );
 
@@ -259,6 +272,7 @@ class WebPageSourceProvider implements SourceProvider
      *     title: string|null,
      *     body: string|null,
      *     published_at: CarbonImmutable,
+     *     media: list<array<string, mixed>>,
      *     raw: array<string, mixed>
      * }|null
      */
@@ -269,6 +283,7 @@ class WebPageSourceProvider implements SourceProvider
         string $linkSelector,
         ?string $bodySelector,
         ?string $publishedSelector,
+        ?string $imageSelector,
         CarbonImmutable $fetchedAt,
     ): ?array {
         $link = $this->extractLink($itemNode, $linkSelector, $pageUrl);
@@ -281,6 +296,7 @@ class WebPageSourceProvider implements SourceProvider
         $body = $bodySelector === null ? null : $this->extractFieldText($itemNode, $bodySelector);
         $publishedRaw = $publishedSelector === null ? null : $this->extractDateRaw($itemNode, $publishedSelector);
         $publishedAt = $this->parsePublishedAt($publishedRaw) ?? $fetchedAt;
+        $media = $imageSelector === null ? [] : $this->extractMedia($itemNode, $imageSelector, $pageUrl);
 
         return [
             'external_id' => $link,
@@ -288,10 +304,12 @@ class WebPageSourceProvider implements SourceProvider
             'title' => $title,
             'body' => $body,
             'published_at' => $publishedAt,
+            'media' => $media,
             'raw' => [
                 'title' => $title,
                 'link' => $link,
                 'body' => $body,
+                'images' => array_column($media, 'url'),
                 'published_raw' => $publishedRaw,
                 'published_fallback' => $publishedRaw === null || $this->parsePublishedAt($publishedRaw) === null,
             ],
@@ -316,6 +334,58 @@ class WebPageSourceProvider implements SourceProvider
         }
 
         return $this->resolveUrl($href, $pageUrl);
+    }
+
+    /**
+     * The pictures the image selector matches inside an item, in page order.
+     * A match that is not itself a picture (a figure, a link) contributes the
+     * pictures inside it. Inline data is skipped: media is always an address.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function extractMedia(DOMElement $itemNode, string $selector, string $pageUrl): array
+    {
+        $media = [];
+
+        foreach ($this->parser->query($selector, $itemNode) as $node) {
+            $pictures = $this->pictureAddress($node) === null ? $this->parser->query('img', $node) : [$node];
+
+            foreach ($pictures as $picture) {
+                $address = $this->pictureAddress($picture);
+                $url = $address === null ? null : $this->resolveUrl($address, $pageUrl);
+
+                if ($url === null) {
+                    continue;
+                }
+
+                $media[] = [
+                    'type' => strtolower($picture->tagName) === 'video' ? MediaList::TYPE_VIDEO : MediaList::TYPE_IMAGE,
+                    'url' => $url,
+                    'alt' => $this->parser->attribute($picture, 'alt'),
+                    'width' => $this->parser->attribute($picture, 'width'),
+                    'height' => $this->parser->attribute($picture, 'height'),
+                ];
+            }
+        }
+
+        return MediaList::normalize($media);
+    }
+
+    /**
+     * Where an element says its picture lives. Lazy-loading pages keep the
+     * real address in data-src and a placeholder in src.
+     */
+    private function pictureAddress(DOMElement $node): ?string
+    {
+        foreach (['src', 'data-src', 'data-lazy-src'] as $attribute) {
+            $value = $this->parser->attribute($node, $attribute);
+
+            if ($value !== null && ! str_starts_with(strtolower($value), 'data:')) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private function extractFieldText(DOMElement $itemNode, string $selector): ?string

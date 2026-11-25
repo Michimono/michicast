@@ -12,6 +12,7 @@ use App\Models\PipelineEdgeTrace;
 use App\Models\Project;
 use App\Models\ProjectRun;
 use App\Support\BroadcastFilters\BroadcastFilterEvaluator;
+use App\Support\DestinationProviderRegistry;
 use App\Support\Mapping\ContentMapper;
 use App\Support\SecretRedactor;
 use Illuminate\Database\Eloquent\Collection;
@@ -46,6 +47,7 @@ class PipelineTraceRecorder
         private BroadcastFilterEvaluator $filters,
         private ContentMapper $mapper,
         private SecretRedactor $secrets,
+        private DestinationProviderRegistry $destinations,
     ) {}
 
     /**
@@ -430,10 +432,15 @@ class PipelineTraceRecorder
             }
         }
 
+        // What the destination would attach, and what it would leave off.
+        $media = $this->destinations->mediaSupport($broadcast->destination?->type)->fit($message->media);
+
         return array_filter([
             'text' => $this->text($message->body) ?? '',
             'link' => $this->text($message->link),
-            'media_count' => $message->media === [] ? null : count($message->media),
+            'media_count' => $message->media === [] ? null : count($media->attached),
+            'media_left_off' => $media->leftOff === 0 ? null : $media->leftOff,
+            'media_note' => $media->note(),
             'fields' => $fields === [] ? null : $fields,
         ], static fn (mixed $value): bool => $value !== null);
     }

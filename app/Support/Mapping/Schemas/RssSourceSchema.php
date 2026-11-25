@@ -27,13 +27,7 @@ final class RssSourceSchema
                     description: 'Tags or categories from the feed',
                     itemSchema: new SchemaField('item', 'Category', FieldType::Text),
                 ),
-                new SchemaField(
-                    name: 'media',
-                    label: 'Images',
-                    type: FieldType::Array,
-                    description: 'Images attached to the entry',
-                    itemSchema: new SchemaField('item', 'Image', FieldType::Media),
-                ),
+                MediaSchemaField::make('Pictures and videos of the entry: its enclosures and media tags, otherwise the images in its text. Empty when the entry has none'),
             ],
         );
     }

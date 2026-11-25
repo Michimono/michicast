@@ -112,7 +112,8 @@ class TelegramDestinationProvider implements DestinationProvider
     {
         return new DestinationProviderCapabilities(
             supportsConnectionTest: true,
-            supportsMedia: false,
+            // Text only until Telegram sends pictures (#251).
+            media: DestinationMediaSupport::none(),
             maxTextLength: TelegramMessageFormatter::MAX_LENGTH,
         );
     }

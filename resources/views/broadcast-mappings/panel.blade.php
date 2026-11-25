@@ -84,7 +84,8 @@
                     <pre class="whitespace-pre-wrap font-sans text-sm leading-relaxed text-ink" data-mapping-preview-text></pre>
                     <div class="mt-2 border-t border-line/50 pt-2" data-mapping-preview-media-wrap hidden>
                         <p class="text-[0.6875rem] font-medium tracking-wide text-muted uppercase">Media</p>
-                        <ul class="mt-1 list-disc pl-5 text-sm text-ink" data-mapping-preview-media></ul>
+                        <ul class="mt-1 list-disc pl-5 font-mono text-xs break-all text-ink" data-mapping-preview-media></ul>
+                        <p class="mt-1 text-sm text-muted" data-mapping-preview-media-note hidden></p>
                     </div>
                 </div>
                 <div class="mt-3" data-mapping-preview-errors></div>

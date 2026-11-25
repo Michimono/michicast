@@ -31,18 +31,32 @@ class ContentItemHashTest extends TestCase
         $first = $this->hasher()->hash($this->fields([
             'media' => [
                 ['type' => 'image', 'url' => 'https://a.example/1.jpg', 'mime_type' => 'image/jpeg', 'width' => 10, 'height' => 10, 'alt' => 'A'],
-                ['type' => 'link', 'url' => 'https://a.example', 'mime_type' => null, 'width' => null, 'height' => null, 'alt' => null],
+                ['type' => 'video', 'url' => 'https://a.example/2.mp4', 'mime_type' => null, 'width' => null, 'height' => null, 'alt' => null],
             ],
         ]));
 
         $reordered = $this->hasher()->hash($this->fields([
             'media' => [
-                ['type' => 'link', 'url' => 'https://a.example', 'mime_type' => null, 'width' => null, 'height' => null, 'alt' => null],
+                ['type' => 'video', 'url' => 'https://a.example/2.mp4', 'mime_type' => null, 'width' => null, 'height' => null, 'alt' => null],
                 ['type' => 'image', 'url' => 'https://a.example/1.jpg', 'mime_type' => 'image/jpeg', 'width' => 10, 'height' => 10, 'alt' => 'A'],
             ],
         ]));
 
         $this->assertNotSame($first, $reordered);
+    }
+
+    public function test_entries_that_are_not_usable_media_do_not_change_the_hash(): void
+    {
+        $clean = $this->hasher()->hash($this->fields());
+        $noisy = $this->hasher()->hash($this->fields([
+            'media' => [
+                ['type' => 'image', 'url' => 'https://cdn.example.com/cover.jpg', 'mime_type' => 'image/jpeg', 'width' => 1200, 'height' => 630, 'alt' => 'Cover'],
+                ['type' => 'link', 'url' => 'https://a.example'],
+                ['type' => 'image', 'url' => 'data:image/png;base64,iVBORw0KGgo='],
+            ],
+        ]));
+
+        $this->assertSame($clean, $noisy);
     }
 
     public function test_published_at_timezone_differences_normalize_to_the_same_hash(): void

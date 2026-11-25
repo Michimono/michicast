@@ -90,6 +90,81 @@ class RssSourceProviderTest extends TestCase
         );
     }
 
+    public function test_an_rss_entry_carries_the_media_its_feed_declares(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => Http::response($this->fixture('media.rss.xml'), 200),
+        ]);
+
+        $items = collect($this->provider()->fetch($this->definition()))->keyBy('external_id');
+
+        // An enclosure wins over the images in the entry's text.
+        $this->assertSame([
+            ['alt' => null, 'height' => null, 'mime_type' => 'image/jpeg', 'type' => 'image', 'url' => 'https://cdn.example.com/covers/enclosure.jpg', 'width' => null],
+        ], $items['enclosure']->media);
+
+        // Media RSS in feed order, without the repeat; the thumbnail is not
+        // added because the entry already has a picture.
+        $this->assertSame([
+            ['alt' => null, 'height' => 630, 'mime_type' => null, 'type' => 'image', 'url' => 'https://cdn.example.com/group/one.png', 'width' => 1200],
+            ['alt' => null, 'height' => null, 'mime_type' => 'image/webp', 'type' => 'image', 'url' => 'https://cdn.example.com/group/two', 'width' => null],
+        ], $items['group']->media);
+
+        // A video keeps its poster as the picture.
+        $this->assertSame(
+            [['video', 'https://cdn.example.com/video/clip.mp4'], ['image', 'https://cdn.example.com/video/poster.jpg']],
+            array_map(static fn (array $entry): array => [$entry['type'], $entry['url']], $items['video']->media),
+        );
+    }
+
+    public function test_an_entry_that_declares_no_media_uses_the_images_in_its_text(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => Http::response($this->fixture('media.rss.xml'), 200),
+        ]);
+
+        $items = collect($this->provider()->fetch($this->definition()))->keyBy('external_id');
+
+        // The audio enclosure, the tracking pixel and the inline data are not
+        // media; the relative address resolves against the entry link.
+        $this->assertSame([
+            ['alt' => 'First picture', 'height' => 600, 'mime_type' => null, 'type' => 'image', 'url' => 'https://example.com/uploads/first.jpg', 'width' => 800],
+            ['alt' => null, 'height' => null, 'mime_type' => null, 'type' => 'image', 'url' => 'https://cdn.example.com/inline/second.png', 'width' => null],
+        ], $items['inline']->media);
+
+        $this->assertNull($items['plain']->media);
+    }
+
+    public function test_an_atom_entry_carries_its_enclosure_links_and_inline_images(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => Http::response($this->fixture('media.atom.xml'), 200),
+        ]);
+
+        $items = collect($this->provider()->fetch($this->definition()))->keyBy('external_id');
+
+        $this->assertSame([
+            ['alt' => null, 'height' => null, 'mime_type' => 'image/jpeg', 'type' => 'image', 'url' => 'https://cdn.example.com/atoms/cover.jpg', 'width' => null],
+        ], $items['urn:uuid:atom-enclosure']->media);
+        $this->assertSame('https://example.com/atoms/enclosure', $items['urn:uuid:atom-enclosure']->canonical_url);
+
+        $this->assertSame([
+            ['alt' => 'Inline', 'height' => null, 'mime_type' => null, 'type' => 'image', 'url' => 'https://example.com/atoms/pictures/inline.png', 'width' => null],
+        ], $items['urn:uuid:atom-inline']->media);
+    }
+
+    public function test_a_feed_without_media_still_produces_items_without_any(): void
+    {
+        Http::fake([
+            'https://example.com/feed.xml' => Http::response($this->fixture('sample.rss.xml'), 200),
+        ]);
+
+        $items = $this->provider()->fetch($this->definition());
+
+        $this->assertNull($items[0]->media);
+        $this->assertNull($items[1]->media);
+    }
+
     public function test_a_repeated_fetch_persists_each_identity_only_once(): void
     {
         Http::fake([

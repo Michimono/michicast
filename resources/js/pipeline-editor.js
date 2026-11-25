@@ -3549,7 +3549,10 @@
             notes.text = capabilities.max_text_length + ' characters';
         }
 
-        notes.media = capabilities.supports_media ? 'sent' : 'not sent';
+        // What the destination attaches, in its own words ("up to 10 images or videos").
+        notes.media = capabilities.supports_media
+            ? (capabilities.media && capabilities.media.label ? capabilities.media.label : 'sent')
+            : 'not sent';
 
         return notes;
     }
@@ -3680,7 +3683,7 @@
             html += '</section>';
         } else {
             const fields = type ? type.schema : (summary && summary.ok ? summary.data.fields : []);
-            const capabilities = summary && summary.ok ? summary.data.capabilities : type ? { supports_media: type.supports_media, max_text_length: type.max_text_length } : null;
+            const capabilities = summary && summary.ok ? summary.data.capabilities : type ? { supports_media: type.supports_media, media: type.media, max_text_length: type.max_text_length } : null;
 
             html += schemaFieldList(fields, { notes: destinationFieldNotes(capabilities) });
         }

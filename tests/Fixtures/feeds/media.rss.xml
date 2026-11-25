@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Pocket News</title>
+    <link>https://example.com/</link>
+    <description>Feed with media</description>
+    <item>
+      <title>Enclosure</title>
+      <link>https://example.com/posts/enclosure</link>
+      <guid isPermaLink="false">enclosure</guid>
+      <description>&lt;p&gt;Cover below.&lt;/p&gt;&lt;img src="https://example.com/inline/ignored.jpg"&gt;</description>
+      <enclosure url="https://cdn.example.com/covers/enclosure.jpg" length="12345" type="image/jpeg"/>
+    </item>
+    <item>
+      <title>Media group</title>
+      <link>https://example.com/posts/group</link>
+      <guid isPermaLink="false">group</guid>
+      <description>Two pictures.</description>
+      <media:group>
+        <media:content url="https://cdn.example.com/group/one.png" medium="image" width="1200" height="630"/>
+        <media:content url="https://cdn.example.com/group/two" type="image/webp"/>
+        <media:content url="https://cdn.example.com/group/one.png" medium="image"/>
+      </media:group>
+      <media:thumbnail url="https://cdn.example.com/group/thumb.jpg" width="150" height="150"/>
+    </item>
+    <item>
+      <title>Video with poster</title>
+      <link>https://example.com/posts/video</link>
+      <guid isPermaLink="false">video</guid>
+      <description>A clip.</description>
+      <media:content url="https://cdn.example.com/video/clip.mp4" type="video/mp4" medium="video">
+        <media:thumbnail url="https://cdn.example.com/video/poster.jpg"/>
+      </media:content>
+    </item>
+    <item>
+      <title>Images in the text</title>
+      <link>https://example.com/posts/inline</link>
+      <guid isPermaLink="false">inline</guid>
+      <description>Short summary.</description>
+      <content:encoded><![CDATA[
+        <p>Body with pictures.</p>
+        <img src="https://tracker.example.com/pixel.gif" width="1" height="1" alt="">
+        <img src="data:image/png;base64,iVBORw0KGgo=" alt="Inline data">
+        <img src="/uploads/first.jpg" alt="First picture" width="800" height="600">
+        <img src="https://cdn.example.com/inline/second.png">
+      ]]></content:encoded>
+      <enclosure url="https://cdn.example.com/audio/episode.mp3" length="999" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>No media</title>
+      <link>https://example.com/posts/plain</link>
+      <guid isPermaLink="false">plain</guid>
+      <description>Words only.</description>
+    </item>
+  </channel>
+</rss>
