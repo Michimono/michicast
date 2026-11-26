@@ -17,9 +17,11 @@ use Illuminate\Support\Facades\DB;
  * once per group. Rows are matched by the path's key
  * first; a path whose key is new (a node was added or removed along it)
  * takes over an unclaimed row for the same source and destination, so
- * redrawing the graph keeps the delivery history and any auto-pause. Rows no
- * longer in the graph are archived, never deleted; a row that comes back is
- * restored.
+ * redrawing the graph keeps the delivery history and any auto-pause. The
+ * source and destination a path points at are written every time, so
+ * pointing a node at a different record retargets the row instead of
+ * leaving it on the previous one. Rows no longer in the graph are archived,
+ * never deleted; a row that comes back is restored.
  */
 class PipelineRouteSynchronizer
 {
@@ -86,6 +88,8 @@ class PipelineRouteSynchronizer
                 if ($match instanceof Broadcast) {
                     $match->fill([
                         'name' => $route->name,
+                        'source_id' => $route->sourceId,
+                        'destination_id' => $route->destinationId,
                         ...$route->rowKeys(),
                         'filter' => $route->filter,
                         'transform' => $route->transform,

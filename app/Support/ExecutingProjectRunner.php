@@ -7,6 +7,7 @@ use App\Enums\DeliveryFailure;
 use App\Enums\DeliveryStatus;
 use App\Enums\QuotaMetric;
 use App\Enums\RunStatus;
+use App\Exceptions\InvalidPipelineGraphException;
 use App\Exceptions\QuotaExceededException;
 use App\Models\Broadcast;
 use App\Models\BroadcastRun;
@@ -20,6 +21,9 @@ use App\Models\ProjectRun;
 use App\Models\Source;
 use App\Support\BroadcastFilters\BroadcastFilterEvaluator;
 use App\Support\Mapping\ContentMapper;
+use App\Support\Pipeline\PipelineGraph;
+use App\Support\Pipeline\PipelineGraphCompiler;
+use App\Support\Pipeline\PipelineRouteSynchronizer;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -88,6 +92,8 @@ class ExecutingProjectRunner implements ProjectRunner
         private QuotaMeter $meter,
         private DestinationPacing $pacing,
         private ScheduledDeliveryQueue $scheduledDeliveries,
+        private PipelineGraphCompiler $compiler,
+        private PipelineRouteSynchronizer $routes,
     ) {}
 
     /**
@@ -125,6 +131,7 @@ class ExecutingProjectRunner implements ProjectRunner
         $this->dry = false;
         $this->fetchedBySource = [];
         $this->passedByGroup = [];
+        $this->alignRoutes($project);
 
         $projectRun = ProjectRun::query()->create([
             'project_id' => $project->getKey(),
@@ -337,6 +344,7 @@ class ExecutingProjectRunner implements ProjectRunner
     {
         $this->fetchedBySource = [];
         $this->passedByGroup = [];
+        $this->alignRoutes($project);
 
         $projectRun = ProjectRun::query()->create([
             'project_id' => $project->getKey(),
@@ -387,6 +395,34 @@ class ExecutingProjectRunner implements ProjectRunner
         $projectRun->save();
 
         return $projectRun;
+    }
+
+    /**
+     * A visual project's saved graph is what should run. Saving already writes
+     * its routes, and a run writes them again so a row left pointing at the
+     * previous source or destination is corrected before anything is fetched.
+     * A graph that does not compile to a route is left alone: an empty or
+     * unreadable document must not archive the routes a project is running.
+     */
+    private function alignRoutes(Project $project): void
+    {
+        if (! $project->isVisual() || ! is_array($project->graph) || $project->graph === []) {
+            return;
+        }
+
+        try {
+            $graph = PipelineGraph::fromArray($project->graph);
+        } catch (InvalidPipelineGraphException) {
+            return;
+        }
+
+        $routes = $this->compiler->compile($graph, $project)->routes;
+
+        if ($routes === []) {
+            return;
+        }
+
+        $this->routes->sync($project, $routes);
     }
 
     /**
