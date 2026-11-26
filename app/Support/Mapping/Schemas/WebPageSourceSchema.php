@@ -19,6 +19,7 @@ final class WebPageSourceSchema
                 new SchemaField('body', 'Body', FieldType::Text, 'Summary or body text', false),
                 new SchemaField('link', 'Link', FieldType::Url, 'Canonical article URL', false),
                 new SchemaField('published_at', 'Published', FieldType::Datetime, 'Publication time (fetch time when the page has no date)', false),
+                MediaSchemaField::make('Pictures matched by the image selector inside the item. Empty when the source has no image selector or it matches nothing'),
             ],
         );
     }
@@ -33,6 +34,13 @@ final class WebPageSourceSchema
             'body' => 'The riverside park opened this morning after two years of work.',
             'link' => 'https://example.com/news/riverside-park',
             'published_at' => '2026-10-05T10:00:00+00:00',
+            'media' => [
+                [
+                    'type' => 'image',
+                    'url' => 'https://example.com/images/riverside-park.jpg',
+                    'alt' => 'The riverside park',
+                ],
+            ],
         ];
     }
 }

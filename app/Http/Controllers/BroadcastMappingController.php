@@ -6,6 +6,7 @@ use App\Http\Requests\StoreBroadcastMappingPreviewRequest;
 use App\Http\Requests\UpdateBroadcastMappingRequest;
 use App\Models\Broadcast;
 use App\Models\Organization;
+use App\Support\DestinationProviderRegistry;
 use App\Support\Mapping\AutoMapper;
 use App\Support\Mapping\ContentMapper;
 use App\Support\Mapping\DefaultMappings;
@@ -30,6 +31,7 @@ class BroadcastMappingController extends Controller
         private ContentMapper $mapper,
         private AutoMapper $autoMapper,
         private DefaultMappings $defaults,
+        private DestinationProviderRegistry $destinations,
         private OperationRegistry $operations = new OperationRegistry,
     ) {}
 
@@ -207,14 +209,21 @@ class BroadcastMappingController extends Controller
     }
 
     /**
+     * The message as the destination would receive it: the media listed is what
+     * it attaches, and the note says what it leaves off.
+     *
      * @param  array<string, mixed>  $data
-     * @return array{text?: string, media?: list<mixed>, link?: string|null}
+     * @return array{text: string, media: list<mixed>, media_left_off: int, media_note: string|null, link: string|null, destination_type: string}
      */
     private function humanPreview(array $data, string $destinationType): array
     {
+        $media = $this->destinations->mediaSupport($destinationType)->fit($data['media'] ?? null);
+
         return [
             'text' => isset($data['text']) && is_scalar($data['text']) ? (string) $data['text'] : '',
-            'media' => isset($data['media']) && is_array($data['media']) ? array_values($data['media']) : [],
+            'media' => $media->attached,
+            'media_left_off' => $media->leftOff,
+            'media_note' => $media->note(),
             'link' => isset($data['link']) && is_string($data['link']) ? $data['link'] : null,
             'destination_type' => $destinationType,
         ];

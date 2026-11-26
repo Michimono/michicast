@@ -8,6 +8,8 @@ use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMXPath;
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\UriResolver;
 use Throwable;
 
 /**
@@ -16,6 +18,8 @@ use Throwable;
  */
 class RssFeedParser
 {
+    private const MEDIA_NAMESPACE = 'http://search.yahoo.com/mrss';
+
     /**
      * @return list<array{
      *     external_id: string|null,
@@ -24,6 +28,7 @@ class RssFeedParser
      *     body: string|null,
      *     author: string|null,
      *     published_at: CarbonImmutable|null,
+     *     media: list<array<string, mixed>>,
      *     raw: array<string, mixed>
      * }>
      */
@@ -53,6 +58,7 @@ class RssFeedParser
      *     body: string|null,
      *     author: string|null,
      *     published_at: CarbonImmutable|null,
+     *     media: list<array<string, mixed>>,
      *     raw: array<string, mixed>
      * }>
      */
@@ -88,6 +94,7 @@ class RssFeedParser
                 body: $this->nullable($body),
                 author: $this->nullable($author),
                 publishedAt: $published,
+                media: $this->media($item, ['description', 'encoded'], $this->nullable($link)),
                 raw: [
                     'title' => $title,
                     'link' => $link,
@@ -110,6 +117,7 @@ class RssFeedParser
      *     body: string|null,
      *     author: string|null,
      *     published_at: CarbonImmutable|null,
+     *     media: list<array<string, mixed>>,
      *     raw: array<string, mixed>
      * }>
      */
@@ -142,6 +150,7 @@ class RssFeedParser
                 body: $this->nullable($body),
                 author: $this->nullable($author),
                 publishedAt: $published,
+                media: $this->media($entry, ['content', 'summary'], $this->nullable($link)),
                 raw: [
                     'id' => $id,
                     'title' => $title,
@@ -182,6 +191,7 @@ class RssFeedParser
     }
 
     /**
+     * @param  list<array<string, mixed>>  $media
      * @param  array<string, mixed>  $raw
      * @return array{
      *     external_id: string|null,
@@ -190,6 +200,7 @@ class RssFeedParser
      *     body: string|null,
      *     author: string|null,
      *     published_at: CarbonImmutable|null,
+     *     media: list<array<string, mixed>>,
      *     raw: array<string, mixed>
      * }
      */
@@ -200,6 +211,7 @@ class RssFeedParser
         ?string $body,
         ?string $author,
         ?CarbonImmutable $publishedAt,
+        array $media,
         array $raw,
     ): array {
         return [
@@ -209,8 +221,203 @@ class RssFeedParser
             'body' => $body,
             'author' => $author,
             'published_at' => $publishedAt,
+            'media' => $media,
             'raw' => $raw,
         ];
+    }
+
+    /**
+     * The entry's pictures and videos, in feed order: what the feed declares
+     * (enclosures, Media RSS), its thumbnail when it declares no picture, and
+     * the images in the entry's own HTML when it declares nothing at all.
+     *
+     * @param  list<string>  $bodyElements  Local names of the elements that hold the entry's HTML.
+     * @return list<array<string, mixed>>
+     */
+    private function media(DOMElement $entry, array $bodyElements, ?string $baseUrl): array
+    {
+        $declared = [];
+        $thumbnails = [];
+        $this->collectDeclaredMedia($entry, $declared, $thumbnails);
+
+        $media = MediaList::normalize($declared);
+
+        if (! MediaList::hasImage($media)) {
+            $media = MediaList::normalize([...$media, ...$thumbnails]);
+        }
+
+        if ($media !== []) {
+            return $media;
+        }
+
+        $images = [];
+
+        foreach ($entry->childNodes as $child) {
+            if ($child instanceof DOMElement && in_array(strtolower((string) $child->localName), $bodyElements, true)) {
+                array_push($images, ...$this->htmlImages($child, $baseUrl));
+            }
+        }
+
+        return MediaList::normalize($images);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $declared
+     * @param  list<array<string, mixed>>  $thumbnails
+     */
+    private function collectDeclaredMedia(DOMElement $parent, array &$declared, array &$thumbnails): void
+    {
+        foreach ($parent->childNodes as $child) {
+            if (! $child instanceof DOMElement) {
+                continue;
+            }
+
+            $name = strtolower((string) $child->localName);
+            $isMediaRss = str_starts_with((string) $child->namespaceURI, self::MEDIA_NAMESPACE);
+
+            if ($isMediaRss && $name === 'group') {
+                $this->collectDeclaredMedia($child, $declared, $thumbnails);
+
+                continue;
+            }
+
+            if ($isMediaRss && $name === 'content') {
+                $medium = strtolower($child->getAttribute('medium'));
+
+                if ($medium === '' || $medium === MediaList::TYPE_IMAGE || $medium === MediaList::TYPE_VIDEO) {
+                    $declared[] = [
+                        'type' => $medium,
+                        'url' => $child->getAttribute('url'),
+                        'mime_type' => $child->getAttribute('type'),
+                        'width' => $child->getAttribute('width'),
+                        'height' => $child->getAttribute('height'),
+                    ];
+                }
+
+                // A video's poster sits inside its media:content.
+                $this->collectDeclaredMedia($child, $declared, $thumbnails);
+
+                continue;
+            }
+
+            if ($isMediaRss && $name === 'thumbnail') {
+                $thumbnails[] = [
+                    'type' => MediaList::TYPE_IMAGE,
+                    'url' => $child->getAttribute('url'),
+                    'width' => $child->getAttribute('width'),
+                    'height' => $child->getAttribute('height'),
+                ];
+
+                continue;
+            }
+
+            if ($name === 'enclosure') {
+                $declared[] = [
+                    'url' => $child->getAttribute('url'),
+                    'mime_type' => $child->getAttribute('type'),
+                ];
+
+                continue;
+            }
+
+            if ($name === 'link' && strtolower($child->getAttribute('rel')) === 'enclosure') {
+                $declared[] = [
+                    'url' => $child->getAttribute('href'),
+                    'mime_type' => $child->getAttribute('type'),
+                ];
+            }
+        }
+    }
+
+    /**
+     * Images inside an entry's HTML, whether the feed carries it as escaped
+     * text or as inline XHTML. Tracking pixels and inline data are skipped.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function htmlImages(DOMElement $body, ?string $baseUrl): array
+    {
+        $nodes = iterator_to_array($body->getElementsByTagNameNS('*', 'img'), false);
+        $html = $body->textContent;
+
+        if (stripos($html, '<img') !== false) {
+            $previous = libxml_use_internal_errors(true);
+
+            try {
+                $fragment = new DOMDocument;
+
+                if ($fragment->loadHTML('<?xml encoding="UTF-8">'.$html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING)) {
+                    array_push($nodes, ...iterator_to_array($fragment->getElementsByTagName('img'), false));
+                }
+            } finally {
+                libxml_clear_errors();
+                libxml_use_internal_errors($previous);
+            }
+        }
+
+        $images = [];
+
+        foreach ($nodes as $node) {
+            if ($this->isTrackingPixel($node)) {
+                continue;
+            }
+
+            $source = trim($node->getAttribute('src'));
+
+            if ($source === '' || str_starts_with(strtolower($source), 'data:')) {
+                $source = trim($node->getAttribute('data-src'));
+            }
+
+            $url = $this->absoluteUrl($source, $baseUrl);
+
+            if ($url === null) {
+                continue;
+            }
+
+            $images[] = [
+                'type' => MediaList::TYPE_IMAGE,
+                'url' => $url,
+                'alt' => $node->getAttribute('alt'),
+                'width' => $node->getAttribute('width'),
+                'height' => $node->getAttribute('height'),
+            ];
+        }
+
+        return $images;
+    }
+
+    private function isTrackingPixel(DOMElement $image): bool
+    {
+        foreach (['width', 'height'] as $attribute) {
+            $value = trim($image->getAttribute($attribute));
+
+            if (is_numeric($value) && (int) $value <= 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function absoluteUrl(string $url, ?string $baseUrl): ?string
+    {
+        if ($url === '') {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $url) === 1) {
+            return $url;
+        }
+
+        if ($baseUrl === null || preg_match('#^https?://#i', $baseUrl) !== 1) {
+            return null;
+        }
+
+        try {
+            return (string) UriResolver::resolve(new Uri($baseUrl), new Uri($url));
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function childText(DOMElement $parent, string $name): ?string

@@ -53,7 +53,20 @@ class DestinationProviderRegistryTest extends TestCase
         $capabilities = $this->registry()->capabilities('recording');
 
         $this->assertTrue($capabilities->supportsConnectionTest);
-        $this->assertFalse($capabilities->supportsMedia);
+        $this->assertTrue($capabilities->supportsMedia());
+        $this->assertSame(['image', 'video'], $capabilities->media->types);
+        $this->assertSame(10, $capabilities->media->maxCount);
+    }
+
+    public function test_a_destination_declares_text_only_unless_it_says_otherwise(): void
+    {
+        $registry = $this->registry();
+
+        $this->assertFalse($registry->capabilities('telegram')->supportsMedia());
+        $this->assertFalse($registry->mediaSupport('telegram')->acceptsAny());
+        $this->assertFalse($registry->mediaSupport('not-registered')->acceptsAny());
+        $this->assertFalse($registry->mediaSupport(null)->acceptsAny());
+        $this->assertTrue($registry->mediaSupport('recording')->acceptsAny());
     }
 
     public function test_configuration_and_credential_rules_are_declared_separately(): void

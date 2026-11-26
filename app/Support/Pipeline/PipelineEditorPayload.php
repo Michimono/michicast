@@ -350,7 +350,8 @@ class PipelineEditorPayload
                 'fields' => array_map($this->field(...), $this->destinationProviders->configurationFields($type)),
                 'credential_fields' => array_map($this->field(...), $this->destinationProviders->credentialFields($type)),
                 'supports_connection_test' => $capabilities->supportsConnectionTest,
-                'supports_media' => $capabilities->supportsMedia,
+                'supports_media' => $capabilities->supportsMedia(),
+                'media' => $capabilities->media->toArray(),
                 'max_text_length' => $capabilities->maxTextLength,
                 'schema' => $this->schemaFields('destination', $type),
             ];

@@ -18,4 +18,13 @@ readonly class PreparedMessage
         public array $media = [],
         public array $fields = [],
     ) {}
+
+    /**
+     * The same message carrying only what the destination attaches. The mapped
+     * fields are left as the mapping produced them.
+     */
+    public function fittedTo(DestinationMediaSupport $support): self
+    {
+        return new self($this->body, $this->link, $support->fit($this->media)->attached, $this->fields);
+    }
 }

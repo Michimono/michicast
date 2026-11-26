@@ -33,6 +33,7 @@
     const previewText = root.querySelector('[data-mapping-preview-text]');
     const previewMediaWrap = root.querySelector('[data-mapping-preview-media-wrap]');
     const previewMedia = root.querySelector('[data-mapping-preview-media]');
+    const previewMediaNote = root.querySelector('[data-mapping-preview-media-note]');
     const previewRaw = root.querySelector('[data-mapping-preview-raw]');
     const previewErrors = root.querySelector('[data-mapping-preview-errors]');
     const sourceDrawer = document.querySelector('[data-mapping-drawer="source"]');
@@ -660,17 +661,21 @@
         if (previewText) previewText.textContent = (data.human && data.human.text) ? data.human.text : '';
         if (previewRaw) previewRaw.textContent = JSON.stringify(data.data || {}, null, 2);
         if (previewMedia && previewMediaWrap) {
+            // What the destination attaches, then a line for what it leaves off.
             const media = (data.human && data.human.media) ? data.human.media : [];
+            const note = (data.human && data.human.media_note) ? data.human.media_note : '';
             previewMedia.innerHTML = '';
-            if (media.length === 0) {
-                previewMediaWrap.hidden = true;
-            } else {
-                previewMediaWrap.hidden = false;
-                media.forEach(function (item) {
-                    const li = document.createElement('li');
-                    li.textContent = typeof item === 'string' ? item : (item.url || item.type || 'media item');
-                    previewMedia.appendChild(li);
-                });
+            previewMedia.hidden = media.length === 0;
+            previewMediaWrap.hidden = media.length === 0 && note === '';
+            media.forEach(function (item) {
+                const li = document.createElement('li');
+                const url = typeof item === 'string' ? item : (item.url || 'media item');
+                li.textContent = (item && item.type ? item.type + ': ' : '') + url;
+                previewMedia.appendChild(li);
+            });
+            if (previewMediaNote) {
+                previewMediaNote.textContent = note;
+                previewMediaNote.hidden = note === '';
             }
         }
         if (previewErrors) {

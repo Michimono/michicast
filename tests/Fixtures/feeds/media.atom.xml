@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Pocket Atom</title>
+  <link href="https://example.com/" rel="alternate"/>
+  <id>urn:uuid:feed-media</id>
+  <updated>2026-03-08T13:30:00Z</updated>
+  <entry>
+    <title>Atom enclosure</title>
+    <link href="https://example.com/atoms/enclosure" rel="alternate"/>
+    <link href="https://cdn.example.com/atoms/cover.jpg" rel="enclosure" type="image/jpeg"/>
+    <id>urn:uuid:atom-enclosure</id>
+    <updated>2026-03-07T12:00:00Z</updated>
+    <summary>Has an enclosure link.</summary>
+  </entry>
+  <entry>
+    <title>Atom inline</title>
+    <link href="https://example.com/atoms/inline" rel="alternate"/>
+    <id>urn:uuid:atom-inline</id>
+    <updated>2026-03-08T12:00:00Z</updated>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml">
+        <p>Inline picture.</p>
+        <img src="pictures/inline.png" alt="Inline"/>
+      </div>
+    </content>
+  </entry>
+</feed>

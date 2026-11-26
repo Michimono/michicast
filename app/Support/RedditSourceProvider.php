@@ -165,11 +165,17 @@ class RedditSourceProvider implements SourceProvider
                 'body' => $entry['body'],
                 'author' => $entry['author'],
                 'published_at' => $entry['published_at'],
+                // The post's picture: the full-size image, otherwise Reddit's preview.
+                'media' => $entry['preview_image'] === null ? null : [
+                    ['type' => MediaList::TYPE_IMAGE, 'url' => $entry['preview_image']],
+                ],
                 'metadata' => [
                     'provider' => $this->type(),
                     'post_kind' => $entry['is_self'] ? 'self' : 'link',
                     'linked_url' => $entry['linked_url'],
                     // Extra origin fields the mapping editor exposes for Reddit sources.
+                    // preview_image repeats the item's media so mappings saved
+                    // before every source shared one media field keep working.
                     'source_fields' => [
                         'text' => $entry['text'],
                         'linked_url' => $entry['linked_url'],

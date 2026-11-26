@@ -121,6 +121,7 @@ class RssSourceProvider implements SourceProvider
                 'body' => $entry['body'],
                 'author' => $entry['author'],
                 'published_at' => $entry['published_at'],
+                'media' => $entry['media'],
                 'metadata' => ['provider' => $this->type()],
                 'raw_payload' => $entry['raw'],
             ]);
@@ -137,6 +138,7 @@ class RssSourceProvider implements SourceProvider
      *     body: string|null,
      *     author: string|null,
      *     published_at: CarbonImmutable|null,
+     *     media: list<array<string, mixed>>,
      *     raw: array<string, mixed>
      * }>
      */

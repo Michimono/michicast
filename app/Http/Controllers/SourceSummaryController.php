@@ -60,6 +60,7 @@ class SourceSummaryController extends Controller
                     'published_at' => $latest->published_at?->toIso8601String(),
                     'external_id' => $this->text($latest->external_id),
                     'media_count' => is_array($latest->media) ? count($latest->media) : 0,
+                    'media' => $this->media($latest),
                 ], static fn (mixed $value): bool => $value !== null),
             ],
             'activity' => $runs->map(fn (BroadcastRun $run): array => [
@@ -75,6 +76,25 @@ class SourceSummaryController extends Controller
                 'error' => $this->text($run->error_detail, 300),
             ])->values()->all(),
         ]);
+    }
+
+    /**
+     * The item's media as the source filled it: kind and address only.
+     *
+     * @return list<array{type: string|null, url: string|null}>|null
+     */
+    private function media(ContentItem $item): ?array
+    {
+        $media = array_values(array_filter(is_array($item->media) ? $item->media : [], 'is_array'));
+
+        if ($media === []) {
+            return null;
+        }
+
+        return array_map(fn (array $entry): array => [
+            'type' => $this->text($entry['type'] ?? null),
+            'url' => $this->text($entry['url'] ?? null, 2048),
+        ], $media);
     }
 
     private function text(mixed $value, int $limit = 255): ?string

@@ -25,8 +25,9 @@ final class ContentItemSourceData
             $categories = [];
         }
 
-        // Provider-specific origin fields (e.g. Reddit's text / linked_url /
-        // preview_image). The shared fields below always take precedence.
+        // Provider-specific origin fields (e.g. Reddit's text / linked_url, and
+        // its older preview_image). The shared fields below always take
+        // precedence, so `media` is the item's own list for every source.
         $extra = [];
 
         if (is_array($metadata['source_fields'] ?? null)) {

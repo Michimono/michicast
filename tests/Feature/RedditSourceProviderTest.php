@@ -4,9 +4,13 @@ namespace Tests\Feature;
 
 use App\Enums\ConfigurationFieldType;
 use App\Exceptions\SourceFetchFailedException;
+use App\Models\Broadcast;
 use App\Models\ContentItem;
+use App\Models\Destination;
 use App\Models\Project;
+use App\Models\Source;
 use App\Support\Mapping\ContentItemSourceData;
+use App\Support\Mapping\ContentMapper;
 use App\Support\Mapping\DefaultMappings;
 use App\Support\Mapping\Schemas\RedditSourceSchema;
 use App\Support\RedditSourceProvider;
@@ -60,8 +64,13 @@ class RedditSourceProviderTest extends TestCase
         $schema = RedditSourceSchema::make();
         $names = array_map(static fn ($field) => $field->name, $schema->fields);
 
-        $this->assertSame(['title', 'text', 'linked_url', 'preview_image', 'link', 'published_at', 'author'], $names);
-        $this->assertSame($names, array_keys(RedditSourceSchema::sample()));
+        $this->assertSame(['title', 'text', 'linked_url', 'media', 'link', 'published_at', 'author'], $names);
+
+        // The sample still carries preview_image so mappings saved before the
+        // shared media field keep previewing what they send.
+        $sample = RedditSourceSchema::sample();
+        $this->assertSame([...$names, 'preview_image'], array_keys($sample));
+        $this->assertSame($sample['media'], $sample['preview_image']);
     }
 
     public function test_a_subreddit_listing_produces_normalized_content_items(): void
@@ -94,8 +103,13 @@ class RedditSourceProviderTest extends TestCase
                 'preview_image' => [],
             ],
         ], $items[0]->metadata);
+        $this->assertNull($items[0]->media);
 
         $this->assertSame('def456', $items[1]->external_id);
+        $this->assertSame(
+            [['type' => 'image', 'url' => 'https://preview.redd.it/def456.jpeg?width=640&crop=smart']],
+            $this->typesAndUrls($items[1]->media),
+        );
         $this->assertSame('Official expansion announcement', $items[1]->title);
         $this->assertSame('https://example.com/posts/expansion?a=1&b=2', $items[1]->body);
         $this->assertSame('newsbot', $items[1]->author);
@@ -337,9 +351,42 @@ class RedditSourceProviderTest extends TestCase
         $this->assertSame('https://i.redd.it/092.jpeg', $imageFields['linked_url']);
         $this->assertSame([['type' => 'image', 'url' => 'https://i.redd.it/092.jpeg']], $imageFields['preview_image']);
         $this->assertSame($imageFields['body'], $items[1]->body);
+
+        // The full-size image is the item's media, like every other source.
+        $this->assertSame([], $selfFields['media']);
+        $this->assertSame([['type' => 'image', 'url' => 'https://i.redd.it/092.jpeg']], $this->typesAndUrls($imageFields['media']));
     }
 
-    public function test_default_reddit_mappings_send_the_preview_image_as_media(): void
+    public function test_a_mapping_saved_with_the_preview_image_field_still_attaches_the_picture(): void
+    {
+        $this->fakeListing('pokemon', 'hot');
+
+        $project = Project::factory()->create();
+        $source = Source::factory()->create(['project_id' => $project->getKey(), 'type' => 'reddit']);
+        $destination = Destination::factory()->create(['project_id' => $project->getKey(), 'type' => 'recording']);
+        $broadcast = Broadcast::factory()->create([
+            'project_id' => $project->getKey(),
+            'source_id' => $source->getKey(),
+            'destination_id' => $destination->getKey(),
+            'mapping' => [
+                'steps' => [
+                    ['id' => 'text', 'operation' => 'set_field', 'order' => 0, 'config' => ['field' => 'text', 'value' => '{{title}}']],
+                    ['id' => 'media', 'operation' => 'set_field', 'order' => 1, 'config' => ['field' => 'media', 'value' => '{{preview_image}}']],
+                ],
+            ],
+        ]);
+
+        $items = $this->provider()->fetch($this->definition($project->getKey(), (int) $source->getKey()));
+        $message = (new ContentMapper)->prepare($broadcast->load(['source', 'destination']), $items[1]);
+
+        $this->assertSame('Official expansion announcement', $message->body);
+        $this->assertSame(
+            [['type' => 'image', 'url' => 'https://preview.redd.it/def456.jpeg?width=640&crop=smart']],
+            $this->typesAndUrls($message->media),
+        );
+    }
+
+    public function test_default_reddit_mappings_send_the_post_picture_as_media(): void
     {
         $defaults = new DefaultMappings;
 
@@ -347,7 +394,7 @@ class RedditSourceProviderTest extends TestCase
             $steps = $defaults->for('reddit', $destination)?->toArray()['steps'] ?? [];
             $media = collect($steps)->firstWhere('config.field', 'media');
 
-            $this->assertSame('{{preview_image}}', $media['config']['value'] ?? null, $destination);
+            $this->assertSame('{{media}}', $media['config']['value'] ?? null, $destination);
 
             $text = collect($steps)->firstWhere('config.field', 'text');
             $this->assertStringContainsString('{{text}}', $text['config']['value'] ?? '', $destination);
@@ -500,6 +547,18 @@ class RedditSourceProviderTest extends TestCase
             $config === [] ? ['subreddit' => 'pokemon'] : $config,
             $projectId,
             $sourceId,
+        );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>|null  $media
+     * @return list<array{type: mixed, url: mixed}>
+     */
+    private function typesAndUrls(?array $media): array
+    {
+        return array_map(
+            static fn (array $entry): array => ['type' => $entry['type'] ?? null, 'url' => $entry['url'] ?? null],
+            $media ?? [],
         );
     }
 

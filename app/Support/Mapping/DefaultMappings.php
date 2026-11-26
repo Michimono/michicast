@@ -71,7 +71,7 @@ final class DefaultMappings
             ]],
             ['set_field', [
                 'field' => 'media',
-                'value' => '{{preview_image}}',
+                'value' => '{{media}}',
             ]],
         ]);
     }
@@ -89,7 +89,7 @@ final class DefaultMappings
             ]],
             ['set_field', [
                 'field' => 'media',
-                'value' => '{{preview_image}}',
+                'value' => '{{media}}',
             ]],
         ]);
     }

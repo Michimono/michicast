@@ -14,6 +14,12 @@ Every domain record (project, source, destination, broadcast, content item, run,
 
 External services are reached only through the provider contracts: a source provider returns `ContentItem`s, a destination provider publishes one, a transformer maps one to another. Resolve implementations by type through the provider registry; never branch on `$source->type` in domain code, and never let provider-specific shapes leak past normalization. Keep the abstraction thin: interfaces at the integration boundary only, plain Laravel everywhere else.
 
+## Media is one list on the item
+
+A source puts an item's pictures and videos in `ContentItem.media`, in the origin's order, and never in a provider-only field. `MediaList` owns the shape (type `image` or `video`, an http(s) URL, optional `mime_type`, `width`, `height`, `alt`), drops what is not usable, removes repeats and caps the list. Every source schema offers it as `media` through `MediaSchemaField`, so `{{media}}` means the same thing for every source.
+
+A destination declares what it attaches with `DestinationMediaSupport` in its capabilities. The runner fits the message to that declaration before `publish()`, so a provider receives only media it can send and never trims the list itself. Media URLs are passed through; the server does not fetch, store or resize them.
+
 ## Provider credentials are secrets
 
 Store credentials with encrypted casts, never return them to the UI after save, and never log them. Configuration and credentials are different concerns even when they live near each other.

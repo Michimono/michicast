@@ -18,7 +18,7 @@ class ContentItemHasher
      *     author?: string|null,
      *     published_at?: DateTimeInterface|string|null,
      *     canonical_url?: string|null,
-     *     media?: list<array<string, mixed>>|null
+     *     media?: list<array<array-key, mixed>>|null
      * }  $fields
      */
     public function hash(array $fields): string
@@ -39,36 +39,22 @@ class ContentItemHasher
     }
 
     /**
-     * @param  list<array<string, mixed>>|null  $media
+     * The item's media in the shared shape (see MediaList), so the hash and the
+     * stored list always agree.
+     *
+     * @param  list<array<array-key, mixed>>|null  $media
      * @return list<array{
      *     alt: string|null,
      *     height: int|null,
      *     mime_type: string|null,
-     *     type: string|null,
-     *     url: string|null,
+     *     type: string,
+     *     url: string,
      *     width: int|null
      * }>
      */
     public function normalizeMedia(?array $media): array
     {
-        if ($media === null) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($media as $item) {
-            $normalized[] = [
-                'alt' => isset($item['alt']) ? (string) $item['alt'] : null,
-                'height' => isset($item['height']) ? (int) $item['height'] : null,
-                'mime_type' => isset($item['mime_type']) ? (string) $item['mime_type'] : null,
-                'type' => isset($item['type']) ? (string) $item['type'] : null,
-                'url' => isset($item['url']) ? (string) $item['url'] : null,
-                'width' => isset($item['width']) ? (int) $item['width'] : null,
-            ];
-        }
-
-        return $normalized;
+        return MediaList::normalize($media);
     }
 
     private function normalizePublishedAt(DateTimeInterface|string|null $publishedAt): ?string

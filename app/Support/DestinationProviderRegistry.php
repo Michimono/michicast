@@ -100,6 +100,19 @@ class DestinationProviderRegistry
     }
 
     /**
+     * What a destination of this type attaches to a message. A type that is
+     * not registered attaches nothing.
+     */
+    public function mediaSupport(?string $type): DestinationMediaSupport
+    {
+        if ($type === null || ! $this->has($type)) {
+            return DestinationMediaSupport::none();
+        }
+
+        return $this->capabilities($type)->media;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function configurationRules(string $type): array

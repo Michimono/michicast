@@ -19,13 +19,7 @@ final class TwitterSourceSchema
                 new SchemaField('link', 'Link', FieldType::Url, 'Canonical post URL', false),
                 new SchemaField('published_at', 'Published', FieldType::Datetime, 'Publication time', false),
                 new SchemaField('author', 'Author', FieldType::Text, 'Display name of the account', false),
-                new SchemaField(
-                    name: 'media',
-                    label: 'Images',
-                    type: FieldType::Array,
-                    description: 'Images or videos attached to the post',
-                    itemSchema: new SchemaField('item', 'Image', FieldType::Media),
-                ),
+                MediaSchemaField::make('Pictures and videos attached to the post. Empty when it has none'),
             ],
         );
     }
