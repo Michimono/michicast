@@ -1,5 +1,7 @@
 <x-layout :title="'Transform · '.$broadcast->name">
-    <x-card heading="Transform" :kicker="$broadcast->name" eared class="max-w-lg">
+    <x-page-header :kicker="$broadcast->name" heading="Transform" />
+
+    <x-card eared class="max-w-lg">
         <p class="text-sm text-ink">
             Build the outgoing message with placeholders, then optional formatting rules in order.
             Destinations handle their own escaping.

@@ -38,9 +38,14 @@
             {{--
                 Navbar = application lockup on every screen. Sidebar = current
                 resource. Never put the same identity in both.
+
+                The bar is the public site's: the same height, lockup and
+                gutters, sticky and quiet over the page rather than a band of
+                its own, so crossing from the site into the app keeps the top
+                of the screen still.
             --}}
-            <header class="border-b border-line bg-paper-raised">
-                <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-6 px-6 py-4">
+            <header class="sticky top-0 z-40 bg-paper/90 backdrop-blur-md">
+                <div class="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-5 sm:gap-6 sm:px-8">
                     <div class="flex min-w-0 items-center gap-3">
                         @if ($organization)
                             <button
@@ -84,7 +89,7 @@
                         <a class="flex min-w-0 items-center gap-2.5" href="{{ auth()->check() ? route('dashboard') : route('home') }}">
                             <x-brand.mark variant="face" class="h-6 shrink-0" />
 
-                            <span class="truncate font-display text-xl tracking-tight">{{ config('app.name') }}</span>
+                            <span class="truncate font-display text-[1.375rem] tracking-tight">{{ config('app.name') }}</span>
                         </a>
                     </div>
 
@@ -111,7 +116,7 @@
                                 @method('DELETE')
 
                                 <button
-                                    class="rounded-md px-2.5 py-1 text-sm text-muted transition-colors hover:bg-paper hover:text-ink"
+                                    class="cursor-pointer rounded-md px-2.5 py-1 text-sm text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                                     type="submit"
                                 >
                                     Log out
@@ -128,20 +133,28 @@
             </header>
 
             {{-- Only the page body yields to the rail; the header stays full-bleed. --}}
-            <div @class(['flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $rail])>
+            <div @class(['relative isolate flex flex-1 flex-col', 'lg:pl-24 xl:pl-64' => $rail])>
+                {{--
+                    The site's dotted canvas, fading out behind the page heading.
+                    Centred screens hold one form and nothing that competes with it.
+                --}}
+                @unless ($centered)
+                    <div class="canvas-dots pointer-events-none absolute inset-x-0 -top-16 -z-10 h-96 mask-b-from-20%" aria-hidden="true"></div>
+                @endunless
+
                 <main @class([
-                    'mx-auto flex w-full flex-1 flex-col px-6',
-                    'max-w-lg justify-center gap-8 py-12' => $centered,
-                    'max-w-5xl gap-6 py-10' => ! $centered,
+                    'mx-auto flex w-full flex-1 flex-col',
+                    'max-w-lg justify-center gap-8 px-6 py-12' => $centered,
+                    'max-w-7xl gap-8 px-5 pt-10 pb-16 sm:px-8 sm:pt-14' => ! $centered,
                 ])>
                     @if (session('success'))
-                        <p role="status" class="rounded-md border border-state-ok/30 bg-state-ok/5 px-4 py-3 text-sm text-state-ok">
+                        <p role="status" class="rounded-md border border-state-ok/30 bg-paper-raised px-4 py-3 text-sm text-state-ok shadow-float">
                             {{ session('success') }}
                         </p>
                     @endif
 
                     @if (session('error'))
-                        <p role="alert" class="rounded-md border border-state-fail/30 bg-state-fail/5 px-4 py-3 text-sm text-state-fail">
+                        <p role="alert" class="rounded-md border border-state-fail/30 bg-paper-raised px-4 py-3 text-sm text-state-fail shadow-float">
                             {{ session('error') }}
                         </p>
                     @endif
@@ -158,8 +171,8 @@
 
             {{-- Guest marketing chrome only. Auth, register, and the signed-in app omit it. --}}
             @if ($footer && auth()->guest())
-                <footer class="border-t border-line bg-paper-raised">
-                    <div class="mx-auto flex w-full max-w-7xl flex-col gap-1 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+                <footer>
+                    <div class="mx-auto flex w-full max-w-7xl flex-col gap-1 px-5 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8">
                         <p>A {{ config('michicast.brand') }} product.</p>
 
                         <a class="underline hover:no-underline" href="mailto:{{ config('michicast.support_email') }}">

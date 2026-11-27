@@ -20,11 +20,13 @@
         </x-card>
     @endif
 
-    <x-card heading="Overview" kicker="Admin" eared>
-        <p class="text-sm text-muted">
-            Platform-wide counts. Moderation and deeper tooling land in later issues.
-        </p>
+    <x-page-header
+        kicker="Admin"
+        heading="Overview"
+        lead="Platform-wide counts. Moderation and deeper tooling land in later issues."
+    />
 
+    <x-card eared>
         <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div class="flex flex-col gap-1 rounded-md border border-line bg-paper p-4">
                 <dt class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Users</dt>

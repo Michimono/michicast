@@ -1,4 +1,4 @@
-<x-card id="usage" heading="Usage" kicker="Quota" eared class="scroll-mt-8 max-w-md">
+<x-card id="usage" heading="Usage" kicker="Quota" eared class="scroll-mt-24 max-w-md">
     <p class="text-sm text-ink">
         Plan: <span class="font-medium">{{ ucfirst($planName) }}</span>.
         Usage limits reset at the start of each UTC day, week (Monday) or month, shown in your display timezone.

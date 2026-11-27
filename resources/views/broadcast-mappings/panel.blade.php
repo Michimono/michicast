@@ -6,14 +6,15 @@
 
 <div class="flex flex-col" data-mapping-root @if ($ready) data-mapping-editor='@json($mappingEditor)' @endif>
     {{-- MAPPING centerpiece (Level 1) --}}
-    <section class="relative flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-5 sm:p-6" aria-labelledby="mapping-heading">
-        <p class="flex items-center gap-2.5 font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">
+    <section class="relative flex flex-col gap-4 rounded-card border border-line bg-paper-raised p-5 shadow-float sm:p-6" aria-labelledby="mapping-heading">
+        <p class="flex items-center gap-3 font-mono text-[0.6875rem] tracking-[0.14em] text-muted uppercase">
+            <span class="text-ink">02</span>
+            <span class="house-fill h-px w-8 shrink-0" aria-hidden="true"></span>
             Mapping
-            <span class="house-fill h-0.5 flex-1 rounded-full"></span>
         </p>
 
         <div>
-            <h2 id="mapping-heading" class="font-display text-xl tracking-tight text-ink">Mapping</h2>
+            <h2 id="mapping-heading" class="font-display text-2xl leading-tight tracking-tight text-ink">Mapping</h2>
             <p class="mt-0.5 text-sm text-muted">Build the destination data step by step.</p>
         </div>
 
@@ -68,13 +69,14 @@
         </div>
 
         {{-- PREVIEW (Level 1) — message-like, not a grey form --}}
-        <section class="relative flex flex-col gap-3 rounded-card border border-line bg-paper-raised p-5 sm:p-6" aria-labelledby="mapping-preview-heading">
-            <p class="flex items-center gap-2.5 font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">
+        <section class="relative flex flex-col gap-3 rounded-card border border-line bg-paper-raised p-5 shadow-float sm:p-6" aria-labelledby="mapping-preview-heading">
+            <p class="flex items-center gap-3 font-mono text-[0.6875rem] tracking-[0.14em] text-muted uppercase">
+                <span class="text-ink">03</span>
+                <span class="house-fill h-px w-8 shrink-0" aria-hidden="true"></span>
                 Preview
-                <span class="house-fill h-0.5 flex-1 rounded-full"></span>
             </p>
             <div class="flex flex-col gap-0.5">
-                <h3 id="mapping-preview-heading" class="font-display text-lg tracking-tight text-ink">Preview</h3>
+                <h3 id="mapping-preview-heading" class="font-display text-2xl leading-tight tracking-tight text-ink">Preview</h3>
                 <p class="text-sm text-muted">Nothing will be sent.</p>
             </div>
 

@@ -1,5 +1,7 @@
 <x-layout title="Admin settings">
-    <x-card id="registration" heading="Registration" kicker="Settings" eared>
+    <x-page-header kicker="Admin" heading="Settings" />
+
+    <x-card id="registration" heading="Registration" eared>
         <p class="text-sm text-muted">
             Controls who can create an account. Changes take effect on the next request and are written to the audit log.
             @if ($isStored)

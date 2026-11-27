@@ -1,14 +1,16 @@
 <x-layout title="Organizations">
-    <x-card heading="Your organizations" kicker="Organizations" eared>
-        <p class="text-sm text-muted">
-            Each organization keeps its own projects, members and schedules. Open one to work in it.
-        </p>
-
-        <p>
+    <x-page-header
+        kicker="Organizations"
+        heading="Your organizations"
+        lead="Each organization keeps its own projects, members and schedules. Open one to work in it."
+    >
+        <x-slot:actions>
             <x-button href="{{ route('organizations.create') }}">New organization</x-button>
-        </p>
+        </x-slot:actions>
+    </x-page-header>
 
-        <ul class="flex flex-col divide-y divide-line border-t border-line">
+    <x-card eared>
+        <ul class="flex flex-col divide-y divide-line">
             @foreach ($memberships as $membership)
                 <li class="flex flex-wrap items-center justify-between gap-4 py-4">
                     <div class="flex flex-col gap-0.5">

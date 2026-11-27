@@ -1,20 +1,24 @@
 <x-layout title="Broadcasts">
-    <x-card heading="Broadcasts" kicker="Broadcasts" eared>
-        <p class="text-sm text-muted">Each broadcast is one pipeline: a source, a destination and a schedule.</p>
-
+    <x-page-header
+        :kicker="$organization->name"
+        heading="Broadcasts"
+        lead="Each broadcast is one pipeline: a source, a destination and a schedule."
+    >
         @can('create', [App\Models\Project::class, $organization])
-            <p>
+            <x-slot:actions>
                 <x-button href="{{ route('broadcasts.create') }}">New broadcast</x-button>
-            </p>
+            </x-slot:actions>
         @endcan
+    </x-page-header>
 
+    <x-card eared>
         @if ($projects->isEmpty())
             <x-empty-state
                 heading="Nothing to chase yet"
                 message="A broadcast holds one source, one destination and a schedule."
             />
         @else
-            <ul class="flex flex-col divide-y divide-line border-t border-line">
+            <ul class="flex flex-col divide-y divide-line">
                 @foreach ($projects as $project)
                     <li class="flex flex-wrap items-center justify-between gap-4 py-4">
                         <div class="flex flex-col gap-0.5">

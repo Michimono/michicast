@@ -1,5 +1,7 @@
 <x-layout title="Change role">
-    <x-card heading="Change role" :kicker="$member->organization->name" class="max-w-md">
+    <x-page-header :kicker="$member->organization->name" heading="Change role" />
+
+    <x-card class="max-w-md">
         <p class="text-sm text-ink">
             What {{ $member->user->name }} may do in {{ $member->organization->name }}.
         </p>

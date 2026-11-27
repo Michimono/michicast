@@ -1,20 +1,15 @@
 <x-layout title="New broadcast">
     <div class="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-6">
-        <section class="flex flex-col items-start gap-3">
-            <a
-                class="mb-2 inline-flex items-center gap-2 text-sm font-medium text-accent underline-offset-4 hover:underline"
-                href="{{ route('broadcasts.index') }}"
-            ><span aria-hidden="true">&larr;</span> Back to broadcasts</a>
-
-            <span class="rounded-md bg-accent/10 px-2.5 py-1 font-mono text-[0.6875rem] tracking-[0.12em] text-accent uppercase">New broadcast</span>
-            <h1 class="font-display text-4xl tracking-tight text-ink">Create a broadcast</h1>
-            <p class="max-w-prose text-base text-muted">
-                Set up a schedule to collect content from your sources and deliver it to your destinations.
-            </p>
-        </section>
+        <x-page-header
+            :back="route('broadcasts.index')"
+            back-label="Back to broadcasts"
+            kicker="New broadcast"
+            heading="Create a broadcast"
+            lead="Set up a schedule to collect content from your sources and deliver it to your destinations."
+        />
 
         <section
-            class="relative house-edge min-w-0 rounded-card border p-5 sm:p-8"
+            class="relative house-edge min-w-0 rounded-card border p-5 shadow-float sm:p-8"
             aria-label="Broadcast details and schedule"
         >
             <form class="flex flex-col gap-6" method="POST" action="{{ route('broadcasts.store') }}">

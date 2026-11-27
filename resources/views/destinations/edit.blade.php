@@ -4,18 +4,16 @@
     @endphp
 
     <div class="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-6">
-        <section class="flex flex-col items-start gap-3">
-            <a
-                class="mb-2 inline-flex items-center gap-2 text-sm font-medium text-accent underline-offset-4 hover:underline"
-                href="{{ route('broadcasts.show', $destination->project) }}"
-            ><span aria-hidden="true">&larr;</span> Back to broadcast</a>
+        <x-page-header
+            :back="route('broadcasts.show', $destination->project)"
+            back-label="Back to broadcast"
+            :heading="$destination->name"
+            lead="Update this destination's settings and send a test message to check it still delivers."
+        >
+            <x-slot:kicker>{{ $destination->project->name }} &middot; Destination</x-slot:kicker>
+        </x-page-header>
 
-            <span class="max-w-full truncate rounded-md bg-accent/10 px-2.5 py-1 font-mono text-[0.6875rem] tracking-[0.12em] text-accent uppercase">{{ $destination->project->name }} &middot; Destination</span>
-            <h1 class="font-display text-4xl tracking-tight break-words text-ink">{{ $destination->name }}</h1>
-            <p class="max-w-prose text-base text-muted">Update this destination's settings and send a test message to check it still delivers.</p>
-        </section>
-
-        <section class="relative house-edge min-w-0 rounded-card border bg-paper-raised" aria-labelledby="destination-settings-heading">
+        <section class="relative house-edge min-w-0 rounded-card border bg-paper-raised shadow-float" aria-labelledby="destination-settings-heading">
             <div class="flex flex-col gap-4 border-b border-line px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-8">
                 <div class="flex min-w-0 items-center gap-3">
                     <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-accent/10 font-mono text-xs font-semibold text-accent" aria-hidden="true">{{ $presentation['icon'] }}</span>

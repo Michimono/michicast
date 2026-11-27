@@ -1,5 +1,7 @@
 <x-layout title="Admin users">
-    <x-card heading="Users" kicker="Admin" eared>
+    <x-page-header kicker="Admin" heading="Users" />
+
+    <x-card eared>
         <p class="text-sm text-muted">
             Every account on the platform. Search by name or email to find someone for moderation.
         </p>

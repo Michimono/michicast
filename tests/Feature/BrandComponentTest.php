@@ -33,7 +33,8 @@ class BrandComponentTest extends TestCase
         $view = $this->blade('<x-card kicker="Deliveries" heading="Recent deliveries">Body</x-card>');
 
         $view->assertSee('Deliveries');
-        $view->assertSee('house-fill', false);
+        $view->assertSee('house-fill h-px w-8', false);
+        $view->assertDontSee('h-0.5 min-w-0 flex-1', false);
     }
 
     public function test_a_card_kicker_can_carry_trailing_status_tags(): void

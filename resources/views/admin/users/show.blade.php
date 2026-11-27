@@ -1,5 +1,7 @@
 <x-layout :title="'Admin — '.$user->name">
-    <x-card :heading="$user->name" kicker="User" eared>
+    <x-page-header kicker="User" :heading="$user->name" />
+
+    <x-card eared>
         <p class="font-mono text-sm text-muted">{{ $user->email }}</p>
 
         <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

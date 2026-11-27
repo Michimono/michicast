@@ -15,7 +15,7 @@
 --}}
 <aside
     id="organization-sidebar"
-    class="fixed z-30 flex flex-col gap-4 overflow-y-auto rounded-card border border-line bg-paper-raised p-3 max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-3 lg:left-3 lg:w-16 xl:w-56"
+    class="fixed z-30 flex flex-col gap-4 overflow-y-auto rounded-card border border-line bg-paper-raised p-3 shadow-float max-lg:top-20 max-lg:bottom-3 max-lg:left-3 max-lg:w-56 max-lg:hidden lg:top-20 lg:bottom-3 lg:left-3 lg:w-16 xl:w-56"
 >
     <div class="flex flex-col gap-2">
         <details class="relative z-20" data-sidebar-menu>

@@ -1,5 +1,7 @@
 <x-layout title="Invitation">
-    <x-card heading="Invitation" :kicker="$invitation->organization->name" eared class="max-w-md">
+    <x-page-header :kicker="$invitation->organization->name" heading="Invitation" />
+
+    <x-card eared class="max-w-md">
         @if ($invitation->isAccepted())
             <p class="text-sm text-ink">This invitation has already been used.</p>
         @elseif ($invitation->isExpired())

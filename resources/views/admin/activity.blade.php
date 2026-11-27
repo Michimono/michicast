@@ -1,9 +1,11 @@
 <x-layout title="Admin activity">
-    <x-card heading="Needs attention" kicker="Admin" eared>
-        <p class="text-sm text-muted">
-            Auto-paused broadcasts, organizations out of quota today, and the noisiest tenants in the last 24 hours.
-        </p>
+    <x-page-header
+        kicker="Admin"
+        heading="Activity"
+        lead="Auto-paused broadcasts, organizations out of quota today, and the noisiest tenants in the last 24 hours."
+    />
 
+    <x-card heading="Needs attention" eared>
         <div class="grid gap-6 lg:grid-cols-2">
             <div class="flex flex-col gap-3">
                 <h3 class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Auto-paused broadcasts</h3>

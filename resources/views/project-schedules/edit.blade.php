@@ -1,5 +1,7 @@
 <x-layout title="Schedule {{ $project->name }}">
-    <x-card heading="Schedule" kicker="Broadcasts" eared class="max-w-md">
+    <x-page-header kicker="Broadcasts" heading="Schedule" />
+
+    <x-card eared class="max-w-md">
         <form class="flex flex-col gap-4" method="POST" action="{{ route('broadcast-schedules.update', $project) }}">
             @csrf
             @method('PATCH')

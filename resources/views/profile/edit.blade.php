@@ -1,6 +1,12 @@
 <x-layout title="Settings">
     <div class="mx-auto flex w-full max-w-lg flex-col gap-8">
-        <x-card id="profile" heading="Profile" eared class="scroll-mt-8">
+        <x-page-header
+            kicker="Account"
+            heading="Settings"
+            lead="Your profile, your password and how you sign in. These follow you into every organization."
+        />
+
+        <x-card id="profile" heading="Profile" eared class="scroll-mt-24">
             <form class="flex flex-col gap-4" method="POST" action="{{ route('profile.update') }}">
                 @csrf
                 @method('PATCH')
@@ -24,7 +30,7 @@
             </p>
         </x-card>
 
-        <x-card id="password" heading="Password" class="scroll-mt-8">
+        <x-card id="password" heading="Password" class="scroll-mt-24">
             <p class="text-sm text-ink">Changing your password asks for the current one first.</p>
 
             <form class="flex flex-col gap-4" method="POST" action="{{ route('profile.password.update') }}">
@@ -39,7 +45,7 @@
             </form>
         </x-card>
 
-        <x-card id="two-factor" heading="Two-factor authentication" class="scroll-mt-8">
+        <x-card id="two-factor" heading="Two-factor authentication" class="scroll-mt-24">
             <p class="text-sm text-ink">
                 Optional for every account, including platform admins. When enabled, a stolen password alone is not enough to sign in.
             </p>

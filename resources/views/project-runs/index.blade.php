@@ -1,14 +1,17 @@
 <x-layout :title="$project->name.' runs'">
-    <x-card heading="Run history" :kicker="$project->name" eared>
-        <p class="text-sm text-muted">
+    <x-page-header :kicker="$project->name" heading="Run history">
+        <x-slot:lead>
             Newest first. Times are shown in your profile timezone
             ({{ auth()->user()->timezone }}). This project's schedule uses
             {{ $project->effectiveTimezone() }}.
-        </p>
+        </x-slot:lead>
 
-        <p>
+        <x-slot:actions>
             <x-button href="{{ route('broadcasts.show', $project) }}" variant="ghost" :paw="false">Back to project</x-button>
-        </p>
+        </x-slot:actions>
+    </x-page-header>
+
+    <x-card eared>
 
         @if ($runs->isEmpty())
             <x-empty-state

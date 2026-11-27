@@ -1,5 +1,7 @@
 <x-layout :title="$broadcast->name.' deliveries'">
-    <x-card heading="Delivery history" :kicker="$broadcast->name" eared>
+    <x-page-header :kicker="$broadcast->name" heading="Delivery history" />
+
+    <x-card eared>
         <p class="text-sm text-muted">
             {{ $broadcast->source->name }} → {{ $broadcast->destination->name }}.
             Times use your profile timezone ({{ auth()->user()->timezone }}).

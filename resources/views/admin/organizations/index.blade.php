@@ -1,5 +1,7 @@
 <x-layout title="Admin organizations">
-    <x-card heading="Organizations" kicker="Admin" eared>
+    <x-page-header kicker="Admin" heading="Organizations" />
+
+    <x-card eared>
         <p class="text-sm text-muted">
             Every tenant on the platform. Search by name or slug to open a workspace for moderation.
         </p>

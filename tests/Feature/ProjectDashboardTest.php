@@ -301,8 +301,9 @@ class ProjectDashboardTest extends TestCase
             ->getContent();
 
         // Tags stay alone on the Overview kicker line; Play shares one button row with Settings.
+        // The house rule leads the kicker, the same way it does on the public site.
         $this->assertMatchesRegularExpression(
-            '/<div\b[^>]*font-mono[^>]*>\s*Overview[\s\S]*house-fill[\s\S]*Draft[\s\S]*Never run/i',
+            '/<div\b[^>]*font-mono[^>]*>[\s\S]*house-fill[\s\S]*Overview[\s\S]*Draft[\s\S]*Never run/i',
             $html,
         );
 

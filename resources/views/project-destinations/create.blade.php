@@ -6,20 +6,16 @@
     @endphp
 
     <div class="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-6">
-        <section class="flex flex-col items-start gap-3">
-            <a
-                class="mb-2 inline-flex items-center gap-2 text-sm font-medium text-accent underline-offset-4 hover:underline"
-                href="{{ route('broadcasts.show', $project) }}"
-            ><span aria-hidden="true">&larr;</span> Back to broadcast</a>
+        <x-page-header
+            :back="route('broadcasts.show', $project)"
+            back-label="Back to broadcast"
+            heading="New destination"
+            lead="Choose where this broadcast delivers, then fill in its settings and credentials."
+        >
+            <x-slot:kicker>{{ $project->name }} &middot; Destination</x-slot:kicker>
+        </x-page-header>
 
-            <span class="max-w-full truncate rounded-md bg-accent/10 px-2.5 py-1 font-mono text-[0.6875rem] tracking-[0.12em] text-accent uppercase">{{ $project->name }} &middot; Destination</span>
-            <h1 class="font-display text-4xl tracking-tight text-ink">New destination</h1>
-            <p class="max-w-prose text-base text-muted">
-                Choose where this broadcast delivers, then fill in its settings and credentials.
-            </p>
-        </section>
-
-        <section class="relative house-edge min-w-0 rounded-card border bg-paper-raised" aria-labelledby="destination-config-heading">
+        <section class="relative house-edge min-w-0 rounded-card border bg-paper-raised shadow-float" aria-labelledby="destination-config-heading">
             <div class="border-b border-line px-5 py-5 sm:px-8">
                 <h2 id="destination-config-heading" class="font-display text-xl tracking-tight text-ink">Destination configuration</h2>
                 <p class="mt-1 text-sm text-muted">Credentials are stored encrypted and never shown again.</p>

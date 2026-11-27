@@ -54,7 +54,7 @@
     --color-node-transform: #6b4fd8;
     --color-node-destination: #be3a7a;
 
-    --radius-card: 0.75rem;
+    --radius-card: 1rem;
 
     /*
      * Elevation for the public site. Tinted with ink rather than black, so a

@@ -1,5 +1,7 @@
 <x-layout :title="$broadcast->name">
-    <x-card :heading="$broadcast->name" kicker="Broadcasts" eared class="max-w-md">
+    <x-page-header kicker="Broadcasts" :heading="$broadcast->name" />
+
+    <x-card eared class="max-w-md">
         <div class="flex flex-wrap items-center gap-3">
             <x-broadcast-status :broadcast="$broadcast" />
         </div>

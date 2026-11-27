@@ -24,11 +24,20 @@ The gradient is decoration and never carries body text — neither stop reaches 
 
 ## Chrome is light
 
-The header is a white bar with a hairline bottom border, the mark in its original black, and quiet grey navigation. Do not reintroduce dark chrome, an ink header band, or an inverted mark on light screens — it was tried and rejected. Darkness arrives only with the night theme, applied to whole surfaces rather than as a decorative band.
+The application header matches the public site's: sticky, translucent `bg-paper/90` with backdrop blur, the same height and lockup, no hairline band of its own. The mark stays in its original black, and navigation stays quiet grey. Do not reintroduce dark chrome, an ink header band, a bordered white bar, or an inverted mark on light screens — those were tried and rejected. Darkness arrives only with the night theme, applied to whole surfaces rather than as a decorative band.
 
 The current navigation item is a flat `bg-paper` pill, in both the header and the organization rail, so the two agree. It was a gradient underline and that was rejected: an underline at body size puts the signature behind text it is too light to carry, and it disagreed with the rail. Do not bring the underline back; the pill is the whole treatment, and `aria-current="page"` is what actually announces the state.
 
 Auth screens (log in, register) and the signed-in app render the header but no footer. Auth forms stay centred in a single narrow column; nothing on them should compete with the one form. The guest home page still shows the marketing footer.
+
+## Application pages borrow the site's page language
+
+Crossing from the landing page into the app should feel like the same product. Keep the app's own character (rail, cat, delivery states, light chrome, working pipeline canvas); borrow the site's page grammar:
+
+- Page headings use `<x-page-header>`: a mono kicker beside a thin `house-fill` rule, then a large `font-display` `<h1>`. One per page, above the sheets.
+- Content sits on raised sheets (`bg-paper-raised` + `shadow-float`), not flat bordered boxes alone. Cards already do this; focused form sheets follow the same elevation.
+- Card kickers use the site's short rule (`house-fill h-px w-8`), not a flex-1 bar. Optional `$index` numbers a stage in a sequence.
+- Working screens stay working screens: do not turn them into marketing pages, and do not add colours outside the existing tokens.
 
 ## Shell hierarchy: application, then context
 
@@ -49,6 +58,7 @@ All tokens live in `@theme` in `resources/css/app.css`. In Blade, use the genera
 - Surfaces: `paper` (page), `paper-raised` (cards, inputs), `ink` (chrome), `ink-raised`.
 - Text: `ink`, `muted`, and on dark chrome `ink-contrast`, `ink-muted`.
 - Strokes: `line`, `line-strong`. Borders are structural, never decorative.
+- Elevation: `shadow-float` (cards, rails, flashes), `shadow-canvas` (large marketing canvases). Prefer these over raw `shadow-sm` / `shadow-md` / `shadow-lg` or ad-hoc `rgb(...)` shadows when a surface is meant to lift off the page.
 - Product accent: `accent` for links, primary buttons and focus rings; `accent-lift` is its counterpart on the opposite surface. The pair swaps under `.dark`, so `accent` always means "the interactive colour that reads here".
 - House stops: `house-1`, `house-2`, composed as `--house-gradient`. Reach for the gradient, not the stops; nothing should use a single stop as a flat colour.
 

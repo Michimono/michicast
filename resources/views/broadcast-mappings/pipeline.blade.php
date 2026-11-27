@@ -17,11 +17,11 @@
 <div class="mx-auto flex w-full max-w-2xl flex-col" data-mapping-pipeline>
 
     {{-- SOURCE (Level 1, compact) --}}
-    <x-card kicker="Source" class="!gap-3 !p-5">
+    <x-card kicker="Source" index="01" class="!gap-3 !p-5 sm:!p-6">
         @if ($source)
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <h2 id="mapping-source-heading" class="font-display text-xl tracking-tight text-ink">
+                    <h2 id="mapping-source-heading" class="font-display text-2xl leading-tight tracking-tight text-ink">
                         {{ $source->name }}
                     </h2>
                     <p class="mt-0.5 text-sm text-muted">
@@ -68,11 +68,11 @@
     </div>
 
     {{-- DESTINATION (Level 1, compact) --}}
-    <x-card kicker="Destination" class="!gap-3 !p-5">
+    <x-card kicker="Destination" :index="$mappingReady ? '04' : '03'" class="!gap-3 !p-5 sm:!p-6">
         @if ($destination)
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <h2 id="mapping-destination-heading" class="font-display text-xl tracking-tight text-ink">
+                    <h2 id="mapping-destination-heading" class="font-display text-2xl leading-tight tracking-tight text-ink">
                         {{ $destination->name }}
                     </h2>
                     <p class="mt-0.5 text-sm text-muted">

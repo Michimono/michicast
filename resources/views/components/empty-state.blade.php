@@ -7,7 +7,7 @@
 
     <x-brand.mark variant="cat" gradient class="h-16" />
 
-    <h2 class="font-display text-xl tracking-tight">{{ $heading }}</h2>
+    <h2 class="font-display text-2xl leading-tight tracking-tight text-balance sm:text-3xl">{{ $heading }}</h2>
 
     @if ($message)
         <p class="max-w-prose text-sm text-muted">{{ $message }}</p>

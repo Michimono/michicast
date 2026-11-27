@@ -22,7 +22,8 @@
     </head>
     <body class="h-full overflow-hidden bg-paper font-sans text-ink antialiased">
         <div class="flex h-full flex-col">
-            <header class="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-paper-raised px-3 sm:gap-4 sm:px-4">
+            {{-- Quiet sticky bar, same language as the app header; the canvas below stays the working surface. --}}
+            <header class="flex h-14 shrink-0 items-center gap-3 bg-paper/90 px-3 backdrop-blur-md sm:gap-4 sm:px-4">
                 {{ $bar }}
             </header>
 
@@ -30,13 +31,13 @@
                 @if (session('success') || session('error'))
                     <div class="pointer-events-none absolute inset-x-0 top-3 z-40 flex justify-center px-4" data-editor-flash>
                         @if (session('success'))
-                            <p role="status" class="pointer-events-auto rounded-md border border-state-ok/30 bg-paper-raised px-4 py-2 text-sm text-state-ok shadow-sm">
+                            <p role="status" class="pointer-events-auto rounded-md border border-state-ok/30 bg-paper-raised px-4 py-2 text-sm text-state-ok shadow-float">
                                 {{ session('success') }}
                             </p>
                         @endif
 
                         @if (session('error'))
-                            <p role="alert" class="pointer-events-auto rounded-md border border-state-fail/30 bg-paper-raised px-4 py-2 text-sm text-state-fail shadow-sm">
+                            <p role="alert" class="pointer-events-auto rounded-md border border-state-fail/30 bg-paper-raised px-4 py-2 text-sm text-state-fail shadow-float">
                                 {{ session('error') }}
                             </p>
                         @endif

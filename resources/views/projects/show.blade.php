@@ -10,10 +10,10 @@
 
             <div class="flex flex-col gap-4">
                 <div class="flex flex-wrap items-start justify-between gap-4">
-                    <div class="min-w-0 flex flex-col gap-2">
-                        <h1 class="font-display text-2xl tracking-tight">{{ $project->name }}</h1>
+                    <div class="min-w-0 flex flex-col gap-3">
+                        <h1 class="font-display text-4xl leading-none tracking-tight text-balance break-words sm:text-5xl">{{ $project->name }}</h1>
                         @if ($project->description)
-                            <p class="max-w-2xl text-sm text-ink">{{ $project->description }}</p>
+                            <p class="max-w-prose text-base leading-7 text-ink">{{ $project->description }}</p>
                         @endif
                         <p class="text-sm text-muted">{{ $scheduleSummary }}</p>
                     </div>

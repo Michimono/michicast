@@ -1,12 +1,10 @@
 <x-layout title="Archived">
     <div class="flex flex-col gap-8">
-        <div class="flex flex-col gap-1">
-            <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Workspace</p>
-            <h1 class="font-display text-3xl tracking-tight">Archived</h1>
-            <p class="max-w-prose text-sm text-muted">
-                Broadcasts put aside for now. Open one to look around, or restore it when you need it again.
-            </p>
-        </div>
+        <x-page-header
+            kicker="Workspace"
+            heading="Archived"
+            lead="Broadcasts put aside for now. Open one to look around, or restore it when you need it again."
+        />
 
         @if ($projects->isEmpty())
             <x-empty-state

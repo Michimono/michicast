@@ -4,18 +4,16 @@
     @endphp
 
     <div class="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-6">
-        <section class="flex flex-col items-start gap-3">
-            <a
-                class="mb-2 inline-flex items-center gap-2 text-sm font-medium text-accent underline-offset-4 hover:underline"
-                href="{{ route('broadcasts.show', $source->project) }}"
-            ><span aria-hidden="true">&larr;</span> Back to broadcast</a>
+        <x-page-header
+            :back="route('broadcasts.show', $source->project)"
+            back-label="Back to broadcast"
+            :heading="$source->name"
+            lead="Update this source's settings and test that it still reaches its content."
+        >
+            <x-slot:kicker>{{ $source->project->name }} &middot; Source</x-slot:kicker>
+        </x-page-header>
 
-            <span class="max-w-full truncate rounded-md bg-accent/10 px-2.5 py-1 font-mono text-[0.6875rem] tracking-[0.12em] text-accent uppercase">{{ $source->project->name }} &middot; Source</span>
-            <h1 class="font-display text-4xl tracking-tight break-words text-ink">{{ $source->name }}</h1>
-            <p class="max-w-prose text-base text-muted">Update this source's settings and test that it still reaches its content.</p>
-        </section>
-
-        <section class="relative house-edge min-w-0 rounded-card border bg-paper-raised" aria-labelledby="source-settings-heading">
+        <section class="relative house-edge min-w-0 rounded-card border bg-paper-raised shadow-float" aria-labelledby="source-settings-heading">
             <div class="flex flex-col gap-4 border-b border-line px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-8">
                 <div class="flex min-w-0 items-center gap-3">
                     <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-accent/10 font-mono text-xs font-semibold text-accent" aria-hidden="true">{{ $presentation['icon'] }}</span>

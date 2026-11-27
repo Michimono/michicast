@@ -1,22 +1,20 @@
 <x-layout :title="$organization->name">
     <div class="flex flex-col gap-8">
         <x-quota-exhausted-banner :organization="$organization" />
-        <div class="flex flex-wrap items-end justify-between gap-4">
-            <div class="flex flex-col gap-1">
-                <p class="font-mono text-[0.6875rem] tracking-[0.12em] text-muted uppercase">Workspace</p>
-                <h1 class="font-display text-3xl tracking-tight">{{ $organization->name }}</h1>
-                <p class="max-w-prose text-sm text-muted">
-                    Your broadcasts at a glance. Open a card to manage a pipeline, or start a new one.
-                </p>
-            </div>
-
+        <x-page-header
+            kicker="Workspace"
+            :heading="$organization->name"
+            lead="Your broadcasts at a glance. Open a card to manage a pipeline, or start a new one."
+        >
             {{-- An empty workspace has one primary action, in the empty state below. --}}
             @if ($projects->isNotEmpty())
                 @can('create', [App\Models\Project::class, $organization])
-                    <x-button href="{{ route('broadcasts.create', $organization) }}">+ New broadcast</x-button>
+                    <x-slot:actions>
+                        <x-button href="{{ route('broadcasts.create', $organization) }}">+ New broadcast</x-button>
+                    </x-slot:actions>
                 @endcan
             @endif
-        </div>
+        </x-page-header>
 
         @if ($projects->isEmpty())
             <x-empty-state

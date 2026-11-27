@@ -1,9 +1,11 @@
 <x-layout title="Organization settings">
     <div class="mx-auto flex w-full max-w-md flex-col gap-8">
+        <x-page-header :kicker="$organization->name" heading="Settings" />
+
         <x-organization-usage-card :organization="$organization" />
 
         @can('update', $organization)
-            <x-card id="settings" heading="Organization settings" kicker="Settings" eared class="scroll-mt-8">
+            <x-card id="settings" heading="Organization settings" kicker="Settings" eared class="scroll-mt-24">
                 <p class="text-sm text-ink">
                     Name and timezone belong to the organization. They are the same for every member.
                 </p>

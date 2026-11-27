@@ -1,5 +1,7 @@
 <x-layout :title="'Admin · '.$organization->name">
-    <x-card :heading="$organization->name" kicker="Organization" eared>
+    <x-page-header kicker="Organization" :heading="$organization->name" />
+
+    <x-card eared>
         <p class="font-mono text-sm text-muted">{{ $organization->slug }}</p>
 
         <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -131,7 +133,7 @@
         </x-card>
     @endif
 
-        <x-card id="quotas" heading="Quotas" kicker="Plan & limits" eared class="scroll-mt-8">
+        <x-card id="quotas" heading="Quotas" kicker="Plan & limits" eared class="scroll-mt-24">
         <p class="text-sm text-muted">
             Plan limits come from config. Overrides live in the database and win when present (null = unlimited).
             Rate usage counts per UTC calendar period (day, Monday-week or month; plan default unless set below). Changing a plan, override or period takes effect immediately for the next run.

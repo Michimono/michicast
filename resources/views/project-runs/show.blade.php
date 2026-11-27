@@ -1,5 +1,7 @@
 <x-layout :title="'Run '.$run->started_at->timezone(auth()->user()->timezone)->format('M j, Y g:i A')">
-    <x-card heading="Run detail" :kicker="$project->name" eared>
+    <x-page-header :kicker="$project->name" heading="Run detail" />
+
+    <x-card eared>
         <p class="text-sm text-muted">
             Viewer timezone {{ auth()->user()->timezone }}. Project schedule timezone
             {{ $project->effectiveTimezone() }}.

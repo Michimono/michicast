@@ -1,5 +1,7 @@
 <x-layout title="New broadcast">
-    <x-card heading="New broadcast" :kicker="$project->name" eared class="max-w-md">
+    <x-page-header :kicker="$project->name" heading="New broadcast" />
+
+    <x-card eared class="max-w-md">
         <p class="text-sm text-ink">
             Pick a source and a destination in this project. Filters and transforms come later.
         </p>

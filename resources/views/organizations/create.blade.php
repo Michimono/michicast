@@ -24,7 +24,7 @@
     :title="$firstOrganization ? 'Create your organization' : 'New organization'"
     :footer="false"
 >
-    <x-card eared class="mx-auto w-full max-w-[45rem] shadow-[0_2px_4px_rgb(18_50_79/0.03),0_12px_32px_rgb(18_50_79/0.05)] sm:p-8">
+    <x-card eared class="mx-auto w-full max-w-[45rem] sm:p-8">
         <div class="flex flex-col gap-6">
             <div class="flex flex-col items-start gap-3">
                 @if ($firstOrganization)

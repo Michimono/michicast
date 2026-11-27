@@ -1,5 +1,7 @@
 <x-layout title="Admin audit">
-    <x-card heading="Audit" kicker="Admin" eared>
+    <x-page-header kicker="Admin" heading="Audit" />
+
+    <x-card eared>
         <p class="text-sm text-muted">
             Every admin sign-in and moderation change, newest first. Times use your profile timezone ({{ auth()->user()->timezone }}).
         </p>

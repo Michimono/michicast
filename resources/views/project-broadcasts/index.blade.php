@@ -1,5 +1,7 @@
 <x-layout :title="$project->name.' broadcasts'">
-    <x-card heading="Broadcasts" :kicker="$project->name" eared>
+    <x-page-header :kicker="$project->name" heading="Broadcasts" />
+
+    <x-card eared>
         <p class="text-sm text-muted">Each broadcast is one source feeding one destination.</p>
 
         @can('create', [App\Models\Broadcast::class, $project])

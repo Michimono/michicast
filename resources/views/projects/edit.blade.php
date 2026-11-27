@@ -1,6 +1,8 @@
 <x-layout title="Settings · {{ $project->name }}">
     <div class="mx-auto flex w-full max-w-lg flex-col gap-8">
-        <x-card id="general" heading="General" eared class="scroll-mt-8">
+        <x-page-header :kicker="$project->name" heading="Settings" />
+
+        <x-card id="general" heading="General" eared class="scroll-mt-24">
             <p class="text-sm text-ink">
                 Rename the broadcast and describe what it does. The slug stays {{ $project->slug }}.
             </p>
@@ -35,7 +37,7 @@
             </form>
         </x-card>
 
-        <x-card id="upcoming" heading="Upcoming runs" kicker="Preview" class="scroll-mt-8">
+        <x-card id="upcoming" heading="Upcoming runs" kicker="Preview" class="scroll-mt-24">
             @if ($upcoming === [])
                 <p class="text-sm text-muted">Save a complete schedule, or preview it, to see the next runs.</p>
             @else
@@ -48,7 +50,7 @@
             @endif
         </x-card>
 
-        <x-card id="operations" heading="Operations" kicker="Ops" class="scroll-mt-8">
+        <x-card id="operations" heading="Operations" kicker="Ops" class="scroll-mt-24">
             <p class="text-sm text-muted">
                 Rehearse a run without publishing, clear delivery state so Run now can try again, or publish only the latest received item now (bypasses already-delivered blockers for that item alone).
             </p>
@@ -109,7 +111,7 @@
 
         @can('changeStatus', $project)
             @if ($project->canArchive() || $project->canRestore())
-                <x-card id="archive" heading="Archive" kicker="Danger zone" class="scroll-mt-8">
+                <x-card id="archive" heading="Archive" kicker="Danger zone" class="scroll-mt-24">
                     <p class="text-sm text-muted">
                         Archiving hides this broadcast from the workspace. Historical activity is kept.
                     </p>
